@@ -1,0 +1,6 @@
+# Abweichungen von der detekt-Standardkonfiguration
+naming:
+  FunctionNaming:
+    # Composable-Funktionen werden nach Konvention groß geschrieben
+    ignoreAnnotated:
+      - 'Composable'
