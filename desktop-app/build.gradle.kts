@@ -22,3 +22,8 @@ compose.desktop {
         }
     }
 }
+
+// Beim Start aus Gradle relativ zum Projektverzeichnis laufen, damit data/cities gefunden wird
+tasks.withType<JavaExec>().configureEach {
+    workingDir = rootDir
+}

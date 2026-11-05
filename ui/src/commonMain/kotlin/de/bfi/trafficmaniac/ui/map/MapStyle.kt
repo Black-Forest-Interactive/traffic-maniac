@@ -1,0 +1,80 @@
+package de.bfi.trafficmaniac.ui.map
+
+import androidx.compose.ui.graphics.Color
+import de.bfi.trafficmaniac.city.RoadClass
+
+/** Platzhalter-Kartenstil für Version 0.1. Der Cartoon-Look folgt in Version 0.7. */
+object MapStyle {
+    val land = Color(0xFFF2EFE9)
+    val green = Color(0xFFCDE6B0)
+    val water = Color(0xFFA9D3F0)
+    val building = Color(0xFFD9D3CC)
+    val minorRoad = Color(0xFFFFFFFF)
+    val minorRoadOutline = Color(0xFFCFC9C1)
+    val motorway = Color(0xFFB8B0A8)
+    val roadOutline = Color(0xFF8C7B6B)
+    val trafficSignal = Color(0xFFD7263D)
+    val attribution = Color(0xFF555555)
+    val attributionBackground = Color(0xB3FFFFFF)
+
+    const val WATERWAY_WIDTH_METERS = 12f
+    const val MINOR_ROAD_WIDTH_METERS = 6f
+    const val MOTORWAY_WIDTH_METERS = 20f
+    const val OUTLINE_METERS = 1.5f
+    const val SIGNAL_RADIUS_METERS = 4f
+
+    /** Breiten unter dieser Pixelzahl werden angehoben, damit Linien beim Herauszoomen sichtbar bleiben. */
+    const val MIN_LINE_PIXELS = 1f
+
+    /** Simulierte Straßen bleiben auch in der Gesamtansicht deutlich sichtbar. */
+    const val MIN_ROAD_PIXELS = 3f
+    const val MIN_SIGNAL_PIXELS = 2.5f
+
+    /** Ampeln erst ab dieser Zoomstufe (Pixel pro Meter) zeigen. */
+    const val SIGNAL_MIN_SCALE = 0.4f
+
+    data class RoadStyle(
+        val fill: Color,
+        val widthMeters: Float,
+    )
+
+    /** Von hinten nach vorn: untergeordnete Klassen zuerst zeichnen. */
+    val roadClassesInDrawOrder: List<RoadClass> =
+        listOf(
+            RoadClass.TERTIARY_LINK,
+            RoadClass.TERTIARY,
+            RoadClass.SECONDARY_LINK,
+            RoadClass.SECONDARY,
+            RoadClass.PRIMARY_LINK,
+            RoadClass.PRIMARY,
+            RoadClass.TRUNK_LINK,
+            RoadClass.TRUNK,
+            RoadClass.MOTORWAY_LINK,
+            RoadClass.MOTORWAY,
+        )
+
+    private val motorwayStyle = RoadStyle(fill = Color(0xFFE892A2), widthMeters = 16f)
+    private val trunkStyle = RoadStyle(fill = Color(0xFFF9B29C), widthMeters = 14f)
+    private val primaryStyle = RoadStyle(fill = Color(0xFFFCD6A4), widthMeters = 12f)
+    private val secondaryStyle = RoadStyle(fill = Color(0xFFF7FABF), widthMeters = 10f)
+    private val tertiaryStyle = RoadStyle(fill = Color.White, widthMeters = 8f)
+
+    /** Auffahrten und Verbindungsrampen sind schmaler als die Straße selbst. */
+    private const val LINK_WIDTH_FACTOR = 0.6f
+
+    fun road(roadClass: RoadClass): RoadStyle =
+        when (roadClass) {
+            RoadClass.MOTORWAY -> motorwayStyle
+            RoadClass.TRUNK -> trunkStyle
+            RoadClass.PRIMARY -> primaryStyle
+            RoadClass.SECONDARY -> secondaryStyle
+            RoadClass.TERTIARY -> tertiaryStyle
+            RoadClass.MOTORWAY_LINK -> motorwayStyle.link()
+            RoadClass.TRUNK_LINK -> trunkStyle.link()
+            RoadClass.PRIMARY_LINK -> primaryStyle.link()
+            RoadClass.SECONDARY_LINK -> secondaryStyle.link()
+            RoadClass.TERTIARY_LINK -> tertiaryStyle.link()
+        }
+
+    private fun RoadStyle.link() = copy(widthMeters = widthMeters * LINK_WIDTH_FACTOR)
+}

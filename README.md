@@ -8,7 +8,7 @@ Erste Stadt: **Pforzheim** (Straßennetz aus OpenStreetMap).
 
 ## Status
 
-Version 0.1 in Arbeit – Meilenstein M0 (Projekt-Setup) steht, das Spiel selbst ist noch ein leeres Fenster.
+Version 0.1 in Arbeit – M0 (Projekt-Setup) und M1 (Karte) stehen: Pforzheim wird angezeigt, Verkehr gibt es noch nicht.
 
 ## Entwickeln
 
@@ -17,12 +17,13 @@ Voraussetzung: JDK 25 (Gradle lädt sich selbst über den Wrapper).
 ```bash
 ./gradlew build                  # kompilieren, Tests, ktlint, detekt
 ./gradlew :desktop-app:run       # Spiel starten
-./gradlew :osm-import:run        # Kartenimport (folgt in M1)
+scripts/import-pforzheim.sh      # OSM-Extrakt laden (155 MB) und data/cities/pforzheim.city erzeugen
 ./gradlew ktlintFormat           # Formatierung automatisch korrigieren
 ```
 
 | Modul         | Inhalt                                                      |
 |---------------|-------------------------------------------------------------|
+| `city`        | Format der Stadtdatei: Straßennetz und Kulisse (Multiplatform) |
 | `sim-engine`  | Verkehrssimulation, reines Kotlin (Multiplatform)           |
 | `game`        | Spielregeln: Geld, Bürgerzorn, Werkzeuge (Multiplatform)    |
 | `ui`          | Oberfläche mit Compose Multiplatform                        |

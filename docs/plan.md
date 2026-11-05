@@ -552,6 +552,7 @@ Vorschlag: **Compose Multiplatform**, weil das Spiel viel UI hat (Werkzeuge, Sta
 ```
 traffic-maniac/
 ├─ docs/                    # Pläne, Konzepte, ADRs
+├─ city/                    # KMP, commonMain: Stadtdatei-Format (Straßennetz + Kulisse)
 ├─ sim-engine/              # KMP, commonMain: reine Simulation
 ├─ game/                    # KMP, commonMain: Spielregeln, Werkzeuge, Level
 ├─ ui/                      # Compose Multiplatform: Renderer, HUD
