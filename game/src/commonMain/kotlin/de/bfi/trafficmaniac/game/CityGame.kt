@@ -7,7 +7,7 @@ import de.bfi.trafficmaniac.sim.Weekday
 import kotlinx.coroutines.channels.Channel
 
 /**
- * Das Spiel um die Simulation: Kasse, Werkzeuge, Bußgelder, Bürger und Politik.
+ * Das Spiel um die Simulation: Kasse, Werkzeuge, Bußgeldstelle, Bürger und Politik.
  *
  * Befehle kommen über [submit] von der Oberfläche (beliebiger Thread) und werden in [step] vor dem
  * nächsten Simulationsschritt ausgeführt – die Simulation selbst wird nur vom Spiel-Thread angefasst.
@@ -23,17 +23,25 @@ class CityGame(
     private val treasury = Treasury(rules.startBudget, ::message)
     private val works = PublicWorks(city, simulation, rules, treasury, ::message)
     private val citizens = Citizens(city.zones, rules)
+    private val drivers = DriverRegistry(rules, citizens)
+    private val office = FineOffice(rules, treasury, citizens, drivers, ::message)
     private val politics = Politics(rules)
     private var prContract = PrContract.NONE
     private var argumentsCampaign = false
     private var moods: List<ZoneMood> = citizens.moods(argumentsCampaign = false)
     private var unhappyShare = 0.0
-    private var finesThisHour = 0L
+    private var fineIncomeAtHourStart = 0L
     private var currentHour = hourIndex()
     private var lastBudgetRound: BudgetRound? = null
     private var finesToday = 0L
     private var recordToday: Pair<Double, Int>? = null
     private var latestEdition: NewspaperEdition? = null
+    private var commuteYesterday = CommuteStats()
+
+    init {
+        // Wer keinen Führerschein hat, fährt nicht
+        simulation.tripAllowed = { drivers.isAllowedToDrive(it.person, simulation.time) }
+    }
 
     /** Abgewählt – das Spiel ist vorbei. */
     val isGameOver: Boolean get() = politics.isRecalled
@@ -61,33 +69,16 @@ class CityGame(
         if (simulation.dayReports.size > reportsBefore) dayEnded()
     }
 
-    /** Mitternacht: Zeitung drucken, sonntags Haushaltsrunde. */
-    private fun dayEnded() {
-        val reports = simulation.dayReports
-        val report = reports.last()
-        latestEdition =
-            Newspaper.edition(DayNews(report, reports.getOrNull(reports.size - 2), finesToday, recordToday, state()))
-        finesToday = 0
-        recordToday = null
-        if (report.weekday == Weekday.SUNDAY) budgetRound()
-        if (isTermOver) message("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!")
-    }
-
-    private fun score(): Score {
-        val share = politics.reputation / MAX_REPUTATION
-        return Score(
-            treasury.balance,
-            politics.reputation,
-            rules.minReputationFactor + (rules.maxReputationFactor - rules.minReputationFactor) * share,
-        )
-    }
-
     fun state(): GameState =
         GameState(
             balance = treasury.balance,
             fineIncome = treasury.fineIncome,
             expenses = treasury.expenses,
             speedLimits = works.speedLimits.toMap(),
+            nightLimits = works.nightLimits.toMap(),
+            priorityRoads = works.priorityRoads.toSet(),
+            bikeCrossings = works.bikeCrossings.toSet(),
+            achievements = works.achievements.toList(),
             signalNodes = works.signalNodes,
             cameras = works.cameraCounters.values.map { it.toRecord() },
             messages = messages.toList(),
@@ -105,17 +96,22 @@ class CityGame(
             isTermOver = isTermOver,
             score = score(),
             latestEdition = latestEdition,
+            fineOffice = office.state(simulation.time),
+            bannedDrivers = drivers.bannedCount,
+            licenseRevocations = drivers.revocations,
+            commuteToday = citizens.commuteToday,
+            commuteYesterday = commuteYesterday,
+            commuteDamage = (commuteYesterday.lostMinutes * rules.damagePerLostMinute).toLong(),
         )
 
     private fun hourIndex() = (simulation.time / SECONDS_PER_HOUR).toInt()
 
+    /** Neue Blitzerfotos gehen an die Bußgeldstelle; Geld gibt es erst mit dem Bescheid. */
     private fun collectFines() {
         for (violation in simulation.speedControl.drainViolations()) {
             val tier = FineTier.of(violation.excessKmh)
             works.cameraCounters[violation.cameraId]?.record(tier, violation.measuredKmh, violation.limitKmh)
-            citizens.fined(violation.homeZone, tier.fine)
-            treasury.earnFine(tier.fine)
-            finesThisHour += tier.fine
+            office.register(tier, violation.homeZone, violation.person, simulation.time)
             finesToday += tier.fine
             val record = recordToday
             if (record == null || violation.measuredKmh - violation.limitKmh > record.first - record.second) {
@@ -126,32 +122,73 @@ class CityGame(
 
     private fun hourPassed() {
         currentHour = hourIndex()
+        office.hourPassed(simulation.time, simulation.gameTime)
         citizens.forget(hours = 1.0)
-        moods = citizens.moods(argumentsCampaign)
+        moods = citizens.moods(argumentsCampaign, simulation.environment.snapshot)
         unhappyShare = citizens.unhappyShare(moods)
-        politics.hourPassed(unhappyShare, prContract, argumentsCampaign, finesThisHour).forEach(::message)
-        finesThisHour = 0
+        val incomeThisHour = treasury.fineIncome - fineIncomeAtHourStart
+        fineIncomeAtHourStart = treasury.fineIncome
+        politics.hourPassed(unhappyShare, prContract, argumentsCampaign, incomeThisHour).forEach(::message)
         if (isGameOver) message("Der Gemeinderat hat Ihnen das Vertrauen entzogen. Sie sind abgewählt!")
     }
 
-    /** Sonntag um Mitternacht: Haushalt überweisen, PR und Kampagne für die nächste Woche bezahlen. */
+    /** Mitternacht: Zeitung drucken, Lasertrupps bezahlen, sonntags Haushaltsrunde. */
+    private fun dayEnded() {
+        val reports = simulation.dayReports
+        val report = reports.last()
+        val officeToday = office.startNewDay()
+        commuteYesterday = citizens.startNewDay()
+        val revocationsToday = drivers.startNewDay(simulation.time)
+        val previous = reports.getOrNull(reports.size - 2)
+        latestEdition =
+            Newspaper.edition(
+                DayNews(
+                    report,
+                    previous,
+                    finesToday,
+                    recordToday,
+                    state(),
+                    officeToday,
+                    revocationsToday,
+                    commuteYesterday,
+                ),
+            )
+        finesToday = 0
+        recordToday = null
+        if (works.laserCount > 0) treasury.charge(works.laserCount * rules.laserDailyCost)
+        if (report.weekday == Weekday.SUNDAY) budgetRound()
+        if (isTermOver) message("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!")
+    }
+
+    /** Sonntag um Mitternacht: Haushalt überweisen, PR, Kampagne und Gehälter bezahlen. */
     private fun budgetRound() {
         val argumentsCost = if (argumentsCampaign) rules.argumentsWeeklyCost else 0
-        val round = BudgetRound(simulation.gameTime, rules.weeklyAllowance, prContract.weeklyCost, argumentsCost)
-        treasury.receive(round.allowance)
-        treasury.charge(round.prCost + round.argumentsCost)
+        val round =
+            BudgetRound(
+                simulation.gameTime,
+                rules.weeklyAllowance,
+                prContract.weeklyCost,
+                argumentsCost,
+                office.weeklySalaries(),
+            )
+        treasury.receiveAllowance(round.allowance)
+        treasury.charge(round.prCost + round.argumentsCost + round.salaries)
         lastBudgetRound = round
-        message(
-            "Haushaltsrunde: +${formatEuro(
-                round.allowance,
-            )} Haushalt, −${formatEuro(round.prCost + round.argumentsCost)} PR",
-        )
+        val costs = round.prCost + round.argumentsCost + round.salaries
+        message("Haushaltsrunde: +${formatEuro(round.allowance)} Haushalt, −${formatEuro(costs)} PR und Gehälter")
+    }
+
+    private fun score(): Score {
+        val share = politics.reputation / MAX_REPUTATION
+        val factor = rules.minReputationFactor + (rules.maxReputationFactor - rules.minReputationFactor) * share
+        val earnings = treasury.balance - rules.startBudget - treasury.allowances
+        return Score(earnings, politics.reputation, factor)
     }
 
     private fun execute(command: GameCommand) {
         when (command) {
             is GameCommand.SetSpeedLimit -> {
-                works.setSpeedLimit(command.segment, command.kmh)
+                works.setSpeedLimit(command.segment, command.kmh, command.nightOnly)
             }
 
             is GameCommand.BuildSignal -> {
@@ -163,11 +200,19 @@ class CityGame(
             }
 
             is GameCommand.PlaceCamera -> {
-                works.placeCamera(command.segment)
+                works.placeCamera(command.segment, command.mobile)
             }
 
             is GameCommand.RemoveCamera -> {
                 works.removeCamera(command.cameraId)
+            }
+
+            is GameCommand.SetPriorityRoad -> {
+                works.setPriorityRoad(command.segment, command.priority)
+            }
+
+            is GameCommand.SetBikeCrossing -> {
+                works.setBikeCrossing(command.segment, command.crossing)
             }
 
             is GameCommand.SetPrContract -> {
@@ -180,6 +225,42 @@ class CityGame(
                 message(
                     if (command.enabled) "„Wer sich ans Tempo hält, hat nichts zu befürchten.“" else "Kampagne beendet",
                 )
+            }
+
+            else -> {
+                executeOfficeCommand(command)
+            }
+        }
+    }
+
+    private fun executeOfficeCommand(command: GameCommand) {
+        when (command) {
+            is GameCommand.HireStaff -> {
+                office.hire(command.count, simulation.time)
+            }
+
+            is GameCommand.FireStaff -> {
+                office.fire(command.count)
+            }
+
+            is GameCommand.SetStrictness -> {
+                office.strictness = command.strictness
+                simulation.speedControl.toleranceKmh = command.strictness.toleranceKmh
+                message("Ordnungsamt: ${command.strictness.label}")
+            }
+
+            is GameCommand.SetUnidentifiedPolicy -> {
+                office.policy = command.policy
+                message("Fahrer nicht ermittelbar: ${command.policy.label}")
+            }
+
+            is GameCommand.SetDeadlineDays -> {
+                office.deadlineDays = command.days
+                message("Bearbeitungsfrist: ${office.deadlineDays} Tage")
+            }
+
+            else -> {
+                Unit
             }
         }
     }

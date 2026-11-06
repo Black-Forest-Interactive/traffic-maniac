@@ -20,6 +20,9 @@ private const val TARGET_SEGMENTS = 40
 private const val TARGET_RADIUS_METERS = 2_500f
 private const val MIN_SEGMENT_LENGTH_METERS = 150f
 private const val PERCENT = 100
+private const val MODERATE_LIMIT = 0.25
+private const val SAVING_DAYS = 3
+private const val OFFICE_HOURS = 8
 
 /**
  * Kopflos-Runner für das Balancing: spielt mehrere Strategien parallel ohne Oberfläche durch und gibt
@@ -46,6 +49,7 @@ private enum class Strategy(
     NOTHING("nichts", "Nichts tun"),
     RIP_OFF("abkassieren", "Stündlich alles Geld in Tempo 20 + Blitzer auf zentralen Hauptstraßen, keine PR"),
     RIP_OFF_PR("abkassieren-pr", "Wie abkassieren, dazu Premium-PR und Totschlagargumente"),
+    MODERATE_PR("massvoll-pr", "Premium-PR, Totschlagargumente, neue Blitzer nur solange unter 25 % unzufrieden sind"),
 }
 
 private fun play(
@@ -57,20 +61,26 @@ private fun play(
     val game = CityGame(city, config, Balancing.gameRules())
     val log = StringBuilder("== ${strategy.id}: ${strategy.description}\n")
     val targets = ArrayDeque(centralMainRoads(city))
-    if (strategy == Strategy.RIP_OFF_PR) {
+    if (strategy == Strategy.RIP_OFF_PR || strategy == Strategy.MODERATE_PR) {
         game.submit(GameCommand.SetPrContract(PrContract.PREMIUM))
         game.submit(GameCommand.SetArgumentsCampaign(true))
     }
-    log.append("Tag | Kasse        | Bußgelder    | unzufrieden | Zorn | Abwahl | Reputation\n")
+    log.append(
+        "Tag | Kasse        | Bußgelder    | unzufrieden | Zorn | Abwahl | Reputation | Personal | Stapel | verjährt\n",
+    )
     for (day in 1..days) {
         repeat(HOURS_PER_DAY) {
             // Abkassieren: Jede Stunde werden die Einnahmen in die nächste Blitzer-Strecke gesteckt
-            if (strategy != Strategy.NOTHING) investInCameras(game, targets)
+            val calm = game.state().unhappyShare < MODERATE_LIMIT
+            // In den letzten Tagen wird gespart: Neue Blitzer zahlen sich nicht mehr aus
+            val investing = day <= days - SAVING_DAYS && (strategy != Strategy.MODERATE_PR || calm)
+            if (strategy != Strategy.NOTHING && investing) investInCameras(game, targets)
+            if (strategy != Strategy.NOTHING) staffFineOffice(game)
             repeat(SECONDS_PER_HOUR * config.ticksPerSecond) { game.step() }
         }
         val state = game.state()
         log.append(
-            "%3d | %12s | %12s | %10d%% | %4d | %6d | %10d%s\n".format(
+            "%3d | %12s | %12s | %10d%% | %4d | %6d | %10d | %8d | %6d | %8d%s\n".format(
                 day,
                 formatEuro(state.balance),
                 formatEuro(state.fineIncome),
@@ -78,12 +88,26 @@ private fun play(
                 state.anger.roundToInt(),
                 state.recallIndex.roundToInt(),
                 state.reputation.roundToInt(),
+                state.fineOffice.staff,
+                state.fineOffice.backlog,
+                state.fineOffice.expired,
                 if (state.isGameOver) "  ← ABGEWÄHLT" else "",
             ),
         )
         if (state.isGameOver) break
     }
+    val score = game.state().score
+    log.append(
+        "Punkte: ${score.points} (verdient ${formatEuro(score.earnings)} × ${"%.2f".format(score.reputationFactor)})\n",
+    )
     return log.toString()
+}
+
+/** Stellt Sachbearbeiter ein, wenn der Aktenstapel mehr als zwei Arbeitstage Arbeit enthält. */
+private fun staffFineOffice(game: CityGame) {
+    val office = game.state().fineOffice
+    val dailyCapacity = (office.staff + office.hiring) * game.rules.casesPerStaffHour * OFFICE_HOURS
+    if (office.backlog > 2 * dailyCapacity) game.submit(GameCommand.HireStaff(2))
 }
 
 private fun investInCameras(

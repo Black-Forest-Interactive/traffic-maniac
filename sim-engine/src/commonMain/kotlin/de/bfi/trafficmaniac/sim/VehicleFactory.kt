@@ -16,13 +16,7 @@ internal class VehicleFactory(
         referenceSeconds: Double,
     ): Vehicle {
         val type = if (random.nextDouble() < config.truckShare) VehicleType.TRUCK else VehicleType.CAR
-        val roll = random.nextDouble()
-        val driver =
-            when {
-                roll < config.draenglerShare -> DriverProfile.DRAENGLER
-                roll < config.draenglerShare + config.gemuetlicherShare -> DriverProfile.GEMUETLICHER
-                else -> DriverProfile.NORMALO
-            }
+        val driver = pickDriver()
         val color = if (type == VehicleType.TRUCK) TRUCK_COLOR else CAR_COLORS[random.nextInt(CAR_COLORS.size)]
         val knowsCameras = random.nextDouble() < config.cameraAwareShare
         return Vehicle(
@@ -35,8 +29,24 @@ internal class VehicleFactory(
             time,
             knowsCameras,
             trip.homeZone,
+            trip.person,
             referenceSeconds,
         )
+    }
+
+    private val driverTable =
+        config.driverMix.entries
+            .filter { it.value > 0 }
+            .toList()
+    private val driverTotal = driverTable.sumOf { it.value }
+
+    private fun pickDriver(): DriverProfile {
+        var roll = random.nextDouble() * driverTotal
+        for ((driver, share) in driverTable) {
+            roll -= share
+            if (roll <= 0) return driver
+        }
+        return driverTable.lastOrNull()?.key ?: DriverProfile.NORMALO
     }
 
     private companion object {

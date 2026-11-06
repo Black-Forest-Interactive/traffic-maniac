@@ -1,7 +1,11 @@
 package de.bfi.trafficmaniac.desktop
 
+import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
+import de.bfi.trafficmaniac.city.ZoneKind
 import de.bfi.trafficmaniac.sim.DemandProfile
+import de.bfi.trafficmaniac.sim.EnvironmentSnapshot
+import de.bfi.trafficmaniac.sim.Pollutant
 import de.bfi.trafficmaniac.sim.Simulation
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import java.io.File
@@ -61,6 +65,7 @@ fun main(args: Array<String>) {
             ),
         )
     }
+    printEnvironmentAtHomes(city, simulation)
     for (report in simulation.dayReports) {
         println(
             "Tag ${report.day + 1} (${report.weekday.germanName}): ${report.tripsStarted} Fahrten, " +
@@ -68,3 +73,31 @@ fun main(args: Array<String>) {
         )
     }
 }
+
+/** Lärm und Luft an den Wohngebieten (Mittel über 250 m) – Grundlage für die Schwellen der Bedürfnisse. */
+private fun printEnvironmentAtHomes(
+    city: CityMap,
+    simulation: Simulation,
+) {
+    val environment = simulation.environment.snapshot
+    val homes = city.zones.filter { it.kind == ZoneKind.RESIDENTIAL }
+    val noise =
+        homes.map {
+            EnvironmentSnapshot.energyToDb(environment.neighborhood(Pollutant.NOISE, it.x, it.y, NEIGHBORHOOD))
+        }
+    val air = homes.map { home -> AIR.sumOf { environment.neighborhood(it, home.x, home.y, NEIGHBORHOOD).toDouble() } }
+    println("Wohngebiete: Lärm dB (P10/P50/P90/max): ${percentiles(noise)}")
+    println("Wohngebiete: Feinstaub+NOx g/Zelle (P10/P50/P90/max): ${percentiles(air)}")
+    val totals = environment.totals.entries.joinToString { "${it.key.label} ${"%.0f".format(it.value)} g" }
+    println("Gesamt: ${"%.0f".format(environment.totalFuelLiters)} l Kraftstoff, $totals")
+}
+
+private fun percentiles(values: List<Number>): String {
+    val sorted = values.map { it.toDouble() }.sorted()
+    return PERCENTILES.joinToString(" / ") { p -> "%.2f".format(sorted[(sorted.size - 1) * p / PERCENT]) }
+}
+
+private const val NEIGHBORHOOD = 2
+private const val PERCENT = 100
+private val PERCENTILES = listOf(10, 50, 90, 100)
+private val AIR = listOf(Pollutant.NOX, Pollutant.PM_EXHAUST, Pollutant.PM_TIRES, Pollutant.PM_BRAKES)

@@ -70,13 +70,16 @@ class CityGameTest {
         game.submit(GameCommand.SetSpeedLimit(segment = 0, kmh = 20))
         game.submit(GameCommand.PlaceCamera(segment = 0))
 
-        game.run(minutes = 20)
+        // Start um 5 Uhr, die Bußgeldstelle arbeitet ab 8 Uhr
+        game.run(minutes = 4 * 60)
 
         val state = game.state()
         val camera = state.cameras.single()
         assertEquals(game.rules.speedLimitSignCost + game.rules.cameraCost, state.expenses)
         assertTrue(state.fineIncome > 0, "Bußgelder: ${state.fineIncome}")
-        assertEquals(state.fineIncome, camera.totalRevenue)
+        // Bezahlt wird nur, was die Bußgeldstelle zuordnen konnte
+        assertTrue(state.fineIncome < camera.totalRevenue)
+        assertTrue(state.fineOffice.paid > 0)
         assertEquals(game.rules.startBudget - state.expenses + state.fineIncome, state.balance)
         assertEquals(mapOf(0 to 20), state.speedLimits)
     }
@@ -95,7 +98,19 @@ class CityGameTest {
                 run(minutes = 20)
             }
 
-        assertTrue(strict.state().fineIncome > 3 * normal.state().fineIncome)
+        // Gemessene Bußgelder (bezahlt wird erst, wenn die Bußgeldstelle arbeitet)
+        assertTrue(
+            strict
+                .state()
+                .cameras
+                .single()
+                .totalRevenue > 3 *
+                normal
+                    .state()
+                    .cameras
+                    .single()
+                    .totalRevenue,
+        )
     }
 
     @Test
@@ -143,11 +158,53 @@ class CityGameTest {
         assertTrue(game.isFinished)
         assertEquals(1, state.daysPlayed)
         assertTrue(state.latestEdition?.headlines?.isNotEmpty() == true)
-        assertEquals((state.balance * state.score.reputationFactor).toLong(), state.score.points)
+        val earnings = state.balance - game.rules.startBudget
+        assertEquals(earnings, state.score.earnings)
+        assertEquals((earnings * state.score.reputationFactor).toLong(), state.score.points)
         // Nach dem Ende passiert nichts mehr
         val tick = game.simulation.clock.tick
         game.step()
         assertEquals(tick, game.simulation.clock.tick)
+    }
+
+    @Test
+    fun fineOfficeNeedsOfficeHoursAndExpiresOldCases() {
+        val game = CityGame(straightRoad(), config, GameRules(initialStaff = 0))
+        game.submit(GameCommand.SetSpeedLimit(segment = 0, kmh = 20))
+        game.submit(GameCommand.PlaceCamera(segment = 0))
+        game.submit(GameCommand.SetDeadlineDays(days = 1))
+
+        game.run(minutes = 6 * 60)
+
+        val office = game.state().fineOffice
+        assertEquals(0, office.processed)
+        assertTrue(office.backlog > 0)
+        assertEquals(0, game.state().fineIncome)
+    }
+
+    @Test
+    fun signForestAchievement() {
+        val game = CityGame(straightRoad(), config)
+        listOf(
+            GameCommand.SetSpeedLimit(segment = 0, kmh = 30),
+            GameCommand.SetSpeedLimit(segment = 0, kmh = 20, nightOnly = true),
+            GameCommand.SetPriorityRoad(segment = 1, priority = true),
+            GameCommand.SetBikeCrossing(segment = 1, crossing = true),
+            GameCommand.PlaceCamera(segment = 0),
+        ).forEach(game::submit)
+        game.step()
+        assertTrue(game.state().achievements.isEmpty())
+
+        game.submit(GameCommand.PlaceCamera(segment = 1))
+        game.step()
+
+        assertEquals(listOf("Schilderwald"), game.state().achievements)
+        assertTrue(
+            game.simulation.graph.hasPriority(
+                game.simulation.graph.segmentLinks[1]
+                    .first(),
+            ),
+        )
     }
 
     @Test

@@ -27,10 +27,10 @@ internal class JunctionRules(
 
     /** Ungeregelte Kreuzung: Die Straße mit niedrigerem Rang wartet auf herannahende Fahrzeuge der höherrangigen. */
     private fun mustYield(link: Int): Boolean {
-        val rank = graph.linkRoadClass[link].ordinal
+        val rank = graph.priorityRank(link)
         return graph.inLinks[graph.linkTo[link]].any { other ->
             other != link &&
-                graph.linkRoadClass[other].ordinal < rank &&
+                graph.priorityRank(other) < rank &&
                 lanes[other].any { queue -> queue.firstOrNull()?.let { isApproaching(it, other) } == true }
         }
     }

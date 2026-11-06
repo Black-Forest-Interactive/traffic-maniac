@@ -13,8 +13,8 @@ Version 0.1 ist spielbar (Meilensteine M0–M6): Pforzheim mit rund 2.000 gleich
 ## Spielen
 
 - Mausrad zoomt, Ziehen verschiebt die Karte.
-- Unten die Werkzeugleiste: Tempolimit (mit Wert), Ampel, Blitzer, Abbauen – dann auf eine Straße bzw. Kreuzung klicken.
-- Rechts oben: Zufriedenheit der Wohngebiete, Blitzer-Statistik, Haushalt & PR.
+- Unten die Werkzeugleiste: Tempolimit (mit Wert, auch "nur nachts"), Ampel, Blitzer, Laser, Vorfahrt, Radweg-Querung, Abbauen – dann auf eine Straße bzw. Kreuzung klicken.
+- Rechts oben: Umwelt-Ebenen (Lärm, Luft, CO₂), Zufriedenheit der Wohngebiete, Blitzer-Statistik, Haushalt & PR, Ordnungsamt, Bürger.
 - Leertaste pausiert, 1–4 wählen Tempo 1x/2x/4x/8x (nachts automatisch 8× schneller), Enter schließt den Tagesabschluss.
 - Ziel: nach 14 Tagen möglichst viel Geld in der Kasse und eine gute Reputation. Wird der Bürgerzorn zu groß, ist man vorher abgewählt.
 

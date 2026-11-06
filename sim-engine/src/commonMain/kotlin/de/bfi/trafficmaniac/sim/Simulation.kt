@@ -20,6 +20,9 @@ class Simulation(
     private val random = Random(config.seed)
     val signals = SignalSystem(graph)
 
+    /** Abgase, Feinstaub und Lärm im 50-m-Raster. */
+    val environment = Environment(city.bounds)
+
     /** Tempo, Überschreitungen und Blitzer. */
     val speedControl = SpeedControl(graph, config, random)
     val clock = SimulationClock(config.ticksPerSecond)
@@ -30,6 +33,7 @@ class Simulation(
     private val lanes = LaneQueues(graph)
     private val junctions = JunctionRules(graph, signals, lanes)
     private val laneChanger = LaneChanger(graph, lanes)
+    private val behavior = DriverBehavior(speedControl, clock.tickDurationSeconds)
     private val dt = clock.tickDurationSeconds
 
     /** Alle Fahrzeuge im Netz, nach ID sortiert (neue werden hinten angehängt). */
@@ -45,6 +49,9 @@ class Simulation(
     val finishedTrips = TripLog()
     private val reports = ArrayList<DayReport>()
 
+    /** Filter für neue Fahrten, z. B. "kein Führerschein". Wird vom Spiel gesetzt. */
+    var tripAllowed: (Trip) -> Boolean = { true }
+
     /** Simulierte Sekunden seit dem Start. */
     val time: Double get() = clock.elapsedSeconds
 
@@ -55,13 +62,16 @@ class Simulation(
     val dayReports: List<DayReport> get() = reports
 
     fun step() {
+        if (clock.tick % ENVIRONMENT_TICKS == 0L) updateEnvironment()
+        graph.setQuietHours(gameTime.isQuietHours)
+        if (clock.tick % STRESS_UPDATE_TICKS == 0L) vehicles.forEach { behavior.updateStress(it, time) }
         generateTrips()
         enterPendingVehicles()
         computeAccelerations()
         move()
         crossNodes()
         laneChanger.changeLanes(clock.tick)
-        if (clock.tick % QUEUE_UPDATE_TICKS == 0L) updateQueueTravelTimes()
+        if (clock.tick % QUEUE_UPDATE_TICKS == 0L) router.updateFromQueues(lanes)
         if (vehicles.any { !it.active }) vehicles.removeAll { !it.active }
         val before = gameTime
         dayStatistics.sampleVehicles(vehicles.size, before)
@@ -78,6 +88,8 @@ class Simulation(
         while (tripAccumulator >= 1) {
             tripAccumulator--
             val trip = trips.next(now)
+            // Wer keinen Führerschein mehr hat, fährt nicht – die Fahrt fällt weg
+            if (!tripAllowed(trip)) continue
             val route = router.route(trip.originNode, trip.destinationNode)
             if (route != null && pending.size < config.maxPendingVehicles) {
                 pending.addLast(factory.create(route, trip, time, router.referenceTime(route)))
@@ -96,7 +108,7 @@ class Simulation(
                 vehicle.position = vehicle.type.length.toDouble()
                 vehicle.speed = min(ENTRY_SPEED, graph.linkSpeedLimit[link].toDouble())
                 vehicle.linkEnterTime = time
-                speedControl.roll(vehicle, link)
+                behavior.enterLink(vehicle, -1, link)
                 lanes[link][lane].addLast(vehicle)
                 vehicles += vehicle
                 dayStatistics.tripStarted(gameTime)
@@ -114,17 +126,16 @@ class Simulation(
                 for (i in queue.indices) {
                     val vehicle = queue[i]
                     val desired = speedControl.desiredSpeed(vehicle, link)
-                    vehicle.acceleration =
-                        if (i > 0) {
-                            val leader = queue[i - 1]
-                            vehicle.idm(
-                                desired,
-                                leader.position - leader.type.length - vehicle.position,
-                                vehicle.speed - leader.speed,
-                            )
+                    val leader = queue.getOrNull(i - 1)
+                    val gap =
+                        leader?.let { it.position - it.type.length - vehicle.position } ?: Double.POSITIVE_INFINITY
+                    val acceleration =
+                        if (leader != null) {
+                            vehicle.idm(desired, gap, vehicle.speed - leader.speed)
                         } else {
                             frontAcceleration(vehicle, link, desired)
                         }
+                    vehicle.acceleration = behavior.adjust(vehicle, acceleration, desired, gap)
                 }
             }
         }
@@ -174,6 +185,7 @@ class Simulation(
             val offset = if (i > 0) 0.0 else graph.linkLength[link].toDouble()
             val oldPosition = vehicle.position
             moveVehicle(vehicle, leader, offset)
+            environment.emit(vehicle, dt)
             speedControl.measure(vehicle, link, oldPosition)
         }
         if (queue.any { !it.active }) {
@@ -242,7 +254,7 @@ class Simulation(
         vehicle.lane = lane
         vehicle.position = overflow
         vehicle.linkEnterTime = time
-        speedControl.roll(vehicle, next)
+        behavior.enterLink(vehicle, link, next)
         lanes[next][lane].addLast(vehicle)
         if (time - vehicle.lastRerouteTime > config.rerouteIntervalSeconds) reroute(vehicle)
         return true
@@ -258,17 +270,6 @@ class Simulation(
 
     // --- Navi ---------------------------------------------------------------------------------------------
 
-    /**
-     * Lange Warteschlangen fließen schon vor der ersten Ausfahrt in die Fahrzeitschätzung ein;
-     * auf Links ohne Stau kehrt die Schätzung langsam zur freien Fahrt zurück.
-     */
-    private fun updateQueueTravelTimes() {
-        for (link in 0 until graph.linkCount) {
-            val wait = lanes.longestFrontWait(link)
-            if (wait > 0) router.raiseTo(link, router.freeFlowTime(link) + wait) else router.relax(link)
-        }
-    }
-
     private fun reroute(vehicle: Vehicle) {
         vehicle.lastRerouteTime = time
         val link = vehicle.link
@@ -282,6 +283,17 @@ class Simulation(
             vehicle.route = intArrayOf(link) + path
             vehicle.routeIndex = 0
         }
+    }
+
+    /** Jede Sekunde: Ausstoß an der Fahrzeugposition ablegen, Raster abbauen; alle 5 s veröffentlichen. */
+    private fun updateEnvironment() {
+        val point = FloatArray(LOCATE_SIZE)
+        for (vehicle in vehicles) {
+            graph.locate(vehicle.link, vehicle.position.toFloat(), vehicle.lane, point)
+            environment.deposit(vehicle, point[LOCATE_X], point[LOCATE_Y])
+        }
+        environment.decay(ENVIRONMENT_TICKS * dt)
+        if (clock.tick % ENVIRONMENT_PUBLISH_TICKS == 0L) environment.publish()
     }
 
     // --- Darstellung ------------------------------------------------------------------------------------
@@ -309,6 +321,7 @@ class Simulation(
             signalMarkers = signals.markers,
             signalStates = Array(signals.markers.links.size) { signals.state(signals.markers.links[it], time) },
             cameras = speedControl.cameras.toList(),
+            environment = environment.snapshot,
             stats = stats(),
         )
     }
@@ -331,5 +344,8 @@ class Simulation(
         const val STANDSTILL_GAP = 0.5
         const val STANDSTILL_SPEED = 0.1
         const val QUEUE_UPDATE_TICKS = 100L
+        const val STRESS_UPDATE_TICKS = 50L
+        const val ENVIRONMENT_TICKS = 10L
+        const val ENVIRONMENT_PUBLISH_TICKS = 50L
     }
 }

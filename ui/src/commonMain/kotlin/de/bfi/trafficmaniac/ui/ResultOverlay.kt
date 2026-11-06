@@ -55,7 +55,10 @@ fun ResultOverlay(
                 },
                 style = text.copy(fontSize = 15.sp),
             )
-            BasicText("Kasse: ${formatEuro(state.balance)}", style = text)
+            BasicText(
+                "Kasse: ${formatEuro(state.balance)} · selbst verdient: ${formatEuro(state.score.earnings)}",
+                style = text,
+            )
             BasicText("Bußgelder eingenommen: ${formatEuro(state.fineIncome)}", style = text)
             BasicText(
                 "Reputation: ${state.reputation.roundToInt()} / 100 (Faktor ×${"%.2f".format(
@@ -63,6 +66,12 @@ fun ResultOverlay(
                 )})",
                 style = text,
             )
+            if (state.achievements.isNotEmpty()) {
+                BasicText(
+                    "Achievements: ${state.achievements.joinToString()}",
+                    style = text,
+                )
+            }
             if (!recalled) {
                 BasicText(
                     "Punkte: ${state.score.points}",

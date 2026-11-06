@@ -69,6 +69,9 @@ class PoliticsTest {
             citizens.tripFinished(TripResult(homeZone = 1, actualSeconds = 110.0, referenceSeconds = 100.0))
         }
 
+        // Nur Stau reicht nicht: Rentnern und Familien sind Lärm und Luft wichtiger
+        assertFalse(citizens.moods(argumentsCampaign = false)[0].isUnhappy)
+        repeat(100) { citizens.fined(homeZone = 0, euros = 70) }
         val moods = citizens.moods(argumentsCampaign = false)
         assertTrue(moods[0].isUnhappy)
         assertFalse(moods[1].isUnhappy)

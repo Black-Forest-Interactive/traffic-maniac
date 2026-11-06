@@ -27,6 +27,9 @@ enum class Tool(
     SPEED_LIMIT("Tempolimit"),
     SIGNAL("Ampel"),
     CAMERA("Blitzer"),
+    LASER("Laser"),
+    PRIORITY("Vorfahrt"),
+    BIKE_CROSSING("Radweg-Querung"),
     REMOVE("Abbauen"),
 }
 
@@ -34,6 +37,8 @@ enum class Tool(
 data class ToolSelection(
     val tool: Tool = Tool.LOOK,
     val speedLimit: Int? = DEFAULT_SPEED_LIMIT,
+    /** Tempolimit nur nachts (22–6 Uhr). */
+    val nightOnly: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_SPEED_LIMIT = 30
@@ -70,6 +75,10 @@ fun ToolBar(
                     }
                 }
                 ToolButton("Original", selection.speedLimit == null) { onSelect(selection.copy(speedLimit = null)) }
+                ToolButton(
+                    "nur nachts",
+                    selection.nightOnly,
+                ) { onSelect(selection.copy(nightOnly = !selection.nightOnly)) }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -91,6 +100,9 @@ private fun costHint(
         Tool.SPEED_LIMIT -> " (${formatEuro(rules.speedLimitSignCost)})"
         Tool.SIGNAL -> " (${formatEuro(rules.signalCost)})"
         Tool.CAMERA -> " (${formatEuro(rules.cameraCost)})"
+        Tool.LASER -> " (${formatEuro(rules.laserDailyCost)}/Tag)"
+        Tool.PRIORITY -> " (${formatEuro(rules.priorityRoadCost)})"
+        Tool.BIKE_CROSSING -> " (${formatEuro(rules.bikeCrossingCost)})"
         else -> ""
     }
 

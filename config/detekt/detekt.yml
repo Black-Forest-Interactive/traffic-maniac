@@ -13,6 +13,9 @@ complexity:
     allowedFunctionsPerFile: 15
 
 style:
+  MagicNumber:
+    # Enum-Einträge sind Wertetabellen (Fahrertypen, Bußgeldstufen …)
+    ignoreEnums: true
   ReturnCount:
     # Frühe Rückgaben (Guard Clauses) machen die Simulationslogik lesbarer
     max: 3

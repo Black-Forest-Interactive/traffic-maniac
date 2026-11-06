@@ -50,6 +50,7 @@ import kotlin.time.Duration.Companion.milliseconds
 private const val ZOOM_PER_SCROLL_STEP = 1.2f
 private const val NANOS_PER_SECOND = 1_000_000_000L
 private const val WALKING_SPEED_KMH = 7
+private const val NIGHT_SIGN_OFFSET = 14f
 private val RERENDER_DELAY = 150.milliseconds
 
 /**
@@ -69,9 +70,11 @@ fun MapView(
     onFps: (Int) -> Unit = {},
     onMapClick: (x: Float, y: Float, metersPerPixel: Float) -> Unit = { _, _, _ -> },
     showMoods: Boolean = false,
+    environmentLayer: EnvironmentLayer = EnvironmentLayer.NONE,
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
+    val environmentCache = remember(city) { EnvironmentCache() }
     val textMeasurer = rememberTextMeasurer()
     val clickHandler by rememberUpdatedState(onMapClick)
     val frameTick = rememberFrameTick(onFps)
@@ -99,6 +102,11 @@ fun MapView(
                 frameTick.value
                 val frame = traffic()
                 if (currentCamera != null && frame != null) {
+                    if (environmentLayer != EnvironmentLayer.NONE) {
+                        inWorld(
+                            currentCamera,
+                        ) { environmentCache.draw(this, frame.current.environment, environmentLayer) }
+                    }
                     if (showMoods) inWorld(currentCamera) { drawMoods(frame.game.zoneMoods, currentCamera.scale) }
                     drawTraffic(currentCamera, frame, picker, textMeasurer)
                 }
@@ -250,8 +258,16 @@ private fun DrawScope.drawTraffic(
         traffic.game.speedLimits.map { (segment, kmh) ->
             val (x, y) = picker.midpoint(segment)
             SpeedSign(x, y, if (kmh <= WALKING_SPEED_KMH) "S" else "$kmh")
-        }
+        } +
+            traffic.game.nightLimits.map { (segment, kmh) ->
+                val (x, y) = picker.midpoint(segment)
+                // Nachtschild leicht versetzt, damit es neben einem Tagesschild sichtbar bleibt
+                SpeedSign(x + NIGHT_SIGN_OFFSET, y + NIGHT_SIGN_OFFSET, "$kmh☾", night = true)
+            }
     drawSpeedSigns(signs, camera.scale, textMeasurer)
+    val priority = traffic.game.priorityRoads.map { picker.midpoint(it) }
+    val crossings = traffic.game.bikeCrossings.map { picker.midpoint(it) }
+    drawRoadMarkers(priority, crossings, camera.scale)
 }
 
 private fun DrawScope.drawSceneryLines(

@@ -19,7 +19,9 @@ internal class LaneChanger(
         }
     }
 
-    private fun wantsToChange(vehicle: Vehicle) = vehicle.acceleration < THRESHOLD - vehicle.maxAcceleration
+    /** Wer gebremst wird oder frustriert ist, sucht eine andere Spur. */
+    private fun wantsToChange(vehicle: Vehicle) =
+        vehicle.acceleration < THRESHOLD - vehicle.maxAcceleration || vehicle.frustration > FRUSTRATED
 
     private fun tryChangeLane(
         vehicle: Vehicle,
@@ -54,7 +56,7 @@ internal class LaneChanger(
             follower == null || follower.idm(desired, gapBehind, follower.speed - vehicle.speed) > -SAFE_DECELERATION
         val gain =
             leader?.let { vehicle.idm(desired, gapAhead, vehicle.speed - it.speed) } ?: vehicle.maxAcceleration
-        return enoughSpace && safe && gain >= vehicle.acceleration + THRESHOLD
+        return enoughSpace && safe && gain >= vehicle.acceleration + THRESHOLD * (1 - vehicle.frustration)
     }
 
     private fun insertIndex(
@@ -65,6 +67,7 @@ internal class LaneChanger(
     private companion object {
         const val INTERVAL_TICKS = 10L
         const val THRESHOLD = 0.4
+        const val FRUSTRATED = 0.5
         const val SAFE_DECELERATION = 3.0
     }
 }

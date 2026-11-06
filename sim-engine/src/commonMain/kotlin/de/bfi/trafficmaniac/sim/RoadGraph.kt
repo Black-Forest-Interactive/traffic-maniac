@@ -117,14 +117,70 @@ class RoadGraph(
         return Array(nodeCount) { lists[it].toIntArray() }
     }
 
-    /** Setzt das Tempolimit beider Fahrtrichtungen; `null` stellt das ursprüngliche Limit wieder her. */
+    /** Limits tagsüber und in der Nachtruhe (km/h; NaN = kein eigenes Nachtlimit). */
+    private val linkDayLimitKmh = linkPerceivedSpeedKmh.copyOf()
+    private val linkNightLimitKmh = FloatArray(linkCount) { Float.NaN }
+    private var quietHours = false
+
+    /**
+     * Setzt das Tempolimit beider Fahrtrichtungen; `null` stellt das ursprüngliche Limit wieder her.
+     * Mit [nightOnly] gilt es nur in der Nachtruhe (22–6 Uhr), z. B. "30 nur nachts".
+     */
     fun setSegmentSpeedLimit(
         segment: Int,
         kmh: Int?,
+        nightOnly: Boolean = false,
     ) {
         for (link in segmentLinks[segment]) {
-            linkSpeedLimit[link] = ((kmh?.toFloat() ?: linkPerceivedSpeedKmh[link]) / KMH_PER_MS).toFloat()
+            if (nightOnly) {
+                linkNightLimitKmh[link] = kmh?.toFloat() ?: Float.NaN
+            } else {
+                linkDayLimitKmh[link] = kmh?.toFloat() ?: linkPerceivedSpeedKmh[link]
+            }
+            applyLimit(link)
         }
+    }
+
+    /** Schaltet zwischen Tag- und Nachtlimits um. */
+    fun setQuietHours(quiet: Boolean) {
+        if (quiet == quietHours) return
+        quietHours = quiet
+        for (link in 0 until linkCount) applyLimit(link)
+    }
+
+    fun hasNightLimit(link: Int): Boolean = !linkNightLimitKmh[link].isNaN()
+
+    /** Vom Spieler zur Vorfahrtsstraße erklärt: Rang 0 schlägt an ungeregelten Kreuzungen alles. */
+    private val linkPriority = BooleanArray(linkCount)
+
+    /** Radweg quert die Straße (noch ohne Radfahrer – ein weiterer Reiz für die Fahrer). */
+    private val linkBikeCrossing = BooleanArray(linkCount)
+
+    fun setSegmentPriority(
+        segment: Int,
+        priority: Boolean,
+    ) {
+        for (link in segmentLinks[segment]) linkPriority[link] = priority
+    }
+
+    fun setSegmentBikeCrossing(
+        segment: Int,
+        crossing: Boolean,
+    ) {
+        for (link in segmentLinks[segment]) linkBikeCrossing[link] = crossing
+    }
+
+    fun hasPriority(link: Int): Boolean = linkPriority[link]
+
+    fun hasBikeCrossing(link: Int): Boolean = linkBikeCrossing[link]
+
+    /** Rang an ungeregelten Kreuzungen: kleiner = Vorfahrt. */
+    fun priorityRank(link: Int): Int = if (linkPriority[link]) -1 else linkRoadClass[link].ordinal
+
+    private fun applyLimit(link: Int) {
+        val night = linkNightLimitKmh[link]
+        val kmh = if (quietHours && !night.isNaN()) night else linkDayLimitKmh[link]
+        linkSpeedLimit[link] = (kmh / KMH_PER_MS).toFloat()
     }
 
     fun speedLimitKmh(link: Int): Float = (linkSpeedLimit[link] * KMH_PER_MS).toFloat()

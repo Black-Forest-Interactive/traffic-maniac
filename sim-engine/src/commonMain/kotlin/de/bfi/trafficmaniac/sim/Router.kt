@@ -43,6 +43,17 @@ class Router(
         travelTime[link] = travelTime[link] * (1 - RELAX_WEIGHT) + freeFlowTime(link) * RELAX_WEIGHT
     }
 
+    /**
+     * Lange Warteschlangen fließen schon vor der ersten Ausfahrt in die Fahrzeitschätzung ein;
+     * auf Links ohne Stau kehrt die Schätzung langsam zur freien Fahrt zurück.
+     */
+    internal fun updateFromQueues(lanes: LaneQueues) {
+        for (link in 0 until graph.linkCount) {
+            val wait = lanes.longestFrontWait(link)
+            if (wait > 0) raiseTo(link, freeFlowTime(link) + wait) else relax(link)
+        }
+    }
+
     /** Hebt die Schätzung mindestens auf [seconds] an, z. B. bei einer langen Warteschlange. */
     fun raiseTo(
         link: Int,

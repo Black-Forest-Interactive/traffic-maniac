@@ -18,6 +18,9 @@ internal class DayNews(
     /** Größte Überschreitung des Tages: gemessen / Limit in km/h. */
     val recordSpeed: Pair<Double, Int>?,
     val state: GameState,
+    val office: FineOffice.Counters,
+    val revocations: Int,
+    val commute: CommuteStats,
 )
 
 /**
@@ -29,6 +32,11 @@ internal object Newspaper {
     private const val STUCK_STORY = 50
     private const val TRAFFIC_JAM_RATIO = 1.1
     private const val MAX_HEADLINES = 3
+    private const val EXPIRED_STORY = 100
+    private const val LETTER_WAVE = 1_500
+    private const val HALF_LATE = 0.5
+    private const val QUARTER_LATE = 0.25
+    private const val PERCENT = 100
 
     fun edition(news: DayNews): NewspaperEdition {
         val random = Random(news.report.day)
@@ -36,9 +44,12 @@ internal object Newspaper {
         val headlines =
             listOfNotNull(
                 recall(news),
+                expired(news),
+                licenses(news),
                 record(news, friendly),
+                letterWave(news),
                 fines(news, friendly, random),
-                traffic(news, random),
+                traffic(news),
                 stuckCommuter(news, random),
                 pr(news, random),
             ).take(MAX_HEADLINES)
@@ -50,6 +61,21 @@ internal object Newspaper {
             news.state.recallIndex >= RECALL_ALARM -> "Gemeinderat: Rücktrittsforderungen werden lauter"
             else -> null
         }
+
+    private fun expired(news: DayNews): String? =
+        if (news.office.expired >=
+            EXPIRED_STORY
+        ) {
+            "Bußgeldstelle überlastet: ${news.office.expired} Blitzerfotos verjährt"
+        } else {
+            null
+        }
+
+    private fun licenses(news: DayNews): String? =
+        if (news.revocations > 0) "${news.revocations}× Führerschein weg – Pendler steigen aufs Rad um" else null
+
+    private fun letterWave(news: DayNews): String? =
+        if (news.office.paid >= LETTER_WAVE) "Bescheid-Welle: ${news.office.paid} Bußgeldbriefe an einem Tag" else null
 
     private fun record(
         news: DayNews,
@@ -84,16 +110,16 @@ internal object Newspaper {
         }
     }
 
-    private fun traffic(
-        news: DayNews,
-        random: Random,
-    ): String? {
-        val previous = news.previous ?: return null
-        if (news.report.meanTripMinutes < previous.meanTripMinutes * TRAFFIC_JAM_RATIO) return null
-        return listOf(
-            "Stau-Rekord: Pendler brauchten im Schnitt ${"%.0f".format(news.report.meanTripMinutes)} Minuten",
-            "Halb Pforzheim kam heute zu spät",
-        ).random(random)
+    private fun traffic(news: DayNews): String? {
+        val late = news.commute.lateShare
+        val previous = news.previous
+        val jam = previous != null && news.report.meanTripMinutes >= previous.meanTripMinutes * TRAFFIC_JAM_RATIO
+        return when {
+            late >= HALF_LATE -> "Halb Pforzheim kam heute zu spät"
+            late >= QUARTER_LATE -> "${(late * PERCENT).roundToInt()} % der Pendler zu spät – Chefs genervt"
+            jam -> "Stau-Rekord: Pendler brauchten im Schnitt ${"%.0f".format(news.report.meanTripMinutes)} Minuten"
+            else -> null
+        }
     }
 
     private fun stuckCommuter(

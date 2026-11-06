@@ -31,6 +31,8 @@ class SimulationSnapshot(
     /** Zustand je Ampel in der Reihenfolge von [signalMarkers]. */
     val signalStates: Array<SignalState>,
     val cameras: List<SpeedCamera>,
+    /** Umweltraster (wird alle 5 Sekunden Spielzeit erneuert). */
+    val environment: EnvironmentSnapshot,
     val stats: SimulationStats,
 ) {
     val vehicleCount: Int get() = ids.size

@@ -11,11 +11,22 @@ enum class FineTier(
     val maxExcessKmh: Double,
     /** Bußgeld in Euro. */
     val fine: Int,
+    /** Punkte in der (fiktiven) Verkehrssünderkartei. */
+    val points: Int,
+    /** Fahrverbot in Spieltagen. */
+    val drivingBanDays: Int,
 ) {
-    UP_TO_10("bis 10 km/h", "≤ 10", maxExcessKmh = 10.0, fine = 30),
-    UP_TO_20("11–20 km/h", "11–20", maxExcessKmh = 20.0, fine = 70),
-    UP_TO_30("21–30 km/h", "21–30", maxExcessKmh = 30.0, fine = 150),
-    OVER_30("über 30 km/h", "> 30", maxExcessKmh = Double.POSITIVE_INFINITY, fine = 400),
+    UP_TO_10("bis 10 km/h", "≤ 10", maxExcessKmh = 10.0, fine = 30, points = 0, drivingBanDays = 0),
+    UP_TO_20("11–20 km/h", "11–20", maxExcessKmh = 20.0, fine = 70, points = 0, drivingBanDays = 0),
+    UP_TO_30("21–30 km/h", "21–30", maxExcessKmh = 30.0, fine = 150, points = 1, drivingBanDays = 0),
+    OVER_30(
+        "über 30 km/h",
+        "> 30",
+        maxExcessKmh = Double.POSITIVE_INFINITY,
+        fine = 400,
+        points = 2,
+        drivingBanDays = 2,
+    ),
     ;
 
     companion object {
@@ -28,6 +39,7 @@ data class CameraRecord(
     val cameraId: Int,
     val segment: Int,
     val streetName: String,
+    val mobile: Boolean,
     val countPerTier: List<Int>,
     val revenuePerTier: List<Long>,
     val fastestMeasuredKmh: Double,
@@ -42,6 +54,7 @@ internal class CameraCounter(
     val cameraId: Int,
     val segment: Int,
     val streetName: String,
+    val mobile: Boolean = false,
 ) {
     private val counts = IntArray(FineTier.entries.size)
     private val revenue = LongArray(FineTier.entries.size)
@@ -62,5 +75,5 @@ internal class CameraCounter(
     }
 
     fun toRecord() =
-        CameraRecord(cameraId, segment, streetName, counts.toList(), revenue.toList(), fastestKmh, fastestLimit)
+        CameraRecord(cameraId, segment, streetName, mobile, counts.toList(), revenue.toList(), fastestKmh, fastestLimit)
 }

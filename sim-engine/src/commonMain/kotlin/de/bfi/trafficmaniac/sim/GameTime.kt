@@ -29,6 +29,9 @@ data class GameTime(
     /** Nachts (22–5 Uhr) ist kaum Verkehr – die Zeit darf dann schneller laufen. */
     val isNight: Boolean get() = hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR
 
+    /** Nachtruhe 22–6 Uhr: Hier gelten Tempolimits "nur nachts". */
+    val isQuietHours: Boolean get() = hour >= NIGHT_START_HOUR || hour < QUIET_END_HOUR
+
     /** z. B. "07:05". */
     val clockText: String get() = "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
 
@@ -40,6 +43,7 @@ data class GameTime(
         private const val MINUTES_PER_HOUR = 60
         private const val NIGHT_START_HOUR = 22
         private const val NIGHT_END_HOUR = 5
+        private const val QUIET_END_HOUR = 6
 
         /** Spielzeit nach [elapsedSeconds], wenn die Simulation um [startSecondOfDay] am ersten Montag beginnt. */
         fun at(

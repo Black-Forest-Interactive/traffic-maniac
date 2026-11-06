@@ -13,9 +13,41 @@ enum class VehicleType(
     val comfortableDeceleration: Double,
     /** Bauartbedingte Höchstgeschwindigkeit in m/s. */
     val maxSpeed: Double,
+    /** Masse in kg – bestimmt Verbrauch, Reifen- und Bremsabrieb. */
+    val massKg: Double,
+    /** Kraftstoffverbrauch im Leerlauf in Litern pro Sekunde. */
+    val idleFuelPerSecond: Double,
+    /** Stickoxide in Gramm pro Liter Kraftstoff. */
+    val noxPerLiter: Double,
+    /** Feinstaub aus dem Auspuff in Gramm pro Liter. */
+    val exhaustPmPerLiter: Double,
+    /** Zuschlag auf den Schallleistungspegel in dB. */
+    val noiseBonusDb: Double,
 ) {
-    CAR(length = 4.5f, width = 1.9f, maxAcceleration = 1.4, comfortableDeceleration = 2.0, maxSpeed = 50.0),
-    TRUCK(length = 12f, width = 2.5f, maxAcceleration = 0.7, comfortableDeceleration = 1.5, maxSpeed = 25.0),
+    CAR(
+        4.5f,
+        1.9f,
+        1.4,
+        2.0,
+        50.0,
+        massKg = 1_400.0,
+        idleFuelPerSecond = 0.00025,
+        noxPerLiter = 4.0,
+        exhaustPmPerLiter = 0.03,
+        noiseBonusDb = 0.0,
+    ),
+    TRUCK(
+        12f,
+        2.5f,
+        0.7,
+        1.5,
+        25.0,
+        massKg = 18_000.0,
+        idleFuelPerSecond = 0.0008,
+        noxPerLiter = 25.0,
+        exhaustPmPerLiter = 0.2,
+        noiseBonusDb = 9.0,
+    ),
 }
 
 /**
@@ -24,6 +56,7 @@ enum class VehicleType(
  * ([speedingFactor] verstärkt oder dämpft diese Neigung).
  */
 enum class DriverProfile(
+    val germanName: String,
     /** Gewünschte Zeitlücke zum Vordermann in Sekunden. */
     val timeHeadway: Double,
     /** Mindestabstand im Stand in Metern. */
@@ -34,30 +67,73 @@ enum class DriverProfile(
     val speedFactor: Double,
     /** Multiplikator für die Wahrscheinlichkeit, zu schnell zu fahren. */
     val speedingFactor: Double,
+    /** Aufmerksamkeit eines ausgeruhten Fahrers (0..1). */
+    val baseAttention: Double,
+    /** Sekunden, bis der Fahrer losfährt, wenn es weitergeht (z. B. bei Grün). */
+    val reactionDelay: Double,
+    /** Anteil des Tempos, mit dem sich der Fahrer Kreuzungen nähert (1 = ohne Zögern). */
+    val junctionCaution: Double,
 ) {
-    NORMALO(
-        timeHeadway = 1.4,
-        minimumGap = 2.0,
-        accelerationFactor = 1.0,
-        decelerationFactor = 1.0,
-        speedFactor = 1.0,
-        speedingFactor = 1.0,
-    ),
+    NORMALO("Normalo", 1.4, 2.0, 1.0, 1.0, 1.0, 1.0, baseAttention = 0.85, reactionDelay = 0.6, junctionCaution = 1.0),
     DRAENGLER(
-        timeHeadway = 0.8,
-        minimumGap = 1.0,
-        accelerationFactor = 1.4,
-        decelerationFactor = 1.3,
-        speedFactor = 1.0,
-        speedingFactor = 1.4,
+        "Drängler",
+        0.8,
+        1.0,
+        1.4,
+        1.3,
+        1.0,
+        1.4,
+        baseAttention = 0.75,
+        reactionDelay = 0.3,
+        junctionCaution = 1.0,
     ),
     GEMUETLICHER(
-        timeHeadway = 2.0,
-        minimumGap = 3.0,
-        accelerationFactor = 0.7,
-        decelerationFactor = 0.8,
-        speedFactor = 0.85,
-        speedingFactor = 0.3,
+        "Gemütlicher",
+        2.0,
+        3.0,
+        0.7,
+        0.8,
+        0.85,
+        0.3,
+        baseAttention = 0.7,
+        reactionDelay = 1.2,
+        junctionCaution = 0.9,
+    ),
+    SPAETZUENDER(
+        "Spätzünder",
+        1.5,
+        2.0,
+        0.9,
+        1.0,
+        1.0,
+        0.8,
+        baseAttention = 0.8,
+        reactionDelay = 2.5,
+        junctionCaution = 1.0,
+    ),
+    TRAEUMER(
+        "Träumer",
+        1.6,
+        2.5,
+        0.9,
+        1.1,
+        0.95,
+        1.0,
+        baseAttention = 0.55,
+        reactionDelay = 1.5,
+        junctionCaution = 1.0,
+    ),
+    UNSICHERER(
+        "Unsicherer",
+        2.2,
+        3.0,
+        0.7,
+        0.9,
+        0.85,
+        0.2,
+        baseAttention = 0.9,
+        reactionDelay = 1.0,
+        junctionCaution = 0.6,
     ),
 }
 
@@ -75,11 +151,31 @@ class Vehicle internal constructor(
     val knowsCameras: Boolean,
     /** Wohngebiet des Fahrers oder -1 (Durchgangsverkehr). */
     val homeZone: Int,
+    /** Fahrer (Personennummer) oder -1 bei Durchgangsverkehr. */
+    val person: Int,
     /** Fahrzeit der Route ohne Verkehr und mit den ursprünglichen Tempolimits – der Maßstab für "schnell am Ziel". */
     val referenceSeconds: Double,
 ) {
     /** Wie viel km/h der Fahrer auf dem aktuellen Link über dem Limit fährt (0 = hält sich daran). */
     internal var speedingKmh = 0.0
+
+    /** Aufmerksamkeit 0..1: sinkt durch Schilderwald, Frust und Stress, erholt sich auf ruhigen Strecken. */
+    internal var attention = driver.baseAttention
+
+    /** Frust 0..1: steigt hinter langsamen Vordermännern. */
+    internal var frustration = 0.0
+
+    /** Stress 0..1: steigt, wenn die Fahrt deutlich länger dauert als gewohnt. */
+    internal var stress = 0.0
+
+    /** Wie lange der Fahrer schon steht, obwohl es weitergehen könnte (Reaktionszeit). */
+    internal var startHesitation = 0.0
+
+    /** Seit der letzten Ablage im Umweltraster ausgestoßen (Gramm bzw. Schallenergie). */
+    internal val pendingEmissions = DoubleArray(Pollutant.entries.size)
+
+    /** Gereiztheit aus Frust und Stress (0..1). */
+    internal val irritation: Double get() = max(frustration, stress)
 
     internal var routeIndex = 0
     internal var lane = 0
@@ -111,9 +207,11 @@ class Vehicle internal constructor(
         val a = maxAcceleration
         val free = (speed / max(desiredSpeed, MIN_DESIRED_SPEED)).pow(ACCELERATION_EXPONENT)
         if (gap == Double.POSITIVE_INFINITY) return a * (1 - free)
+        // Gereizte Fahrer fahren dichter auf
+        val headway = driver.timeHeadway * (1 - IRRITATION_HEADWAY_CUT * irritation)
         val desiredGap =
             driver.minimumGap +
-                max(0.0, speed * driver.timeHeadway + speed * approachRate / (2 * sqrt(a * comfortableDeceleration)))
+                max(0.0, speed * headway + speed * approachRate / (2 * sqrt(a * comfortableDeceleration)))
         val interaction = (desiredGap / max(gap, MIN_GAP)).pow(2)
         return (a * (1 - free - interaction)).coerceAtLeast(-MAX_DECELERATION)
     }
@@ -123,5 +221,6 @@ class Vehicle internal constructor(
         const val MIN_DESIRED_SPEED = 1.0
         const val MIN_GAP = 0.1
         const val MAX_DECELERATION = 9.0
+        const val IRRITATION_HEADWAY_CUT = 0.35
     }
 }

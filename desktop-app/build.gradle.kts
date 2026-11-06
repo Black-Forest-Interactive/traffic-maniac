@@ -43,3 +43,13 @@ tasks.register<JavaExec>("headless") {
     classpath = sourceSets["main"].runtimeClasspath
     jvmArgs("-Xmx3g")
 }
+
+// Eigenständige Kopie für lange Kopflos-Läufe: Weiterentwickeln stört laufende Partien dann nicht
+tasks.register<Sync>("headlessDist") {
+    description =
+        "Kopiert Klassen und Bibliotheken nach build/headless (Start: java -cp 'desktop-app/build/headless/*' ...)."
+    group = "application"
+    from(configurations.runtimeClasspath)
+    from(tasks.jar)
+    into(layout.buildDirectory.dir("headless"))
+}

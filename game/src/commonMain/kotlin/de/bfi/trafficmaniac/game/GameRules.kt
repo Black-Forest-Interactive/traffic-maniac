@@ -28,6 +28,18 @@ data class GameRules(
     /** Bußgeld je Fahrt (gleitender Mittelwert in Euro), ab dem "Mobilität" völlig unerfüllt ist. */
     val unbearableFinePerTrip: Double = 4.0,
     val finePainHalfLifeHours: Double = 24.0,
+    /** Bis zu diesem Lärmpegel (dB) ist es ruhig ... */
+    val quietGoodDb: Double = 50.0,
+    /** ... ab diesem unerträglich. */
+    val quietBadDb: Double = 70.0,
+    /** Abgase und Feinstaub (g je 50-m-Zelle in der Nachbarschaft), bis zu denen die Luft gut ist ... */
+    val airGoodGrams: Double = 2.0,
+    /** ... und ab denen sie unerträglich ist. */
+    val airBadGrams: Double = 15.0,
+    /** Pendler planen die gewohnte Fahrzeit mal diesen Faktor ein; wer länger braucht, kommt zu spät. */
+    val plannedTimeFactor: Double = 1.5,
+    /** "Volkswirtschaftlicher Schaden" je verlorener Minute. */
+    val damagePerLostMinute: Double = 0.6,
     /** Die Totschlagargumente lassen Bußgelder nur noch so weh tun. */
     val argumentsPainFactor: Double = 0.6,
     /** Unter diesem Anteil Unzufriedener gibt es keinen Zorn. */
@@ -46,6 +58,27 @@ data class GameRules(
     /** Ohne PR-Vertrag berichtet die Presse über Abzocke, sobald pro Stunde so viel Bußgeld eingeht. */
     val ripOffPressFines: Long = 1_500,
     val ripOffReputationLoss: Double = 0.25,
+    val initialStaff: Int = 4,
+    val staffWeeklySalary: Long = 2_500,
+    val hireDelayHours: Int = 48,
+    val casesPerStaffHour: Int = 15,
+    val officeStartHour: Int = 8,
+    val officeEndHour: Int = 16,
+    val identificationBase: Double = 0.55,
+    val identificationMax: Double = 0.95,
+    val identificationStaffScale: Double = 8.0,
+    val questionnairePayShare: Double = 0.4,
+    val logbookPayShare: Double = 0.85,
+    val logbookPainFactor: Double = 2.0,
+    val defaultDeadlineDays: Int = 3,
+    val legalMaxDeadlineDays: Int = 10,
+    val revocationPoints: Int = 8,
+    val revocationDays: Int = 5,
+    /** So sehr ärgert ein Fahrverbot das Wohngebiet (in "Euro Bußgeld"). */
+    val licenseLossPain: Double = 400.0,
+    val laserDailyCost: Long = 1_500,
+    val priorityRoadCost: Long = 3_000,
+    val bikeCrossingCost: Long = 8_000,
 ) {
     companion object {
         val DEFAULT_SPEED_LIMITS = listOf(7, 10, 20, 30, 40, 50, 70)

@@ -11,8 +11,8 @@ enum class PrContract(
     val reputationPerHour: Double,
 ) {
     NONE("Keiner", weeklyCost = 0, angerDamping = 0.0, reputationPerHour = 0.0),
-    STANDARD("Standard", weeklyCost = 15_000, angerDamping = 0.25, reputationPerHour = 0.1),
-    PREMIUM("Premium", weeklyCost = 40_000, angerDamping = 0.4, reputationPerHour = 0.2),
+    STANDARD("Standard", weeklyCost = 15_000, angerDamping = 0.25, reputationPerHour = 0.06),
+    PREMIUM("Premium", weeklyCost = 40_000, angerDamping = 0.4, reputationPerHour = 0.12),
 }
 
 /**
@@ -89,4 +89,6 @@ data class BudgetRound(
     val allowance: Long,
     val prCost: Long,
     val argumentsCost: Long,
+    /** Gehälter der Bußgeldstelle. */
+    val salaries: Long,
 )

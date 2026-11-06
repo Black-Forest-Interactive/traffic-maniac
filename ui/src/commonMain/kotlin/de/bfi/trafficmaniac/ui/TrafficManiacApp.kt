@@ -28,6 +28,7 @@ import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameMessage
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.TrafficFrame
+import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.MapView
 import kotlinx.coroutines.delay
@@ -62,6 +63,7 @@ fun TrafficManiacApp(
     var selection by remember { mutableStateOf(ToolSelection()) }
     var panel by remember { mutableStateOf(SidePanel.NONE) }
     var showMoods by remember { mutableStateOf(false) }
+    var environmentLayer by remember { mutableStateOf(EnvironmentLayer.NONE) }
     val picker = remember(city) { MapPicker(city) }
     // Die Kennzahlen reichen viermal pro Sekunde – die Karte liest den Verkehr selbst in jedem Frame
     val hudFrame by produceState<TrafficFrame?>(null, traffic) {
@@ -76,6 +78,7 @@ fun TrafficManiacApp(
             traffic = traffic?.let { flow -> { flow.value } },
             onFps = { fps = it },
             showMoods = showMoods,
+            environmentLayer = environmentLayer,
             onMapClick = { x, y, metersPerPixel ->
                 val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
                 commandFor(selection, picker, traffic?.value, x, y, radius)?.let(onCommand)
@@ -90,6 +93,11 @@ fun TrafficManiacApp(
                 onPanel = { panel = if (panel == it) SidePanel.NONE else it },
                 showMoods = showMoods,
                 onToggleMoods = { showMoods = !showMoods },
+                environmentLayer = environmentLayer,
+                onNextEnvironmentLayer = {
+                    environmentLayer =
+                        EnvironmentLayer.entries[(environmentLayer.ordinal + 1) % EnvironmentLayer.entries.size]
+                },
                 onCommand = onCommand,
                 modifier = Modifier.align(Alignment.TopEnd),
             )
@@ -114,6 +122,8 @@ private enum class SidePanel(
     NONE(""),
     CAMERAS("Blitzer-Statistik"),
     BUDGET("Haushalt & PR"),
+    OFFICE("Ordnungsamt"),
+    CITIZENS("Bürger"),
 }
 
 @Composable
@@ -124,11 +134,22 @@ private fun SidePanels(
     onPanel: (SidePanel) -> Unit,
     showMoods: Boolean,
     onToggleMoods: () -> Unit,
+    environmentLayer: EnvironmentLayer,
+    onNextEnvironmentLayer: () -> Unit,
     onCommand: (GameCommand) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, horizontalAlignment = Alignment.End) {
         Row {
+            val layerLabel =
+                if (environmentLayer ==
+                    EnvironmentLayer.NONE
+                ) {
+                    "Umwelt"
+                } else {
+                    "Umwelt: ${environmentLayer.label}"
+                }
+            SmallButton(layerLabel, onNextEnvironmentLayer)
             SmallButton(if (showMoods) "Zufriedenheit ausblenden" else "Zufriedenheit", onToggleMoods)
             for (option in SidePanel.entries.drop(1)) SmallButton(option.label) { onPanel(option) }
         }
@@ -146,6 +167,14 @@ private fun SidePanels(
                 )
             }
 
+            SidePanel.OFFICE -> {
+                OfficePanel(frame.game.fineOffice, rules, frame.game.bannedDrivers, onCommand)
+            }
+
+            SidePanel.CITIZENS -> {
+                CitizensPanel(frame.game)
+            }
+
             SidePanel.NONE -> {}
         }
     }
@@ -159,42 +188,82 @@ private fun commandFor(
     x: Float,
     y: Float,
     radius: Float,
+): GameCommand? =
+    when (selection.tool) {
+        Tool.LOOK -> null
+        Tool.SIGNAL -> picker.nearestNode(x, y, radius)?.let { GameCommand.BuildSignal(it) }
+        Tool.REMOVE -> removeCommandFor(picker, frame, x, y, radius)
+        else -> picker.nearestSegment(x, y, radius)?.let { segmentCommand(selection, it, frame) }
+    }
+
+/** Werkzeuge, die auf einen Straßenabschnitt wirken. */
+private fun segmentCommand(
+    selection: ToolSelection,
+    segment: Int,
+    frame: TrafficFrame?,
+): GameCommand? =
+    when (selection.tool) {
+        Tool.SPEED_LIMIT -> GameCommand.SetSpeedLimit(segment, selection.speedLimit, selection.nightOnly)
+        Tool.CAMERA -> GameCommand.PlaceCamera(segment)
+        Tool.LASER -> GameCommand.PlaceCamera(segment, mobile = true)
+        Tool.PRIORITY -> GameCommand.SetPriorityRoad(segment, segment !in frame?.game?.priorityRoads.orEmpty())
+        Tool.BIKE_CROSSING -> GameCommand.SetBikeCrossing(segment, segment !in frame?.game?.bikeCrossings.orEmpty())
+        else -> null
+    }
+
+/** Abbauen: zuerst Blitzer, dann Tempolimit (Tag, dann Nacht), dann Ampel. */
+private fun removeCommandFor(
+    picker: MapPicker,
+    frame: TrafficFrame?,
+    x: Float,
+    y: Float,
+    radius: Float,
 ): GameCommand? {
     val signalNodes = frame?.game?.signalNodes.orEmpty()
-    return when (selection.tool) {
-        Tool.LOOK -> {
+    val camera =
+        frame?.current?.cameras?.filter { hypot(it.x - x, it.y - y) <= radius }?.minByOrNull {
+            hypot(
+                it.x - x,
+                it.y - y,
+            )
+        }
+    val nearest = picker.nearestSegment(x, y, radius)
+    val segment = nearest?.takeIf { it in frame?.game?.speedLimits.orEmpty() }
+    val nightSegment = nearest?.takeIf { it in frame?.game?.nightLimits.orEmpty() }
+    val node = picker.nearestNode(x, y, radius)?.takeIf { it in signalNodes }
+    return when {
+        camera != null -> {
+            GameCommand.RemoveCamera(camera.id)
+        }
+
+        segment != null -> {
+            GameCommand.SetSpeedLimit(segment, null)
+        }
+
+        nightSegment != null -> {
+            GameCommand.SetSpeedLimit(nightSegment, null, nightOnly = true)
+        }
+
+        nearest != null && nearest in frame?.game?.priorityRoads.orEmpty() -> {
+            GameCommand.SetPriorityRoad(
+                nearest,
+                false,
+            )
+        }
+
+        nearest != null && nearest in frame?.game?.bikeCrossings.orEmpty() -> {
+            GameCommand.SetBikeCrossing(
+                nearest,
+                false,
+            )
+        }
+
+        node != null -> {
+            GameCommand.RemoveSignal(node)
+        }
+
+        else -> {
             null
-        }
-
-        Tool.SPEED_LIMIT -> {
-            picker.nearestSegment(x, y, radius)?.let { GameCommand.SetSpeedLimit(it, selection.speedLimit) }
-        }
-
-        Tool.SIGNAL -> {
-            picker.nearestNode(x, y, radius)?.let { GameCommand.BuildSignal(it) }
-        }
-
-        Tool.CAMERA -> {
-            picker.nearestSegment(x, y, radius)?.let { GameCommand.PlaceCamera(it) }
-        }
-
-        Tool.REMOVE -> {
-            val camera =
-                frame?.current?.cameras?.minByOrNull { hypot(it.x - x, it.y - y) }?.takeIf {
-                    hypot(
-                        it.x - x,
-                        it.y - y,
-                    ) <=
-                        radius
-                }
-            val segment = picker.nearestSegment(x, y, radius)?.takeIf { it in frame?.game?.speedLimits.orEmpty() }
-            val node = picker.nearestNode(x, y, radius)?.takeIf { it in signalNodes }
-            when {
-                camera != null -> GameCommand.RemoveCamera(camera.id)
-                segment != null -> GameCommand.SetSpeedLimit(segment, null)
-                node != null -> GameCommand.RemoveSignal(node)
-                else -> null
-            }
         }
     }
 }

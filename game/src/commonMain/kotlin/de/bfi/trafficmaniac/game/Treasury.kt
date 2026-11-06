@@ -12,13 +12,18 @@ internal class Treasury(
     var expenses = 0L
         private set
 
+    /** Vom Haushalt überwiesenes Geld (zählt nicht als eigener Verdienst). */
+    var allowances = 0L
+        private set
+
     fun earnFine(euros: Int) {
         balance += euros
         fineIncome += euros
     }
 
-    fun receive(euros: Long) {
+    fun receiveAllowance(euros: Long) {
         balance += euros
+        allowances += euros
     }
 
     /** Bucht [cost] ab, auch ins Minus (laufende Verträge). */

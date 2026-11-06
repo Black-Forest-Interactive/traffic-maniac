@@ -17,8 +17,8 @@ data class SimulationConfig(
     /** Uhrzeit beim Start am ersten Montag (Sekunden nach Mitternacht). */
     val startSecondOfDay: Double = DEFAULT_START_HOUR * GameTime.SECONDS_PER_HOUR,
     val truckShare: Double = 0.08,
-    val draenglerShare: Double = 0.2,
-    val gemuetlicherShare: Double = 0.2,
+    /** Anteile der Fahrertypen (werden normiert). */
+    val driverMix: Map<DriverProfile, Double> = DEFAULT_DRIVER_MIX,
     /** Wie oft ein Fahrzeug seine Route mit aktuellen Fahrzeiten neu berechnet. */
     val rerouteIntervalSeconds: Double = 120.0,
     /**
@@ -28,6 +28,8 @@ data class SimulationConfig(
     val stuckTimeoutSeconds: Double = 300.0,
     /** Anteil der Fahrer, die auch bei passendem Limit zu schnell fahren. */
     val speedingBaseProbability: Double = 0.08,
+    /** Wahrscheinlichkeit, ein Schild zu übersehen, bei Aufmerksamkeit 0 (skaliert linear). */
+    val overlookProbability: Double = 0.5,
     /** Anteil der Ortskundigen, die feste Blitzer kennen und davor bremsen. */
     val cameraAwareShare: Double = 0.7,
     /** Obergrenze für Fahrzeuge, die auf die Einfahrt ins Netz warten. */
@@ -35,5 +37,14 @@ data class SimulationConfig(
 ) {
     companion object {
         const val DEFAULT_START_HOUR = 5
+        val DEFAULT_DRIVER_MIX =
+            mapOf(
+                DriverProfile.NORMALO to 0.35,
+                DriverProfile.DRAENGLER to 0.15,
+                DriverProfile.GEMUETLICHER to 0.15,
+                DriverProfile.SPAETZUENDER to 0.1,
+                DriverProfile.TRAEUMER to 0.1,
+                DriverProfile.UNSICHERER to 0.15,
+            )
     }
 }

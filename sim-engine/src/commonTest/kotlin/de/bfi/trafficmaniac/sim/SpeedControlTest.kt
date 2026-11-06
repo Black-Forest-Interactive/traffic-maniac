@@ -21,6 +21,7 @@ class SpeedControlTest {
             0.0,
             knowsCameras = false,
             homeZone = -1,
+            person = -1,
             referenceSeconds = 0.0,
         )
 
@@ -48,8 +49,9 @@ class SpeedControlTest {
         val at20 = speedingShare(link)
 
         assertEquals(config.speedingBaseProbability, at50, 0.02)
-        assertEquals(0.48, at30, 0.04)
-        assertEquals(0.68, at20, 0.04)
+        // Zu schnell oder Schild übersehen (Normalo: 85 % aufmerksam → 7,5 % übersehen)
+        assertEquals(0.52, at30, 0.04)
+        assertEquals(0.70, at20, 0.04)
     }
 
     @Test
@@ -57,7 +59,7 @@ class SpeedControlTest {
         graph.setSegmentSpeedLimit(0, 30)
         val link = graph.segmentLinks[0].first()
 
-        assertTrue(speedingShare(link, DriverProfile.DRAENGLER) > speedingShare(link, DriverProfile.GEMUETLICHER) * 3)
+        assertTrue(speedingShare(link, DriverProfile.DRAENGLER) > speedingShare(link, DriverProfile.GEMUETLICHER) * 2)
     }
 
     @Test

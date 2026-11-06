@@ -15,6 +15,11 @@ data class GameState(
     val expenses: Long,
     /** Vom Spieler geänderte Tempolimits je Straßenabschnitt. */
     val speedLimits: Map<Int, Int>,
+    /** Tempolimits, die nur nachts gelten. */
+    val nightLimits: Map<Int, Int>,
+    val priorityRoads: Set<Int>,
+    val bikeCrossings: Set<Int>,
+    val achievements: List<String>,
     /** Knoten mit Ampel (ursprüngliche und gebaute). */
     val signalNodes: Set<Int>,
     val cameras: List<CameraRecord>,
@@ -38,13 +43,25 @@ data class GameState(
     val isTermOver: Boolean,
     val score: Score,
     val latestEdition: NewspaperEdition?,
+    val fineOffice: FineOfficeState,
+    /** Fahrer mit Fahrverbot oder ohne Führerschein. */
+    val bannedDrivers: Int,
+    val licenseRevocations: Int,
+    /** Pünktlichkeit heute (laufend) und gestern (abgeschlossen). */
+    val commuteToday: CommuteStats,
+    val commuteYesterday: CommuteStats,
+    /** "Volkswirtschaftlicher Schaden" des Vortags durch Verspätungen in Euro. */
+    val commuteDamage: Long,
 )
 
-/** Wertung: Es zählen nur Geld und Image – ob die Stadt in Trümmern liegt, ist egal. */
+/**
+ * Wertung: Es zählen nur selbst verdientes Geld und Image – ob die Stadt in Trümmern liegt, ist egal.
+ * Verdient ist, was über Startbudget und überwiesenen Haushalt hinaus in der Kasse liegt.
+ */
 data class Score(
-    val balance: Long,
+    val earnings: Long,
     val reputation: Double,
     val reputationFactor: Double,
 ) {
-    val points: Long get() = (balance * reputationFactor).toLong()
+    val points: Long get() = (earnings * reputationFactor).toLong()
 }

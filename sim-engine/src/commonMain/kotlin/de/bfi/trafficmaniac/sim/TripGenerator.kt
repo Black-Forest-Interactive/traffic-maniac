@@ -10,6 +10,8 @@ data class Trip(
     val destinationNode: Int,
     /** Wohngebiet, aus dem der Fahrer stammt (Start oder Ziel), oder -1 bei Durchgangsverkehr. */
     val homeZone: Int = -1,
+    /** Fahrer aus dem Wohngebiet (für Punkte und Führerschein) oder -1 bei Durchgangsverkehr. */
+    val person: Int = -1,
 )
 
 /** Gruppen von Zonen, zwischen denen Fahrten stattfinden. */
@@ -62,8 +64,17 @@ class TripGenerator(
                 destination.kind == ZoneKind.RESIDENTIAL -> destination.id
                 else -> -1
             }
-        return Trip(origin.node, destination.node, home)
+        val person = if (home >= 0) home * PERSONS_PER_ZONE_BLOCK + random.nextInt(driversIn(home)) else -1
+        return Trip(origin.node, destination.node, home, person)
     }
+
+    /** Anzahl Autofahrer eines Wohngebiets (wächst mit der Fläche). */
+    private fun driversIn(zone: Int): Int {
+        val area = areaOf[zone] ?: 0f
+        return (area / SQUARE_METERS_PER_DRIVER).toInt().coerceIn(MIN_DRIVERS, PERSONS_PER_ZONE_BLOCK)
+    }
+
+    private val areaOf = zones.associate { it.id to it.area }
 
     private fun pick(patterns: List<TripPattern>): TripPattern {
         var roll = random.nextDouble() * patterns.sumOf { it.share }
@@ -97,6 +108,11 @@ class TripGenerator(
     }
 
     private companion object {
+        /** Personennummern: Wohngebiet × 10.000 + laufende Nummer. */
+        const val PERSONS_PER_ZONE_BLOCK = 10_000
+        const val SQUARE_METERS_PER_DRIVER = 150f
+        const val MIN_DRIVERS = 20
+
         /** Anteil der Fahrten, die am Stadtrand beginnen bzw. enden. */
         const val GATE_SHARE = 0.25
 
