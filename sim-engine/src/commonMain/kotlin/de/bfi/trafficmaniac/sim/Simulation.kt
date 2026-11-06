@@ -35,6 +35,37 @@ class Simulation(
     private val laneChanger = LaneChanger(graph, lanes)
     private val behavior = DriverBehavior(speedControl, clock.tickDurationSeconds)
     private val dt = clock.tickDurationSeconds
+    private val dayStatistics = DayStatistics()
+
+    /** Pannen, Ölspuren, Unfälle und Einsatzfahrzeuge. */
+    private val incidents =
+        Incidents(
+            graph,
+            config,
+            random,
+            router,
+            factory,
+            lanes,
+            city.facilities,
+            { pending.addLast(it) },
+            dayStatistics,
+        )
+
+    private val deliveries = Deliveries(graph, config, random, dayStatistics)
+
+    /** Elektroautos und Ladesäulen. */
+    private val charging =
+        Charging(
+            config,
+            city.facilities,
+            router,
+            graph,
+            lanes,
+            { incidents },
+            { pending.addLast(it) },
+            ::arrive,
+            dayStatistics,
+        )
 
     /** Alle Fahrzeuge im Netz, nach ID sortiert (neue werden hinten angehängt). */
     private val vehicles = ArrayList<Vehicle>()
@@ -43,7 +74,6 @@ class Simulation(
     private var completedTrips = 0
     private var stuckRemovals = 0
     private var totalTripSeconds = 0.0
-    private val dayStatistics = DayStatistics()
 
     /** Beendete Fahrten seit dem letzten Abholen (für die Zufriedenheit der Bürger). */
     val finishedTrips = TripLog()
@@ -70,8 +100,13 @@ class Simulation(
         computeAccelerations()
         move()
         crossNodes()
+        incidents.update(time)
+        charging.update(time)
         laneChanger.changeLanes(clock.tick)
-        if (clock.tick % QUEUE_UPDATE_TICKS == 0L) router.updateFromQueues(lanes)
+        if (clock.tick % QUEUE_UPDATE_TICKS == 0L) {
+            router.updateFromQueues(lanes)
+            incidents.sweep(vehicles)
+        }
         if (vehicles.any { !it.active }) vehicles.removeAll { !it.active }
         val before = gameTime
         dayStatistics.sampleVehicles(vehicles.size, before)
@@ -92,7 +127,9 @@ class Simulation(
             if (!tripAllowed(trip)) continue
             val route = router.route(trip.originNode, trip.destinationNode)
             if (route != null && pending.size < config.maxPendingVehicles) {
-                pending.addLast(factory.create(route, trip, time, router.referenceTime(route)))
+                val vehicle = factory.create(route, trip, time, router.referenceTime(route))
+                charging.planTrip(vehicle)
+                pending.addLast(vehicle)
             }
         }
     }
@@ -101,17 +138,28 @@ class Simulation(
     private fun enterPendingVehicles() {
         repeat(pending.size) {
             val vehicle = pending.removeFirst()
+            // Einsatz schon erledigt, bevor das Einsatzfahrzeug überhaupt losfahren konnte
+            if (vehicle.removedByIncident) return@repeat
+            // Einsatz schon erledigt, bevor das Einsatzfahrzeug überhaupt losfahren konnte
+            if (vehicle.removedByIncident) return@repeat
             val link = vehicle.link
             val lane = lanes.bestEntryLane(link, vehicle.lane)
             if (lanes.freeSpaceAtStart(link, lane) > vehicle.type.length + vehicle.driver.minimumGap + ENTRY_MARGIN) {
                 vehicle.lane = lane
                 vehicle.position = vehicle.type.length.toDouble()
                 vehicle.speed = min(ENTRY_SPEED, graph.linkSpeedLimit[link].toDouble())
+                vehicle.waitingTime = 0.0
                 vehicle.linkEnterTime = time
                 behavior.enterLink(vehicle, -1, link)
                 lanes[link][lane].addLast(vehicle)
-                vehicles += vehicle
-                dayStatistics.tripStarted(gameTime)
+                // Nach ID sortiert einfügen (Weiterfahrt nach dem Laden hat eine alte ID)
+                val index = vehicles.binarySearch { it.id.compareTo(vehicle.id) }
+                vehicles.add(if (index < 0) -(index + 1) else index, vehicle)
+                if (!vehicle.active) {
+                    vehicle.active = true
+                } else if (vehicle.role == VehicleRole.PRIVATE) {
+                    dayStatistics.tripStarted(gameTime)
+                }
             } else {
                 pending.addLast(vehicle)
             }
@@ -186,6 +234,8 @@ class Simulation(
             val oldPosition = vehicle.position
             moveVehicle(vehicle, leader, offset)
             environment.emit(vehicle, dt)
+            if (!deliveries.update(vehicle, link, time)) incidents.afterMove(vehicle, link, time)
+            charging.consume(vehicle, dt, time)
             speedControl.measure(vehicle, link, oldPosition)
         }
         if (queue.any { !it.active }) {
@@ -213,9 +263,11 @@ class Simulation(
                 vehicle.speed = min(vehicle.speed, leader.speed)
             }
         }
-        vehicle.waitingTime = if (vehicle.speed < STANDSTILL_SPEED) vehicle.waitingTime + dt else 0.0
+        // Kriechen zählt als Warten – sonst setzt jeder Zentimeter Vorrollen die Uhr zurück
+        vehicle.waitingTime = if (vehicle.speed < CRAWL_SPEED) vehicle.waitingTime + dt else 0.0
         // Wer zu lange steht, gibt auf und verlässt das Netz – sonst könnte ein Knoten alles dauerhaft blockieren
-        if (vehicle.waitingTime > config.stuckTimeoutSeconds) vehicle.active = false
+        val mayGiveUp = vehicle.role == VehicleRole.PRIVATE && !vehicle.isParked
+        if (mayGiveUp && vehicle.waitingTime > config.stuckTimeoutSeconds) vehicle.active = false
     }
 
     // --- Knoten überqueren ----------------------------------------------------------------------------
@@ -238,10 +290,8 @@ class Simulation(
         length: Float,
     ): Boolean {
         val next = vehicle.nextLink
-        if (next < 0) {
-            arrive(vehicle)
-            return true
-        }
+        // Liegengebliebene und Wartende bleiben, wo sie sind
+        if (vehicle.isParked || next < 0) return finishRoute(vehicle, length)
         val overflow = vehicle.position - length
         val lane = lanes.bestEntryLane(next, vehicle.lane)
         if (lanes.freeSpaceAtStart(next, lane) < overflow + STANDSTILL_GAP) {
@@ -256,15 +306,56 @@ class Simulation(
         vehicle.linkEnterTime = time
         behavior.enterLink(vehicle, link, next)
         lanes[next][lane].addLast(vehicle)
-        if (time - vehicle.lastRerouteTime > config.rerouteIntervalSeconds) reroute(vehicle)
+        // Einsatzfahrzeuge behalten ihre Route zum Einsatzort
+        val wantsReroute =
+            vehicle.role == VehicleRole.PRIVATE && time - vehicle.lastRerouteTime > config.rerouteIntervalSeconds
+        if (wantsReroute) reroute(vehicle)
         return true
+    }
+
+    /** Ende der Route: ankommen, an die Ladesäule fahren oder (Einsatzfahrzeuge, Wartende) am Linkende halten. */
+    private fun finishRoute(
+        vehicle: Vehicle,
+        length: Float,
+    ): Boolean {
+        val leaves =
+            when {
+                vehicle.isParked -> {
+                    false
+                }
+
+                vehicle.chargingStation >= 0 -> {
+                    charging.arrive(vehicle, time)
+                }
+
+                // Einsatzfahrzeug am Ziel: warten, solange der Einsatz läuft, sonst Feierabend
+                vehicle.role != VehicleRole.PRIVATE && incidents.isOpen(vehicle.incidentId) -> {
+                    vehicle.holdAtEnd = true
+                    false
+                }
+
+                vehicle.role != VehicleRole.PRIVATE -> {
+                    vehicle.active = false
+                    true
+                }
+
+                else -> {
+                    true.also { arrive(vehicle) }
+                }
+            }
+        if (!leaves) {
+            vehicle.position = length.toDouble()
+            vehicle.speed = 0.0
+        }
+        return leaves
     }
 
     private fun arrive(vehicle: Vehicle) {
         vehicle.active = false
         completedTrips++
         totalTripSeconds += time - vehicle.departureTime
-        finishedTrips.add(TripResult(vehicle.homeZone, time - vehicle.departureTime, vehicle.referenceSeconds))
+        val travelSeconds = time - vehicle.departureTime - vehicle.chargingSeconds
+        finishedTrips.add(TripResult(vehicle.homeZone, travelSeconds, vehicle.referenceSeconds))
         dayStatistics.tripCompleted(time - vehicle.departureTime)
     }
 
@@ -322,19 +413,33 @@ class Simulation(
             signalStates = Array(signals.markers.links.size) { signals.state(signals.markers.links[it], time) },
             cameras = speedControl.cameras.toList(),
             environment = environment.snapshot,
-            stats = stats(),
+            incidents = incidents.active.map { IncidentMarker(it.kind, it.x, it.y) },
+            chargingStations = charging.states(),
+            flags = ByteArray(count) { flagsOf(vehicles[it]) },
+            stats =
+                SimulationStats(
+                    activeVehicles = vehicles.size,
+                    pendingVehicles = pending.size,
+                    completedTrips = completedTrips,
+                    stuckRemovals = stuckRemovals,
+                    meanSpeedKmh =
+                        if (vehicles.isEmpty()) {
+                            0.0
+                        } else {
+                            vehicles.sumOf { it.speed } / vehicles.size *
+                                KMH_PER_MS
+                        },
+                    meanTripMinutes =
+                        if (completedTrips >
+                            0
+                        ) {
+                            totalTripSeconds / completedTrips / SECONDS_PER_MINUTE
+                        } else {
+                            0.0
+                        },
+                ),
         )
     }
-
-    private fun stats() =
-        SimulationStats(
-            activeVehicles = vehicles.size,
-            pendingVehicles = pending.size,
-            completedTrips = completedTrips,
-            stuckRemovals = stuckRemovals,
-            meanSpeedKmh = if (vehicles.isEmpty()) 0.0 else vehicles.sumOf { it.speed } / vehicles.size * KMH_PER_MS,
-            meanTripMinutes = if (completedTrips > 0) totalTripSeconds / completedTrips / SECONDS_PER_MINUTE else 0.0,
-        )
 
     private companion object {
         const val SECONDS_PER_HOUR = 3600.0
@@ -342,10 +447,16 @@ class Simulation(
         const val ENTRY_SPEED = 8.0
         const val ENTRY_MARGIN = 2.0
         const val STANDSTILL_GAP = 0.5
-        const val STANDSTILL_SPEED = 0.1
+        const val CRAWL_SPEED = 1.0
         const val QUEUE_UPDATE_TICKS = 100L
         const val STRESS_UPDATE_TICKS = 50L
         const val ENVIRONMENT_TICKS = 10L
         const val ENVIRONMENT_PUBLISH_TICKS = 50L
     }
+
+    // --- Für Tests ------------------------------------------------------------------------------------
+
+    internal val statisticsForTest: DayStatistics get() = dayStatistics
+    internal val incidentsForTest: Incidents get() = incidents
+    internal val vehiclesForTest: List<Vehicle> get() = vehicles
 }

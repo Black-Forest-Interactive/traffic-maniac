@@ -31,9 +31,34 @@ class SimulationSnapshot(
     /** Zustand je Ampel in der Reihenfolge von [signalMarkers]. */
     val signalStates: Array<SignalState>,
     val cameras: List<SpeedCamera>,
+    val incidents: List<IncidentMarker>,
+    val chargingStations: List<ChargingStationState>,
+    /** Je Fahrzeug: [FLAG_DISABLED], [FLAG_EMERGENCY], [FLAG_ELECTRIC], [FLAG_SERVICE]. */
+    val flags: ByteArray,
     /** Umweltraster (wird alle 5 Sekunden Spielzeit erneuert). */
     val environment: EnvironmentSnapshot,
     val stats: SimulationStats,
 ) {
     val vehicleCount: Int get() = ids.size
+}
+
+/** Ort und Art eines Vorfalls für die Karte. */
+class IncidentMarker(
+    val kind: IncidentKind,
+    val x: Float,
+    val y: Float,
+)
+
+const val FLAG_DISABLED = 1
+const val FLAG_EMERGENCY = 2
+const val FLAG_ELECTRIC = 4
+const val FLAG_SERVICE = 8
+
+internal fun flagsOf(vehicle: Vehicle): Byte {
+    var flags = 0
+    if (vehicle.disabled) flags = flags or FLAG_DISABLED
+    if (vehicle.role.isEmergency) flags = flags or FLAG_EMERGENCY
+    if (vehicle.drivetrain == Drivetrain.ELECTRIC) flags = flags or FLAG_ELECTRIC
+    if (vehicle.role != VehicleRole.PRIVATE) flags = flags or FLAG_SERVICE
+    return flags.toByte()
 }

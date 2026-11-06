@@ -36,6 +36,18 @@ enum class VehicleType(
         exhaustPmPerLiter = 0.03,
         noiseBonusDb = 0.0,
     ),
+    VAN(
+        6.0f,
+        2.0f,
+        1.1,
+        1.8,
+        40.0,
+        massKg = 2_800.0,
+        idleFuelPerSecond = 0.0004,
+        noxPerLiter = 10.0,
+        exhaustPmPerLiter = 0.08,
+        noiseBonusDb = 3.0,
+    ),
     TRUCK(
         12f,
         2.5f,
@@ -137,6 +149,32 @@ enum class DriverProfile(
     ),
 }
 
+enum class Drivetrain {
+    PETROL,
+    DIESEL,
+    ELECTRIC,
+}
+
+/** Moderne Autos haben Softwarepannen, alte verlieren Öl. */
+enum class Generation {
+    MODERN,
+    OLD,
+}
+
+enum class VehicleRole(
+    val label: String,
+) {
+    PRIVATE("Privat"),
+    AMBULANCE("Rettungswagen"),
+    POLICE("Polizei"),
+    TOW_TRUCK("Abschleppdienst"),
+    STREET_SERVICE("Straßenmeisterei"),
+    ;
+
+    /** Blaulicht: darf über Rot und bekommt eine Rettungsgasse. */
+    val isEmergency: Boolean get() = this == AMBULANCE || this == POLICE
+}
+
 /** Ein Fahrzeug im Netz. Position ist die Stoßstange vorn, gemessen ab Beginn des aktuellen Links. */
 class Vehicle internal constructor(
     val id: Int,
@@ -145,7 +183,7 @@ class Vehicle internal constructor(
     /** Farbe als ARGB. */
     val color: Int,
     internal var route: IntArray,
-    val destinationNode: Int,
+    internal var destinationNode: Int,
     val departureTime: Double,
     /** Ortskundige kennen die festen Blitzer und bremsen davor ab. */
     val knowsCameras: Boolean,
@@ -155,7 +193,49 @@ class Vehicle internal constructor(
     val person: Int,
     /** Fahrzeit der Route ohne Verkehr und mit den ursprünglichen Tempolimits – der Maßstab für "schnell am Ziel". */
     val referenceSeconds: Double,
+    val drivetrain: Drivetrain = Drivetrain.PETROL,
+    val generation: Generation = Generation.MODERN,
+    val role: VehicleRole = VehicleRole.PRIVATE,
 ) {
+    /** Akkuladung in kWh (nur Elektroautos). */
+    internal var batteryKwh = 0.0
+
+    /** Panne oder Unfall: steht und wartet auf den Abschleppdienst. */
+    internal var disabled = false
+
+    /** Einsatzfahrzeug arbeitet am Einsatzort. */
+    internal var working = false
+
+    /** Lieferwagen hält in zweiter Reihe bis zu diesem Zeitpunkt (0 = fährt). */
+    internal var deliveringUntil = 0.0
+
+    /** Pro Fahrt hält ein Lieferwagen höchstens einmal. */
+    internal var hasDelivered = false
+
+    /** Wartet am Ende des Links, z. B. weil an der Ladesäule kein Platz frei ist. */
+    internal var holdAtEnd = false
+
+    /** Ladesäule, die angesteuert wird (Index), oder -1. */
+    internal var chargingStation = -1
+
+    /** Eigentliches Ziel nach dem Laden. */
+    internal var finalDestination = destinationNode
+
+    /** Steht gerade an der Ladesäule (nicht auf der Straße). */
+    internal var charging = false
+
+    /** Reine Ladezeit dieser Fahrt – zählt nicht als Verspätung (das Warten davor schon). */
+    internal var chargingSeconds = 0.0
+
+    /** Vom Abschleppdienst entfernt bzw. Einsatz beendet (zählt weder als angekommen noch als aufgegeben). */
+    internal var removedByIncident = false
+
+    /** Einsatz, zu dem ein Einsatzfahrzeug unterwegs ist, oder -1. */
+    internal var incidentId = -1
+
+    /** Steht absichtlich (Panne, Einsatz, Warten) und zählt deshalb nicht als "aufgegeben". */
+    internal val isParked: Boolean get() = disabled || working || holdAtEnd || deliveringUntil > 0
+
     /** Wie viel km/h der Fahrer auf dem aktuellen Link über dem Limit fährt (0 = hält sich daran). */
     internal var speedingKmh = 0.0
 

@@ -25,6 +25,7 @@ class CityExtractor(
     private val scenery = SceneryKind.entries.associateWith { ArrayList<Polyline>() }
     private val zoneAreas = ArrayList<ZoneArea>()
     private val motorwayNodes = HashSet<Long>()
+    private val facilities = ArrayList<RawFacility>()
 
     override fun node(
         id: Long,
@@ -35,6 +36,7 @@ class CityExtractor(
         if (!config.box.contains(lat, lon)) return
         nodes.add(id, lat, lon)
         if (tags["highway"] == "traffic_signals") signalNodes += id
+        facilityKindOf(tags)?.let { facilities += RawFacility(it, projection.x(lon), projection.y(lat), tags) }
     }
 
     override fun way(
@@ -45,6 +47,12 @@ class CityExtractor(
         val roadClass = tags["highway"]?.let { RoadClass.fromOsm(it) }
         if (roadClass == RoadClass.MOTORWAY || roadClass == RoadClass.MOTORWAY_LINK) motorwayNodes.addAll(refs.asList())
         zoneKindOf(tags)?.let { kind -> addZoneArea(kind, refs) }
+        facilityKindOf(tags)?.let { kind ->
+            project(refs)?.let { polygon ->
+                val (x, y) = centroid(polygon)
+                facilities += RawFacility(kind, x, y, tags)
+            }
+        }
         if (roadClass != null && roadClass in config.roadClasses) {
             val attributes = RoadTags.parse(tags, roadClass)
             roads += RawRoad(if (attributes.reversed) refs.reversedArray() else refs, roadClass, attributes)
@@ -89,6 +97,7 @@ class CityExtractor(
             bounds = bounds,
             roads = network,
             zones = ZoneBuilder(network, bounds).build(zoneAreas, motorwayNodeIds),
+            facilities = buildFacilities(network, facilities),
             scenery =
                 Scenery(
                     buildings = scenery.getValue(SceneryKind.BUILDING),

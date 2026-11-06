@@ -14,6 +14,21 @@ internal class JunctionRules(
         remaining: Double,
         time: Double,
     ): Boolean =
+        when {
+            vehicle.holdAtEnd -> true
+
+            // Blaulicht fährt über Rot und nimmt sich die Vorfahrt
+            vehicle.role.isEmergency -> false
+
+            else -> signalOrYield(vehicle, link, remaining, time)
+        }
+
+    private fun signalOrYield(
+        vehicle: Vehicle,
+        link: Int,
+        remaining: Double,
+        time: Double,
+    ): Boolean =
         when (signals.state(link, time)) {
             SignalState.RED -> true
 

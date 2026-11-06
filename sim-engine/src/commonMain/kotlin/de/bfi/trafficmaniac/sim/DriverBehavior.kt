@@ -36,6 +36,12 @@ internal class DriverBehavior(
         desired: Double,
         leaderGap: Double,
     ): Double {
+        // Liegengeblieben oder im Einsatz: anhalten und stehen bleiben
+        if (vehicle.disabled || vehicle.working ||
+            vehicle.deliveringUntil > 0
+        ) {
+            return if (vehicle.speed > 0) -PARKING_BRAKE else 0.0
+        }
         val stuckBehindSlowCar =
             leaderGap < FRUSTRATION_GAP && vehicle.speed < desired * SLOW_SHARE && vehicle.speed > STANDSTILL
         vehicle.frustration =
@@ -46,12 +52,16 @@ internal class DriverBehavior(
         val target = vehicle.driver.baseAttention * (1 - IRRITATION_ATTENTION_COST * vehicle.irritation)
         vehicle.attention = min(target, vehicle.attention + dt * ATTENTION_RECOVERY)
 
-        if (vehicle.speed > STANDSTILL) {
-            vehicle.startHesitation = 0.0
-            return acceleration
-        }
-        if (acceleration <= 0) return acceleration
-        // Losfahren erst nach der Reaktionszeit; Unaufmerksame brauchen länger
+        return withReactionTime(vehicle, acceleration)
+    }
+
+    /** Losfahren erst nach der Reaktionszeit; Unaufmerksame brauchen länger. */
+    private fun withReactionTime(
+        vehicle: Vehicle,
+        acceleration: Double,
+    ): Double {
+        if (vehicle.speed > STANDSTILL) vehicle.startHesitation = 0.0
+        if (vehicle.speed > STANDSTILL || acceleration <= 0) return acceleration
         vehicle.startHesitation += dt
         val delay = vehicle.driver.reactionDelay * (2 - vehicle.attention)
         return if (vehicle.startHesitation >= delay) acceleration else 0.0
@@ -70,6 +80,7 @@ internal class DriverBehavior(
 
     private companion object {
         const val MIN_ATTENTION = 0.05
+        const val PARKING_BRAKE = 8.0
         const val FRUSTRATION_GAP = 40.0
         const val SLOW_SHARE = 0.6
         const val STANDSTILL = 0.1

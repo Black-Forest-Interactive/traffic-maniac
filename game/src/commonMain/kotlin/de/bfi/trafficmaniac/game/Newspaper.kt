@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.sim.DayReport
+import de.bfi.trafficmaniac.sim.IncidentKind
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -34,6 +35,10 @@ internal object Newspaper {
     private const val MAX_HEADLINES = 3
     private const val EXPIRED_STORY = 100
     private const val LETTER_WAVE = 1_500
+    private const val AMBULANCE_STORY_MINUTES = 15.0
+    private const val SOFTWARE_STORY = 20
+    private const val OIL_STORY = 8
+    private const val CHARGING_STORY_MINUTES = 20
     private const val HALF_LATE = 0.5
     private const val QUARTER_LATE = 0.25
     private const val PERCENT = 100
@@ -44,6 +49,7 @@ internal object Newspaper {
         val headlines =
             listOfNotNull(
                 recall(news),
+                ambulance(news),
                 expired(news),
                 licenses(news),
                 record(news, friendly),
@@ -51,6 +57,8 @@ internal object Newspaper {
                 fines(news, friendly, random),
                 traffic(news),
                 stuckCommuter(news, random),
+                breakdowns(news, random),
+                charging(news),
                 pr(news, random),
             ).take(MAX_HEADLINES)
         return NewspaperEdition(news.report.day, headlines.ifEmpty { listOf(QUIET_DAY.random(random)) })
@@ -61,6 +69,52 @@ internal object Newspaper {
             news.state.recallIndex >= RECALL_ALARM -> "Gemeinderat: Rücktrittsforderungen werden lauter"
             else -> null
         }
+
+    private fun ambulance(news: DayNews): String? {
+        val worst = news.report.ambulanceMinutes.maxOrNull() ?: return null
+        return if (worst >= AMBULANCE_STORY_MINUTES) {
+            "Rettungswagen steckt ${worst.roundToInt()} Minuten im Stau fest – Leserbrief: „Hauptsache, ich komme pünktlich heim“"
+        } else {
+            null
+        }
+    }
+
+    private fun breakdowns(
+        news: DayNews,
+        random: Random,
+    ): String? {
+        val software = news.report.incidents[IncidentKind.SOFTWARE_FAILURE] ?: 0
+        val oil = news.report.incidents[IncidentKind.OIL_SPILL] ?: 0
+        return when {
+            software >= SOFTWARE_STORY -> {
+                listOf(
+                    "$software Autos bleiben liegen: „Update wird installiert, bitte warten“",
+                    "Bitte Neustart durchführen: $software moderne Autos streiken auf Pforzheims Straßen",
+                ).random(random)
+            }
+
+            oil >= OIL_STORY -> {
+                "$oil Ölspuren an einem Tag – Straßenmeisterei im Dauereinsatz"
+            }
+
+            else -> {
+                null
+            }
+        }
+    }
+
+    private fun charging(news: DayNews): String? {
+        val waits = news.report.chargingWaitMinutes
+        if (waits.isEmpty()) return null
+        val longest = waits.max().roundToInt()
+        return if (longest >=
+            CHARGING_STORY_MINUTES
+        ) {
+            "Ladesäulen-Chaos: E-Autofahrer warten bis zu $longest Minuten"
+        } else {
+            null
+        }
+    }
 
     private fun expired(news: DayNews): String? =
         if (news.office.expired >=

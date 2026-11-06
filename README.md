@@ -8,7 +8,7 @@ Erste Stadt: **Pforzheim** (Straßennetz aus OpenStreetMap).
 
 ## Status
 
-Version 0.1 ist spielbar (Meilensteine M0–M6): Pforzheim mit rund 2.000 gleichzeitig fahrenden Autos, Tagesgang mit Berufsverkehr, Werkzeuge (Tempolimit, Ampel, Blitzer), Bußgelder, Bürgerzorn, Abwahlindex, PR, Lokalzeitung und Wertung nach 14 Spieltagen. Grafik ist noch Platzhalter.
+Version 0.1 ist spielbar (Meilensteine M0–M6), 0.2 (Fahrer & Überwachung) ist fertig, 0.3 (Bürger & Umwelt) und 0.4 (Fahrzeugvielfalt & Chaos) sind größtenteils umgesetzt: Pforzheim mit rund 2.000 gleichzeitig fahrenden Autos, Tagesgang mit Berufsverkehr, Werkzeuge (Tempolimit, Ampel, Blitzer), Bußgelder, Bürgerzorn, Abwahlindex, PR, Lokalzeitung und Wertung nach 14 Spieltagen. Grafik ist noch Platzhalter.
 
 ## Spielen
 

@@ -71,13 +71,7 @@ internal class ZoneBuilder(
     private fun nearestNode(
         x: Float,
         y: Float,
-    ): Int =
-        network.nodes
-            .minBy { node ->
-                val dx = node.x - x
-                val dy = node.y - y
-                dx * dx + dy * dy
-            }.id
+    ): Int = nearestNode(network, x, y)
 
     companion object {
         /** Kleinere Flächen (einzelne Grundstücke) erzeugen keinen nennenswerten Verkehr. */
@@ -122,3 +116,16 @@ internal fun centroid(polygon: FloatArray): Pair<Float, Float> {
     val divisor = CENTROID_FACTOR * area
     return cx / divisor to cy / divisor
 }
+
+/** Nächster Knoten des Straßennetzes. */
+internal fun nearestNode(
+    network: RoadNetwork,
+    x: Float,
+    y: Float,
+): Int =
+    network.nodes
+        .minBy { node ->
+            val dx = node.x - x
+            val dy = node.y - y
+            dx * dx + dy * dy
+        }.id

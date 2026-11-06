@@ -17,7 +17,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.game.ZoneMood
+import de.bfi.trafficmaniac.sim.ChargingStationState
 import de.bfi.trafficmaniac.sim.EnvironmentSnapshot
+import de.bfi.trafficmaniac.sim.FLAG_DISABLED
+import de.bfi.trafficmaniac.sim.FLAG_EMERGENCY
+import de.bfi.trafficmaniac.sim.IncidentKind
+import de.bfi.trafficmaniac.sim.IncidentMarker
 import de.bfi.trafficmaniac.sim.Pollutant
 import de.bfi.trafficmaniac.sim.SignalMarkers
 import de.bfi.trafficmaniac.sim.SignalState
@@ -39,6 +44,8 @@ internal fun DrawScope.drawVehicles(
     val previous = frame.previous
     val current = frame.current
     val t = frame.interpolation()
+    // Blinken im Sekundentakt der Spielzeit
+    val blink = (current.time * BLINKS_PER_SECOND).toInt() % 2 == 0
     var j = 0
     for (i in 0 until current.vehicleCount) {
         val id = current.ids[i]
@@ -51,13 +58,15 @@ internal fun DrawScope.drawVehicles(
             y = previous.y[j] + (y - previous.y[j]) * t
         }
         val length = current.lengths[i]
+        val width = max(current.widths[i], MIN_VEHICLE_PIXELS / scale)
         drawLine(
             color = Color(current.colors[i]),
             start = Offset(x - current.dirX[i] * length, y - current.dirY[i] * length),
             end = Offset(x, y),
-            strokeWidth = max(current.widths[i], MIN_VEHICLE_PIXELS / scale),
+            strokeWidth = width,
             cap = StrokeCap.Butt,
         )
+        drawVehicleLights(current.flags[i].toInt(), x, y, width, blink)
     }
 }
 
@@ -289,3 +298,90 @@ private val LAYER_RANGES =
 private const val HEAT_ALPHA_BASE = 0.25f
 private const val HEAT_ALPHA_RANGE = 0.45f
 private const val GRAMS_PER_KG = 1_000f
+
+/** Blaulicht (blau) und Warnblinker (orange) als Punkt an der Fahrzeugfront. */
+private fun DrawScope.drawVehicleLights(
+    flags: Int,
+    x: Float,
+    y: Float,
+    width: Float,
+    blink: Boolean,
+) {
+    val light =
+        when {
+            flags and FLAG_EMERGENCY != 0 -> if (blink) MapStyle.blueLight else MapStyle.redLight
+            flags and FLAG_DISABLED != 0 && blink -> MapStyle.hazardLight
+            else -> return
+        }
+    drawCircle(light, width * LIGHT_SIZE, Offset(x, y))
+}
+
+/** Vorfälle: Ölspur (braune Pfütze), Unfall (rotes Kreuz), Panne (oranges Warndreieck). */
+internal fun DrawScope.drawIncidents(
+    incidents: List<IncidentMarker>,
+    scale: Float,
+) {
+    val size = max(INCIDENT_SIZE_METERS, INCIDENT_MIN_PIXELS / scale)
+    for (incident in incidents) {
+        val c = Offset(incident.x, incident.y)
+        when (incident.kind) {
+            IncidentKind.OIL_SPILL -> {
+                drawCircle(MapStyle.oil, size * OIL_SCALE, c)
+            }
+
+            IncidentKind.ACCIDENT -> {
+                drawLine(
+                    MapStyle.trafficSignal,
+                    c + Offset(-size, -size),
+                    c + Offset(size, size),
+                    strokeWidth =
+                        size / 2,
+                )
+                drawLine(
+                    MapStyle.trafficSignal,
+                    c + Offset(-size, size),
+                    c + Offset(size, -size),
+                    strokeWidth =
+                        size / 2,
+                )
+            }
+
+            else -> {
+                val triangle =
+                    Path().apply {
+                        moveTo(c.x, c.y + size)
+                        lineTo(c.x + size, c.y - size)
+                        lineTo(c.x - size, c.y - size)
+                        close()
+                    }
+                drawPath(triangle, MapStyle.hazardLight)
+            }
+        }
+    }
+}
+
+/** Ladesäulen: grünes Quadrat, roter Rand bei Warteschlange. */
+internal fun DrawScope.drawChargingStations(
+    stations: List<ChargingStationState>,
+    scale: Float,
+) {
+    val size = max(STATION_SIZE_METERS, STATION_MIN_PIXELS / scale)
+    for (station in stations) {
+        val topLeft = Offset(station.x - size / 2, station.y - size / 2)
+        val fill = if (station.charging >= station.capacity) MapStyle.chargingFull else MapStyle.chargingFree
+        drawRect(fill, topLeft, Size(size, size))
+        if (station.waiting >
+            0
+        ) {
+            drawRect(MapStyle.trafficSignal, topLeft, Size(size, size), style = Stroke(width = size * SIGN_RING))
+        }
+    }
+}
+
+private const val BLINKS_PER_SECOND = 2.0
+private const val LIGHT_SIZE = 0.7f
+private const val INCIDENT_SIZE_METERS = 6f
+private const val INCIDENT_MIN_PIXELS = 7f
+private const val OIL_SCALE = 1.6f
+private const val STATION_SIZE_METERS = 7f
+private const val STATION_MIN_PIXELS = 6f

@@ -2,6 +2,8 @@ package de.bfi.trafficmaniac.sim
 
 import de.bfi.trafficmaniac.city.Bounds
 import de.bfi.trafficmaniac.city.CityMap
+import de.bfi.trafficmaniac.city.Facility
+import de.bfi.trafficmaniac.city.FacilityKind
 import de.bfi.trafficmaniac.city.GeoPoint
 import de.bfi.trafficmaniac.city.Polyline
 import de.bfi.trafficmaniac.city.RoadClass
@@ -17,7 +19,10 @@ import de.bfi.trafficmaniac.city.ZoneKind
  * Westen/Osten Hauptstraße (primary), Norden/Süden Nebenstraße (secondary).
  * Wohngebiete im Westen und Osten, Gewerbe im Norden und Süden.
  */
-fun crossroads(signals: Boolean = true): CityMap {
+fun crossroads(
+    signals: Boolean = true,
+    facilities: List<Facility> = emptyList(),
+): CityMap {
     val nodes =
         listOf(
             RoadNode(0, 0f, 0f, trafficSignals = signals),
@@ -58,6 +63,7 @@ fun crossroads(signals: Boolean = true): CityMap {
                     ),
             ),
         scenery = Scenery(),
+        facilities = facilities,
         zones =
             listOf(
                 Zone(0, ZoneKind.RESIDENTIAL, -500f, 0f, area = 10_000f, node = 1),
@@ -67,3 +73,12 @@ fun crossroads(signals: Boolean = true): CityMap {
             ),
     )
 }
+
+/** Wachen im Westen (Knoten 1), Ladesäule mit einem Ladepunkt im Osten (Knoten 2). */
+val testFacilities =
+    listOf(
+        Facility(0, FacilityKind.FIRE_STATION, -500f, 0f, node = 1),
+        Facility(1, FacilityKind.AMBULANCE_STATION, -500f, 0f, node = 1),
+        Facility(2, FacilityKind.POLICE, -500f, 0f, node = 1),
+        Facility(3, FacilityKind.CHARGING_STATION, 500f, 0f, node = 2, capacity = 1),
+    )

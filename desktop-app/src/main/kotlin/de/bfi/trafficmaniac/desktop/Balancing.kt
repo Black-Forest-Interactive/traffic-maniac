@@ -4,6 +4,9 @@ import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import java.io.File
 
 /**
@@ -21,8 +24,21 @@ object Balancing {
     fun gameRules(directory: File = File(DIRECTORY)): GameRules =
         load(File(directory, "game-rules.json"), GameRules.serializer(), GameRules())
 
-    fun simulationConfig(directory: File = File(DIRECTORY)): SimulationConfig =
-        load(File(directory, "simulation.json"), SimulationConfig.serializer(), SimulationConfig())
+    fun simulationConfig(
+        overrides: Map<String, String> = emptyMap(),
+        directory: File = File(DIRECTORY),
+    ): SimulationConfig {
+        val config = load(File(directory, "simulation.json"), SimulationConfig.serializer(), SimulationConfig())
+        if (overrides.isEmpty()) return config
+        // Einzelne Werte überschreiben: als JSON-Objekt ändern und neu einlesen
+        val tree = json.encodeToJsonElement(SimulationConfig.serializer(), config).jsonObject.toMutableMap()
+        overrides.forEach { (key, value) ->
+            tree[key] =
+                value.toLongOrNull()?.let(::JsonPrimitive) ?: value.toDoubleOrNull()?.let(::JsonPrimitive)
+                    ?: JsonPrimitive(value)
+        }
+        return json.decodeFromJsonElement(SimulationConfig.serializer(), JsonObject(tree))
+    }
 
     private fun <T> load(
         file: File,

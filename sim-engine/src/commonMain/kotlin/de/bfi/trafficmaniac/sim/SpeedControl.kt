@@ -114,14 +114,10 @@ class SpeedControl internal constructor(
         link: Int,
     ): Double {
         val limit = graph.linkSpeedLimit[link].toDouble()
-        var desired =
-            if (vehicle.speedingKmh >
-                0
-            ) {
-                limit + vehicle.speedingKmh / KMH_PER_MS
-            } else {
-                limit * vehicle.driver.speedFactor
-            }
+        if (vehicle.role.isEmergency) return min(limit * EMERGENCY_SPEED_FACTOR, vehicle.type.maxSpeed)
+        val speeding = vehicle.speedingKmh > 0
+        var desired = if (speeding) limit + vehicle.speedingKmh / KMH_PER_MS else limit * vehicle.driver.speedFactor
+        desired *= graph.linkSlowdown[link]
         val fixedCameraAhead =
             sites[link].any {
                 !it.camera.mobile &&
@@ -140,7 +136,7 @@ class SpeedControl internal constructor(
         oldPosition: Double,
     ) {
         val list = sites[link]
-        if (list.isEmpty()) return
+        if (list.isEmpty() || vehicle.role != VehicleRole.PRIVATE) return
         val limitKmh = graph.speedLimitKmh(link).toInt()
         for (site in list) {
             if (oldPosition < site.position && vehicle.position >= site.position) {
@@ -182,6 +178,7 @@ class SpeedControl internal constructor(
         /** ... und zwar auf diesen Anteil des Limits ("panisches" Bremsen). */
         private const val CAMERA_BRAKE_FACTOR = 0.85
         private const val JUNCTION_ZONE = 40.0
+        private const val EMERGENCY_SPEED_FACTOR = 1.3
 
         private const val SIGNAL_STIMULUS = 0.03
         private const val LIMIT_CHANGE_STIMULUS = 0.06

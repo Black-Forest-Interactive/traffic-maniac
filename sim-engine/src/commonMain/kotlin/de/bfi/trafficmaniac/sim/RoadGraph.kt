@@ -150,6 +150,9 @@ class RoadGraph(
 
     fun hasNightLimit(link: Int): Boolean = !linkNightLimitKmh[link].isNaN()
 
+    /** Tempo-Faktor durch Vorfälle (Ölspur, Gaffer); 1 = normal. */
+    internal val linkSlowdown = FloatArray(linkCount) { 1f }
+
     /** Vom Spieler zur Vorfahrtsstraße erklärt: Rang 0 schlägt an ungeregelten Kreuzungen alles. */
     private val linkPriority = BooleanArray(linkCount)
 

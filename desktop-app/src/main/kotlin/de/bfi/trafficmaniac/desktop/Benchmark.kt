@@ -21,7 +21,9 @@ private const val LONG_RUN_MINUTES = 6 * 60
  * Performance- und Stabilitätsmessung ohne Oberfläche. Gibt Uhrzeit, Fahrzeuganzahl, Kennzahlen und
  * die Rechenzeit pro Tick aus – bei kurzen Läufen alle 5 Minuten, bei langen jede Stunde.
  *
- * Aufruf: `./gradlew :desktop-app:benchmark --args="[Spitzen-Fahrten/h] [Minuten] [konstant]"`
+ * Aufruf: `./gradlew :desktop-app:benchmark --args="[Spitzen-Fahrten/h] [Minuten] [konstant] [schlüssel=wert …]"`
+ * Weitere Argumente der Form `schlüssel=wert` überschreiben Werte aus `balancing/simulation.json`,
+ * z. B. `softwareFailuresPerHour=0` (zum Eingrenzen von Effekten).
  * Mit `konstant` läuft die Nachfrage rund um die Uhr auf Spitzenniveau (Lasttest),
  * sonst nach Tagesgang ab Montag 5 Uhr.
  */
@@ -30,7 +32,10 @@ fun main(args: Array<String>) {
     val peak = args.getOrNull(0)?.toDouble() ?: SimulationConfig().peakTripsPerHour
     val minutes = args.getOrNull(1)?.toInt() ?: DEFAULT_MINUTES
     val profile = if (args.getOrNull(2) == "konstant") DemandProfile.CONSTANT else DemandProfile.DEFAULT
-    val simulation = Simulation(city, SimulationConfig(peakTripsPerHour = peak, demandProfile = profile))
+    val overrides = args.filter { "=" in it }.associate { it.substringBefore('=') to it.substringAfter('=') }
+    val config = Balancing.simulationConfig(overrides).copy(peakTripsPerHour = peak, demandProfile = profile)
+    if (overrides.isNotEmpty()) println("Abweichend: $overrides")
+    val simulation = Simulation(city, config)
     val reportEvery = if (minutes > LONG_RUN_MINUTES) MINUTES_PER_HOUR else 5
     val ticksPerReport = reportEvery * SECONDS_PER_MINUTE * simulation.config.ticksPerSecond
 
@@ -66,10 +71,20 @@ fun main(args: Array<String>) {
         )
     }
     printEnvironmentAtHomes(city, simulation)
+    val snapshot = simulation.snapshot()
+    val waiting = snapshot.chargingStations.sumOf { it.waiting }
+    println(
+        "Offene Vorfälle: ${snapshot.incidents.groupingBy {
+            it.kind.label
+        }.eachCount()} · an Ladesäulen wartend: $waiting",
+    )
     for (report in simulation.dayReports) {
         println(
             "Tag ${report.day + 1} (${report.weekday.germanName}): ${report.tripsStarted} Fahrten, " +
-                "Spitze ${report.peakVehicles} Fahrzeuge um ${report.peakHour} Uhr, aufgegeben ${report.stuckRemovals}",
+                "Spitze ${report.peakVehicles} Fahrzeuge um ${report.peakHour} Uhr, " +
+                "aufgegeben ${report.stuckRemovals}, " +
+                "Vorfälle ${report.incidents.mapKeys { it.key.label }}, Rettungswagen Ø " +
+                "${"%.1f".format(report.ambulanceMinutes.average())} min",
         )
     }
 }

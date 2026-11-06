@@ -16,6 +16,7 @@ import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.sim.EnvironmentSnapshot
 import de.bfi.trafficmaniac.sim.Pollutant
+import de.bfi.trafficmaniac.sim.SimulationSnapshot
 import kotlin.math.roundToInt
 
 private val HudBackground = Color(0xCC1D1F2E)
@@ -50,6 +51,7 @@ fun TrafficHud(
             "Angekommen ${stats.completedTrips} (Ø $tripMinutes min) · aufgegeben ${stats.stuckRemovals}",
             environmentLine(snapshot.environment),
             commuteLine(frame),
+            incidentLine(snapshot),
             "Rechenzeit ${"%.2f".format(frame.stepMillis)} ms/Tick · $fps FPS",
             "Leertaste: Pause · 1–4: Tempo 1x/2x/4x/8x · nachts automatisch ×${GameRunner.NIGHT_BOOST}",
         )
@@ -84,3 +86,14 @@ private val PARTICULATES = listOf(Pollutant.PM_EXHAUST, Pollutant.PM_TIRES, Poll
 private const val GRAMS_PER_KG = 1_000.0
 private const val GRAMS_PER_TONNE = 1_000_000.0
 private const val PERCENT = 100
+
+private fun incidentLine(snapshot: SimulationSnapshot): String {
+    val open =
+        snapshot.incidents
+            .groupingBy { it.kind.label }
+            .eachCount()
+            .entries
+            .joinToString { "${it.value}× ${it.key}" }
+    val waiting = snapshot.chargingStations.sumOf { it.waiting }
+    return "Vorfälle: ${open.ifEmpty { "keine" }} · an Ladesäulen wartend: $waiting"
+}

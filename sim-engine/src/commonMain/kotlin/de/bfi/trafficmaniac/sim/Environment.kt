@@ -124,17 +124,34 @@ class Environment internal constructor(
         val type = vehicle.type
         val v = vehicle.speed
         val a = vehicle.acceleration
+        val electric = vehicle.drivetrain == Drivetrain.ELECTRIC
         val drivePower = type.massKg * (a * v + GRAVITY * ROLLING_RESISTANCE * v) + AIR_DRAG_FACTOR * v.pow(3)
-        val fuel = (type.idleFuelPerSecond + max(0.0, drivePower) / (ENGINE_EFFICIENCY * FUEL_ENERGY_PER_LITER)) * dt
-        val tonnes = type.massKg / KG_PER_TONNE
+        // Elektroautos tanken nicht – ihr Strom zählt hier nicht als Abgas
+        val fuel =
+            if (electric) {
+                0.0
+            } else {
+                (
+                    type.idleFuelPerSecond +
+                        max(0.0, drivePower) / (ENGINE_EFFICIENCY * FUEL_ENERGY_PER_LITER)
+                ) *
+                    dt
+            }
+        val dirty =
+            (if (vehicle.drivetrain == Drivetrain.DIESEL) DIESEL_NOX_FACTOR else 1.0) *
+                (if (vehicle.generation == Generation.OLD) OLD_FACTOR else 1.0)
+        // Schwerer Akku: mehr Reifenabrieb; Rekuperation: kaum Bremsabrieb
+        val mass = type.massKg + if (electric) BATTERY_MASS_KG else 0.0
+        val brakeShare = if (electric) RECUPERATION_BRAKE_SHARE else 1.0
         val e = vehicle.pendingEmissions
         totalFuel += fuel
         e[Pollutant.CO2.ordinal] += fuel * CO2_GRAMS_PER_LITER
-        e[Pollutant.NOX.ordinal] += fuel * type.noxPerLiter
-        e[Pollutant.PM_EXHAUST.ordinal] += fuel * type.exhaustPmPerLiter
-        e[Pollutant.PM_TIRES.ordinal] += tonnes * TIRE_GRAMS_PER_TONNE_METER * v * (1 + kotlin.math.abs(a)) * dt
-        e[Pollutant.PM_BRAKES.ordinal] += BRAKE_GRAMS_PER_JOULE * type.massKg * max(0.0, -a) * v * dt
-        val levelDb =
+        e[Pollutant.NOX.ordinal] += fuel * type.noxPerLiter * dirty
+        e[Pollutant.PM_EXHAUST.ordinal] += fuel * type.exhaustPmPerLiter * dirty
+        e[Pollutant.PM_TIRES.ordinal] +=
+            mass / KG_PER_TONNE * TIRE_GRAMS_PER_TONNE_METER * v * (1 + kotlin.math.abs(a)) * dt
+        e[Pollutant.PM_BRAKES.ordinal] += BRAKE_GRAMS_PER_JOULE * mass * max(0.0, -a) * v * dt * brakeShare
+        val baseDb =
             if (v >
                 MIN_NOISE_SPEED
             ) {
@@ -142,6 +159,8 @@ class Environment internal constructor(
             } else {
                 IDLE_NOISE_DB
             }
+        // Elektroautos sind langsam fast lautlos – erst ab ~30 km/h dominiert das Rollgeräusch
+        val levelDb = baseDb - if (electric && v < QUIET_ELECTRIC_SPEED) ELECTRIC_QUIET_BONUS_DB else 0.0
         e[Pollutant.NOISE.ordinal] +=
             NOISE_ENERGY_SCALE.pow((levelDb + type.noiseBonusDb + max(0.0, a) * ACCEL_NOISE_DB) / DB_PER_DECADE) * dt
     }
@@ -190,6 +209,12 @@ class Environment internal constructor(
 
     companion object {
         const val CELL_SIZE_METERS = 50f
+        private const val DIESEL_NOX_FACTOR = 2.5
+        private const val OLD_FACTOR = 2.0
+        private const val BATTERY_MASS_KG = 400.0
+        private const val RECUPERATION_BRAKE_SHARE = 0.3
+        private const val QUIET_ELECTRIC_SPEED = 8.3
+        private const val ELECTRIC_QUIET_BONUS_DB = 8.0
         private const val GRAVITY = 9.81
         private const val ROLLING_RESISTANCE = 0.012
         private const val AIR_DRAG_FACTOR = 0.4

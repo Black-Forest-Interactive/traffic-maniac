@@ -249,6 +249,8 @@ private fun DrawScope.drawTraffic(
     picker: MapPicker,
     textMeasurer: TextMeasurer,
 ) = inWorld(camera) {
+    drawIncidents(traffic.current.incidents, camera.scale)
+    if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) drawChargingStations(traffic.current.chargingStations, camera.scale)
     drawVehicles(traffic, camera.scale)
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
         drawSignals(traffic.current.signalMarkers, traffic.current.signalStates, camera.scale)

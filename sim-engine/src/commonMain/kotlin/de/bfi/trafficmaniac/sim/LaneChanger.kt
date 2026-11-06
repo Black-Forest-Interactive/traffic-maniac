@@ -12,11 +12,54 @@ internal class LaneChanger(
         for (link in 0 until graph.linkCount) {
             if (graph.linkLanes[link] < 2) continue
             val desired = graph.linkSpeedLimit[link].toDouble()
+            makeWayForEmergencies(link)
             for (queue in lanes[link]) {
                 val candidates = queue.filter { (it.id + tick) % INTERVAL_TICKS == 0L && wantsToChange(it) }
                 for (vehicle in candidates) tryChangeLane(vehicle, link, desired)
             }
         }
+    }
+
+    /**
+     * Rettungsgasse: Wer ein Blaulicht dicht hinter sich hat, weicht auf die Nachbarspur aus – sofern dort Platz ist.
+     * Auf einspurigen Straßen geht das nicht; dann steckt auch der Rettungswagen fest.
+     */
+    private fun makeWayForEmergencies(link: Int) {
+        val blocking =
+            lanes[link]
+                .flatMap { queue ->
+                    queue.indices
+                        .filter { i ->
+                            queue[i].role.isEmergency && i > 0
+                        }.map { i -> queue[i - 1] to queue[i] }
+                }.filter { (leader, emergency) ->
+                    !leader.role.isEmergency && !leader.isParked &&
+                        leader.position - emergency.position < EMERGENCY_DISTANCE
+                }
+        for ((leader, _) in blocking) {
+            val target =
+                intArrayOf(leader.lane - 1, leader.lane + 1)
+                    .filter { it in 0 until graph.linkLanes[link] }
+                    .firstOrNull { hasRoom(leader, lanes[link][it]) } ?: continue
+            lanes[link][leader.lane].remove(leader)
+            val queue = lanes[link][target]
+            queue.add(insertIndex(queue, leader), leader)
+            leader.lane = target
+        }
+    }
+
+    private fun hasRoom(
+        vehicle: Vehicle,
+        queue: ArrayDeque<Vehicle>,
+    ): Boolean {
+        val index = insertIndex(queue, vehicle)
+        val ahead =
+            queue.getOrNull(index - 1)?.let { it.position - it.type.length - vehicle.position }
+                ?: Double.POSITIVE_INFINITY
+        val behind =
+            queue.getOrNull(index)?.let { vehicle.position - vehicle.type.length - it.position }
+                ?: Double.POSITIVE_INFINITY
+        return ahead > ROOM && behind > ROOM
     }
 
     /** Wer gebremst wird oder frustriert ist, sucht eine andere Spur. */
@@ -68,6 +111,8 @@ internal class LaneChanger(
         const val INTERVAL_TICKS = 10L
         const val THRESHOLD = 0.4
         const val FRUSTRATED = 0.5
+        const val EMERGENCY_DISTANCE = 80.0
+        const val ROOM = 1.0
         const val SAFE_DECELERATION = 3.0
     }
 }
