@@ -8,7 +8,7 @@ Erste Stadt: **Pforzheim** (Straßennetz aus OpenStreetMap).
 
 ## Status
 
-Version 0.1 in Arbeit – M0 (Projekt-Setup) und M1 (Karte) stehen: Pforzheim wird angezeigt, Verkehr gibt es noch nicht.
+Version 0.1 in Arbeit – M0 (Projekt-Setup), M1 (Karte) und M2 (Verkehr) stehen: In Pforzheim fahren rund 2.000 Fahrzeuge mit Ampeln, Vorfahrt und Navi. Werkzeuge zum Ausbremsen gibt es noch nicht.
 
 ## Entwickeln
 
@@ -17,9 +17,13 @@ Voraussetzung: JDK 25 (Gradle lädt sich selbst über den Wrapper).
 ```bash
 ./gradlew build                  # kompilieren, Tests, ktlint, detekt
 ./gradlew :desktop-app:run       # Spiel starten
+./gradlew :desktop-app:run --args="--warmup 60"   # mit einer Stunde Vorlauf (volle Straßen)
+./gradlew :desktop-app:benchmark --args="5000 60" # Simulation ohne Oberfläche messen (Fahrten/h, Minuten)
 scripts/import-pforzheim.sh      # OSM-Extrakt laden (155 MB) und data/cities/pforzheim.city erzeugen
 ./gradlew ktlintFormat           # Formatierung automatisch korrigieren
 ```
+
+Im Spiel: Mausrad zoomt, Ziehen verschiebt, Leertaste pausiert, 1–4 wählen Tempo 1x/2x/4x/8x.
 
 | Modul         | Inhalt                                                      |
 |---------------|-------------------------------------------------------------|

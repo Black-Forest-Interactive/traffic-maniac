@@ -53,6 +53,7 @@ fun main(args: Array<String>) {
             roadKm,
         )} km
           Ampeln:      ${map.roads.nodes.count { it.trafficSignals }}
+          Zonen:       ${map.zones.groupingBy { it.kind }.eachCount()}
           Kulisse:     ${map.scenery.buildings.size} Gebäude, ${map.scenery.minorRoads.size} Nebenstraßen, ${map.scenery.green.size} Grünflächen
         """.trimIndent(),
     )

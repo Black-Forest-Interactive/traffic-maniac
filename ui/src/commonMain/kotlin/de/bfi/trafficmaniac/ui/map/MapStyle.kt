@@ -14,6 +14,8 @@ object MapStyle {
     val motorway = Color(0xFFB8B0A8)
     val roadOutline = Color(0xFF8C7B6B)
     val trafficSignal = Color(0xFFD7263D)
+    val signalGreen = Color(0xFF2DC653)
+    val signalYellow = Color(0xFFFFC300)
     val attribution = Color(0xFF555555)
     val attributionBackground = Color(0xB3FFFFFF)
 

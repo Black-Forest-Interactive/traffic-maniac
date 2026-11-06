@@ -15,11 +15,12 @@ data class CityMap(
     val bounds: Bounds,
     val roads: RoadNetwork,
     val scenery: Scenery,
+    val zones: List<Zone> = emptyList(),
     val formatVersion: Int = FORMAT_VERSION,
 ) {
     companion object {
         /** Wird erhöht, sobald sich das Dateiformat inkompatibel ändert. */
-        const val FORMAT_VERSION = 1
+        const val FORMAT_VERSION = 2
     }
 }
 

@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.osmimport
 
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.RoadClass
+import de.bfi.trafficmaniac.city.ZoneKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -37,6 +38,7 @@ class CityExtractorTest {
         extractor.way(101, longArrayOf(5, 3, 6, 7), mapOf("highway" to "secondary", "oneway" to "-1"))
         extractor.way(102, longArrayOf(10, 11, 12, 10), mapOf("building" to "yes"))
         extractor.way(103, longArrayOf(10, 12), mapOf("highway" to "residential"))
+        extractor.way(104, longArrayOf(10, 11, 12, 10), mapOf("landuse" to "residential"))
         return extractor.build()
     }
 
@@ -63,6 +65,23 @@ class CityExtractorTest {
         val from = map.roads.nodes[first.from]
         val to = map.roads.nodes[first.to]
         assertTrue(from.y < to.y)
+    }
+
+    @Test
+    fun createsZonesAndGates() {
+        val map = extract()
+        val residential = map.zones.single { it.kind == ZoneKind.RESIDENTIAL }
+
+        // Nächster Netzknoten zum Wohngebiet ist Knoten 4 (Ostende der Hauptstraße)
+        assertEquals(
+            map.roads.nodes
+                .maxBy { it.x }
+                .id,
+            residential.node,
+        )
+        assertTrue(residential.area > 0f)
+        // Westende (Knoten 1) und Nordende (Knoten 5) sind Sackgassen, aber nicht am Rand; Knoten 7 fehlt
+        assertTrue(map.zones.none { it.kind == ZoneKind.GATE })
     }
 
     @Test

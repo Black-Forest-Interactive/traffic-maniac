@@ -9,6 +9,7 @@ import de.bfi.trafficmaniac.city.RoadNetwork
 import de.bfi.trafficmaniac.city.RoadNode
 import de.bfi.trafficmaniac.city.RoadSegment
 import de.bfi.trafficmaniac.city.Scenery
+import de.bfi.trafficmaniac.city.ZoneKind
 
 /**
  * Sammelt OSM-Elemente im Ausschnitt und baut daraus eine [CityMap]:
@@ -22,6 +23,8 @@ class CityExtractor(
     private val signalNodes = HashSet<Long>()
     private val roads = ArrayList<RawRoad>()
     private val scenery = SceneryKind.entries.associateWith { ArrayList<Polyline>() }
+    private val zoneAreas = ArrayList<ZoneArea>()
+    private val motorwayNodes = HashSet<Long>()
 
     override fun node(
         id: Long,
@@ -40,6 +43,8 @@ class CityExtractor(
         tags: Map<String, String>,
     ) {
         val roadClass = tags["highway"]?.let { RoadClass.fromOsm(it) }
+        if (roadClass == RoadClass.MOTORWAY || roadClass == RoadClass.MOTORWAY_LINK) motorwayNodes.addAll(refs.asList())
+        zoneKindOf(tags)?.let { kind -> addZoneArea(kind, refs) }
         if (roadClass != null && roadClass in config.roadClasses) {
             val attributes = RoadTags.parse(tags, roadClass)
             roads += RawRoad(if (attributes.reversed) refs.reversedArray() else refs, roadClass, attributes)
@@ -58,20 +63,32 @@ class CityExtractor(
         project(refs)?.let { scenery.getValue(kind) += Polyline(simplify(it, SCENERY_TOLERANCE_METERS)) }
     }
 
+    private fun addZoneArea(
+        kind: ZoneKind,
+        refs: LongArray,
+    ) {
+        if (refs.size < MIN_AREA_POINTS || refs.first() != refs.last()) return
+        project(refs)?.let { zoneAreas += ZoneArea(kind, it) }
+    }
+
     fun build(): CityMap {
         val box = config.box
+        val bounds =
+            Bounds(
+                minX = projection.x(box.minLon),
+                minY = projection.y(box.minLat),
+                maxX = projection.x(box.maxLon),
+                maxY = projection.y(box.maxLat),
+            )
+        val (network, osmIds) = buildRoadNetwork()
+        val motorwayNodeIds = osmIds.indices.filter { osmIds[it] in motorwayNodes }.toSet()
         return CityMap(
             name = config.name,
             attribution = ATTRIBUTION,
             origin = projection.origin,
-            bounds =
-                Bounds(
-                    minX = projection.x(box.minLon),
-                    minY = projection.y(box.minLat),
-                    maxX = projection.x(box.maxLon),
-                    maxY = projection.y(box.maxLat),
-                ),
-            roads = buildRoadNetwork(),
+            bounds = bounds,
+            roads = network,
+            zones = ZoneBuilder(network, bounds).build(zoneAreas, motorwayNodeIds),
             scenery =
                 Scenery(
                     buildings = scenery.getValue(SceneryKind.BUILDING),
@@ -84,7 +101,8 @@ class CityExtractor(
         )
     }
 
-    private fun buildRoadNetwork(): RoadNetwork {
+    /** Liefert das Netz und zu jedem Netzknoten die ursprüngliche OSM-ID. */
+    private fun buildRoadNetwork(): Pair<RoadNetwork, LongArray> {
         // Wege am Rand des Ausschnitts in die Stücke zerlegen, deren Knoten bekannt sind
         val pieces = roads.flatMap { road -> splitAtMissingNodes(road.refs).map { road to it } }
 
@@ -142,7 +160,8 @@ class CityExtractor(
                 )
         }
 
-        fun build(): RoadNetwork = RoadNetwork(nodes = roadNodes.values.toList(), segments = segments)
+        fun build(): Pair<RoadNetwork, LongArray> =
+            RoadNetwork(nodes = roadNodes.values.toList(), segments = segments) to roadNodes.keys.toLongArray()
 
         private fun nodeFor(osmId: Long): RoadNode =
             roadNodes.getOrPut(osmId) {

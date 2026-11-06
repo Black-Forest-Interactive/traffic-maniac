@@ -4,3 +4,17 @@ naming:
     # Composable-Funktionen werden nach Konvention groß geschrieben
     ignoreAnnotated:
       - 'Composable'
+
+complexity:
+  TooManyFunctions:
+    # Die Simulation besteht aus wenigen, eng verzahnten Klassen; 11 Funktionen wären zu knapp
+    allowedFunctionsPerClass: 15
+    allowedFunctionsPerObject: 15
+    allowedFunctionsPerFile: 15
+
+style:
+  ReturnCount:
+    # Frühe Rückgaben (Guard Clauses) machen die Simulationslogik lesbarer
+    max: 3
+  LoopWithTooManyJumpStatements:
+    maxJumpCount: 2

@@ -27,3 +27,10 @@ compose.desktop {
 tasks.withType<JavaExec>().configureEach {
     workingDir = rootDir
 }
+
+tasks.register<JavaExec>("benchmark") {
+    description = "Misst die Simulationsleistung ohne Oberfläche (Pforzheim, eine simulierte Stunde)."
+    group = "application"
+    mainClass = "de.bfi.trafficmaniac.desktop.BenchmarkKt"
+    classpath = sourceSets["main"].runtimeClasspath
+}

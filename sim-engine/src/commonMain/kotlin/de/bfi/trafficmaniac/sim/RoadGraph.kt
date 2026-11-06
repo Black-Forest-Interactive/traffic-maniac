@@ -1,0 +1,198 @@
+package de.bfi.trafficmaniac.sim
+
+import de.bfi.trafficmaniac.city.RoadClass
+import de.bfi.trafficmaniac.city.RoadNetwork
+import de.bfi.trafficmaniac.city.RoadSegment
+import kotlin.math.atan2
+import kotlin.math.hypot
+
+/** Breite einer Fahrspur in Metern. */
+const val LANE_WIDTH_METERS = 3.5f
+
+/** Indizes im Ergebnis von [RoadGraph.locate]. */
+const val LOCATE_X = 0
+const val LOCATE_Y = 1
+const val LOCATE_DIR_X = 2
+const val LOCATE_DIR_Y = 3
+const val LOCATE_SIZE = 4
+
+/** Umrechnung km/h → m/s. */
+internal const val KMH_PER_MS = 3.6
+
+/**
+ * Gerichteter Graph für die Simulation: Aus jedem Straßenabschnitt werden ein oder zwei
+ * Fahrtrichtungen ("Links"), jede mit eigener Spuranzahl und Geometrie in Fahrtrichtung.
+ */
+class RoadGraph(
+    network: RoadNetwork,
+) {
+    val nodeCount: Int = network.nodes.size
+    val nodeX: FloatArray = FloatArray(nodeCount) { network.nodes[it].x }
+    val nodeY: FloatArray = FloatArray(nodeCount) { network.nodes[it].y }
+    val nodeHasSignals: BooleanArray = BooleanArray(nodeCount) { network.nodes[it].trafficSignals }
+
+    val linkCount: Int
+    val linkFrom: IntArray
+    val linkTo: IntArray
+    val linkLanes: IntArray
+    val linkLength: FloatArray
+
+    /** Tempolimit in m/s. */
+    val linkSpeedLimit: FloatArray
+    val linkRoadClass: Array<RoadClass>
+    val linkOneway: BooleanArray
+
+    /** Gegenrichtung desselben Abschnitts oder -1. */
+    val linkReverse: IntArray
+    val outLinks: Array<IntArray>
+    val inLinks: Array<IntArray>
+
+    private val geometry: Array<FloatArray>
+    private val cumulative: Array<FloatArray>
+
+    init {
+        val specs = ArrayList<LinkSpec>()
+        for (segment in network.segments) {
+            val coordinates = segment.geometry.coordinates
+            val forward = specs.size
+            val reverse = if (segment.isOneway) -1 else forward + 1
+            specs +=
+                LinkSpec(
+                    segment.from,
+                    segment.to,
+                    segment.lanesForward,
+                    coordinates,
+                    segment.isOneway,
+                    reverse,
+                    segment,
+                )
+            if (!segment.isOneway) {
+                specs +=
+                    LinkSpec(
+                        segment.to,
+                        segment.from,
+                        segment.lanesBackward,
+                        reversePoints(coordinates),
+                        false,
+                        forward,
+                        segment,
+                    )
+            }
+        }
+        linkCount = specs.size
+        linkFrom = IntArray(linkCount) { specs[it].from }
+        linkTo = IntArray(linkCount) { specs[it].to }
+        linkLanes = IntArray(linkCount) { specs[it].lanes.coerceAtLeast(1) }
+        linkOneway = BooleanArray(linkCount) { specs[it].oneway }
+        linkReverse = IntArray(linkCount) { specs[it].reverse }
+        linkSpeedLimit = FloatArray(linkCount) { (specs[it].segment.maxSpeedKmh / KMH_PER_MS).toFloat() }
+        linkRoadClass = Array(linkCount) { specs[it].segment.roadClass }
+        geometry = Array(linkCount) { specs[it].coordinates }
+        cumulative = Array(linkCount) { cumulativeLengths(geometry[it]) }
+        linkLength = FloatArray(linkCount) { cumulative[it].last().coerceAtLeast(MIN_LINK_LENGTH) }
+        outLinks = groupLinksByNode(linkFrom)
+        inLinks = groupLinksByNode(linkTo)
+    }
+
+    private fun groupLinksByNode(nodeOfLink: IntArray): Array<IntArray> {
+        val lists = Array(nodeCount) { ArrayList<Int>() }
+        for (link in 0 until linkCount) lists[nodeOfLink[link]] += link
+        return Array(nodeCount) { lists[it].toIntArray() }
+    }
+
+    /** Seitlicher Abstand der Spurmitte von der Mittellinie; positive Werte liegen rechts in Fahrtrichtung. */
+    fun laneOffset(
+        link: Int,
+        lane: Int,
+    ): Float =
+        if (linkOneway[link]) {
+            (lane - (linkLanes[link] - 1) / 2f) * LANE_WIDTH_METERS
+        } else {
+            (lane + HALF) * LANE_WIDTH_METERS
+        }
+
+    /**
+     * Schreibt Position und Fahrtrichtung eines Punkts [distance] Meter nach Beginn des Links auf Spur [lane] in [out]:
+     * `x, y, dirX, dirY`.
+     */
+    fun locate(
+        link: Int,
+        distance: Float,
+        lane: Int,
+        out: FloatArray,
+    ) {
+        val points = geometry[link]
+        val lengths = cumulative[link]
+        val d = distance.coerceIn(0f, lengths.last())
+        val i = segmentIndex(lengths, d)
+        val x0 = points[i * 2]
+        val y0 = points[i * 2 + 1]
+        val dx = points[(i + 1) * 2] - x0
+        val dy = points[(i + 1) * 2 + 1] - y0
+        val length = lengths[i + 1] - lengths[i]
+        val t = if (length > 0f) (d - lengths[i]) / length else 0f
+        val dirX = if (length > 0f) dx / length else 1f
+        val dirY = if (length > 0f) dy / length else 0f
+        val offset = laneOffset(link, lane)
+        out[LOCATE_X] = x0 + dx * t + dirY * offset
+        out[LOCATE_Y] = y0 + dy * t - dirX * offset
+        out[LOCATE_DIR_X] = dirX
+        out[LOCATE_DIR_Y] = dirY
+    }
+
+    /** Fahrtrichtung am Ende des Links als Winkel im Bogenmaß. */
+    fun endHeading(link: Int): Double {
+        val points = geometry[link]
+        val last = points.size / 2 - 1
+        val dy = points[last * 2 + 1] - points[(last - 1) * 2 + 1]
+        val dx = points[last * 2] - points[(last - 1) * 2]
+        return atan2(dy.toDouble(), dx.toDouble())
+    }
+
+    private class LinkSpec(
+        val from: Int,
+        val to: Int,
+        val lanes: Int,
+        val coordinates: FloatArray,
+        val oneway: Boolean,
+        val reverse: Int,
+        val segment: RoadSegment,
+    )
+
+    private companion object {
+        const val MIN_LINK_LENGTH = 1f
+        const val HALF = 0.5f
+
+        fun reversePoints(coordinates: FloatArray): FloatArray {
+            val count = coordinates.size / 2
+            return FloatArray(coordinates.size) { i ->
+                val point = count - 1 - i / 2
+                coordinates[point * 2 + i % 2]
+            }
+        }
+
+        fun cumulativeLengths(points: FloatArray): FloatArray {
+            val count = points.size / 2
+            val result = FloatArray(count)
+            for (i in 1 until count) {
+                result[i] =
+                    result[i - 1] + hypot(points[i * 2] - points[i * 2 - 2], points[i * 2 + 1] - points[i * 2 - 1])
+            }
+            return result
+        }
+
+        /** Index des Geometrie-Abschnitts, in dem [distance] liegt (binäre Suche). */
+        fun segmentIndex(
+            lengths: FloatArray,
+            distance: Float,
+        ): Int {
+            var low = 0
+            var high = lengths.size - 2
+            while (low < high) {
+                val mid = (low + high + 1) / 2
+                if (lengths[mid] <= distance) low = mid else high = mid - 1
+            }
+            return low
+        }
+    }
+}

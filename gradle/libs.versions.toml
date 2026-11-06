@@ -6,6 +6,7 @@ ktlint-gradle = "14.2.0"
 ktlint = "1.8.0"
 jvm-toolchain = "25"
 serialization = "1.12.0"
+coroutines = "1.11.0"
 osmpbf = "1.8.0"
 protobuf = "4.36.2"
 
@@ -14,6 +15,8 @@ compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.re
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
 
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-cbor = { module = "org.jetbrains.kotlinx:kotlinx-serialization-cbor", version.ref = "serialization" }
 osmpbf = { module = "org.openstreetmap.pbf:osmpbf", version.ref = "osmpbf" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }

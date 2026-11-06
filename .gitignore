@@ -22,8 +22,9 @@ hs_err_pid*
 # Lokale Konfiguration
 local.properties
 
-# OSM-Rohdaten und erzeugte Stadtdateien (zu groß fürs Repo)
+# OSM-Rohdaten und erzeugte Stadtdateien (zu groß fürs Repo, erzeugen mit scripts/import-pforzheim.sh)
 data/raw/
+data/cities/
 *.osm
 *.osm.pbf
 
