@@ -7,7 +7,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertTrue
 
 class SimulationTest {
-    private val config = SimulationConfig(seed = 7, tripsPerHour = 1_200.0)
+    private val config = SimulationConfig(seed = 7, peakTripsPerHour = 1_200.0, demandProfile = DemandProfile.CONSTANT)
 
     private fun Simulation.run(seconds: Int) = repeat(seconds * config.ticksPerSecond) { step() }
 
@@ -35,7 +35,7 @@ class SimulationTest {
 
     @Test
     fun vehiclesNeverOverlapOnALane() {
-        val simulation = Simulation(crossroads(), config.copy(tripsPerHour = 3_000.0))
+        val simulation = Simulation(crossroads(), config.copy(peakTripsPerHour = 3_000.0))
         repeat(300) {
             simulation.run(seconds = 1)
             val snapshot = simulation.snapshot()

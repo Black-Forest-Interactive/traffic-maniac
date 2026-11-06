@@ -1,5 +1,6 @@
 plugins {
     id("trafficmaniac.kmp-library")
+    id("trafficmaniac.serialization")
 }
 
 kotlin {

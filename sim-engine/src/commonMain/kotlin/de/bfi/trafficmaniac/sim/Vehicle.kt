@@ -20,7 +20,8 @@ enum class VehicleType(
 
 /**
  * Fahrerstereotyp als Parametersatz des Intelligent Driver Model (IDM).
- * Bewusst ohne Rasen: Alle halten sich ans Limit, fahren aber unterschiedlich geschickt.
+ * Einen "Raser"-Typ gibt es bewusst nicht; zu schnell fährt, wem das Limit unpassend niedrig vorkommt
+ * ([speedingFactor] verstärkt oder dämpft diese Neigung).
  */
 enum class DriverProfile(
     /** Gewünschte Zeitlücke zum Vordermann in Sekunden. */
@@ -31,14 +32,24 @@ enum class DriverProfile(
     val decelerationFactor: Double,
     /** Anteil des Tempolimits, den der Fahrer anstrebt. */
     val speedFactor: Double,
+    /** Multiplikator für die Wahrscheinlichkeit, zu schnell zu fahren. */
+    val speedingFactor: Double,
 ) {
-    NORMALO(timeHeadway = 1.4, minimumGap = 2.0, accelerationFactor = 1.0, decelerationFactor = 1.0, speedFactor = 1.0),
+    NORMALO(
+        timeHeadway = 1.4,
+        minimumGap = 2.0,
+        accelerationFactor = 1.0,
+        decelerationFactor = 1.0,
+        speedFactor = 1.0,
+        speedingFactor = 1.0,
+    ),
     DRAENGLER(
         timeHeadway = 0.8,
         minimumGap = 1.0,
         accelerationFactor = 1.4,
         decelerationFactor = 1.3,
         speedFactor = 1.0,
+        speedingFactor = 1.4,
     ),
     GEMUETLICHER(
         timeHeadway = 2.0,
@@ -46,6 +57,7 @@ enum class DriverProfile(
         accelerationFactor = 0.7,
         decelerationFactor = 0.8,
         speedFactor = 0.85,
+        speedingFactor = 0.3,
     ),
 }
 
@@ -59,7 +71,16 @@ class Vehicle internal constructor(
     internal var route: IntArray,
     val destinationNode: Int,
     val departureTime: Double,
+    /** Ortskundige kennen die festen Blitzer und bremsen davor ab. */
+    val knowsCameras: Boolean,
+    /** Wohngebiet des Fahrers oder -1 (Durchgangsverkehr). */
+    val homeZone: Int,
+    /** Fahrzeit der Route ohne Verkehr und mit den ursprünglichen Tempolimits – der Maßstab für "schnell am Ziel". */
+    val referenceSeconds: Double,
 ) {
+    /** Wie viel km/h der Fahrer auf dem aktuellen Link über dem Limit fährt (0 = hält sich daran). */
+    internal var speedingKmh = 0.0
+
     internal var routeIndex = 0
     internal var lane = 0
     internal var position = 0.0

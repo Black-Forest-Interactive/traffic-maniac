@@ -11,8 +11,9 @@ internal class VehicleFactory(
 
     fun create(
         route: IntArray,
-        destination: Int,
+        trip: Trip,
         time: Double,
+        referenceSeconds: Double,
     ): Vehicle {
         val type = if (random.nextDouble() < config.truckShare) VehicleType.TRUCK else VehicleType.CAR
         val roll = random.nextDouble()
@@ -23,7 +24,19 @@ internal class VehicleFactory(
                 else -> DriverProfile.NORMALO
             }
         val color = if (type == VehicleType.TRUCK) TRUCK_COLOR else CAR_COLORS[random.nextInt(CAR_COLORS.size)]
-        return Vehicle(nextId++, type, driver, color, route, destination, time)
+        val knowsCameras = random.nextDouble() < config.cameraAwareShare
+        return Vehicle(
+            nextId++,
+            type,
+            driver,
+            color,
+            route,
+            trip.destinationNode,
+            time,
+            knowsCameras,
+            trip.homeZone,
+            referenceSeconds,
+        )
     }
 
     private companion object {

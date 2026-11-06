@@ -22,6 +22,10 @@ class Router(
 
     fun freeFlowTime(link: Int): Float = graph.linkLength[link] / graph.linkSpeedLimit[link]
 
+    /** Fahrzeit einer Route bei freier Fahrt und den ursprünglichen Tempolimits. */
+    fun referenceTime(route: IntArray): Double =
+        route.sumOf { link -> graph.linkLength[link] * KMH_PER_MS / graph.linkPerceivedSpeedKmh[link] }
+
     /** Fließt eine gemessene Fahrzeit über den Link in die Schätzung ein (gleitender Mittelwert). */
     fun observe(
         link: Int,
@@ -29,6 +33,14 @@ class Router(
     ) {
         val observed = maxOf(seconds.toFloat(), freeFlowTime(link))
         travelTime[link] = travelTime[link] * (1 - OBSERVATION_WEIGHT) + observed * OBSERVATION_WEIGHT
+    }
+
+    /**
+     * Lässt eine Schätzung langsam zur freien Fahrt zurückkehren. Ohne das würde ein Stau auf einer
+     * Straße, die danach alle meiden, für immer im Navi stehen bleiben.
+     */
+    fun relax(link: Int) {
+        travelTime[link] = travelTime[link] * (1 - RELAX_WEIGHT) + freeFlowTime(link) * RELAX_WEIGHT
     }
 
     /** Hebt die Schätzung mindestens auf [seconds] an, z. B. bei einer langen Warteschlange. */
@@ -97,6 +109,9 @@ class Router(
 
     private companion object {
         const val OBSERVATION_WEIGHT = 0.2f
+
+        /** Bei Aufruf alle 10 s: Halbwertszeit rund 6 Minuten. */
+        const val RELAX_WEIGHT = 0.02f
     }
 
     /** Binärer Min-Heap für (Link, Priorität). */

@@ -13,10 +13,10 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
+import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.GameInfo
-import de.bfi.trafficmaniac.game.SimulationRunner
-import de.bfi.trafficmaniac.sim.Simulation
-import de.bfi.trafficmaniac.sim.SimulationConfig
+import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.GameRunner
 import de.bfi.trafficmaniac.ui.TrafficManiacApp
 import java.io.File
 
@@ -30,12 +30,53 @@ private const val TICKS_PER_MINUTE = 60
 /**
  * Startet das Spiel.
  *
- * Argumente: `[Stadtdatei] [--warmup <Minuten>] [--trips-per-hour <Anzahl>]`
+ * Argumente: `[Stadtdatei] [--warmup <Minuten>] [--peak-trips <Anzahl>]`
  * - `--warmup` simuliert vor dem Öffnen des Fensters ohne Darstellung vor (nicht auf volle Straßen warten).
- * - `--trips-per-hour` überschreibt die Verkehrsnachfrage (z. B. für Lasttests).
+ * - `--peak-trips` überschreibt die Fahrten pro Stunde in der Spitzenstunde (z. B. für Lasttests).
+ *
+ * Das Spiel beginnt montags um 5 Uhr; `--warmup 120` startet also mitten im Berufsverkehr.
  */
 fun main(args: Array<String>) {
-    val options =
+    val options = parseOptions(args)
+    val balancing = Balancing.simulationConfig()
+    val config = options.peakTrips?.let { balancing.copy(peakTripsPerHour = it) } ?: balancing
+    val cityFile = File(options.cityFile ?: DEFAULT_CITY_FILE)
+    val city: CityMap? = cityFile.takeIf { it.isFile }?.let { CityMapCodec.decode(it.readBytes()) }
+    val missingMessage =
+        "Keine Stadtdatei gefunden:\n${cityFile.absolutePath}\n\n" +
+            "Erzeugen mit: scripts/import-pforzheim.sh"
+    val game = city?.let { CityGame(it, config, Balancing.gameRules()) }
+    game?.let { repeat(options.warmupMinutes * TICKS_PER_MINUTE * config.ticksPerSecond) { _ -> it.step() } }
+    val runner = game?.let { GameRunner(it) }
+
+    application {
+        runner?.let { LaunchedEffect(it) { it.run() } }
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = city?.let { "${GameInfo.TITLE} – ${it.name}" } ?: GameInfo.TITLE,
+            state = rememberWindowState(size = DpSize(1280.dp, 800.dp)),
+            onKeyEvent = { event -> runner != null && handleKey(event, runner) },
+        ) {
+            TrafficManiacApp(
+                city = city,
+                missingCityMessage = missingMessage,
+                traffic = runner?.frames,
+                rules = game?.rules ?: GameRules(),
+                onCommand = { game?.submit(it) },
+                onContinueDay = { runner?.acknowledgeReport() },
+            )
+        }
+    }
+}
+
+private class Options(
+    val cityFile: String?,
+    val warmupMinutes: Int,
+    val peakTrips: Double?,
+)
+
+private fun parseOptions(args: Array<String>): Options {
+    val named =
         args
             .toList()
             .windowed(2)
@@ -46,39 +87,18 @@ fun main(args: Array<String>) {
             !arg.startsWith("--") &&
                 args.getOrNull(i - 1)?.startsWith("--") != true
         }
-    val warmupMinutes = options["--warmup"]?.toInt() ?: 0
-    val config =
-        options["--trips-per-hour"]?.let { SimulationConfig(tripsPerHour = it.toDouble()) } ?: SimulationConfig()
-    val cityFile = File(positional.firstOrNull() ?: DEFAULT_CITY_FILE)
-    val city: CityMap? = cityFile.takeIf { it.isFile }?.let { CityMapCodec.decode(it.readBytes()) }
-    val missingMessage =
-        "Keine Stadtdatei gefunden:\n${cityFile.absolutePath}\n\n" +
-            "Erzeugen mit: scripts/import-pforzheim.sh"
-    val simulation = city?.let { Simulation(it, config) }
-    simulation?.let { sim -> repeat(warmupMinutes * TICKS_PER_MINUTE * sim.config.ticksPerSecond) { sim.step() } }
-    val runner = simulation?.let { SimulationRunner(it) }
-
-    application {
-        runner?.let { LaunchedEffect(it) { it.run() } }
-        Window(
-            onCloseRequest = ::exitApplication,
-            title = city?.let { "${GameInfo.TITLE} – ${it.name}" } ?: GameInfo.TITLE,
-            state = rememberWindowState(size = DpSize(1280.dp, 800.dp)),
-            onKeyEvent = { event -> runner != null && handleKey(event, runner) },
-        ) {
-            TrafficManiacApp(city, missingMessage, runner?.frames, simulation?.signalMarkers)
-        }
-    }
+    return Options(positional.firstOrNull(), named["--warmup"]?.toInt() ?: 0, named["--peak-trips"]?.toDouble())
 }
 
 private fun handleKey(
     event: KeyEvent,
-    runner: SimulationRunner,
+    runner: GameRunner,
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val speed = speedKeys[event.key]
     when {
         event.key == Key.Spacebar -> runner.togglePause()
+        event.key == Key.Enter -> runner.acknowledgeReport()
         speed != null -> runner.setSpeed(speed)
         else -> return false
     }

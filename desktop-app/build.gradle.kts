@@ -8,6 +8,7 @@ plugins {
 dependencies {
     implementation(project(":ui"))
     implementation(compose.desktop.currentOs)
+    implementation(libs.kotlinx.serialization.json)
 }
 
 compose.desktop {
@@ -33,4 +34,12 @@ tasks.register<JavaExec>("benchmark") {
     group = "application"
     mainClass = "de.bfi.trafficmaniac.desktop.BenchmarkKt"
     classpath = sourceSets["main"].runtimeClasspath
+}
+
+tasks.register<JavaExec>("headless") {
+    description = "Spielt Strategien ohne Oberfläche durch (Balancing). Argumente: [Tage] [Strategien]"
+    group = "application"
+    mainClass = "de.bfi.trafficmaniac.desktop.HeadlessKt"
+    classpath = sourceSets["main"].runtimeClasspath
+    jvmArgs("-Xmx3g")
 }

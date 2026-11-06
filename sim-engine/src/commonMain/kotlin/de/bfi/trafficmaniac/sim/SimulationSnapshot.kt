@@ -17,6 +17,7 @@ data class SimulationStats(
 class SimulationSnapshot(
     val tick: Long,
     val time: Double,
+    val gameTime: GameTime,
     val ids: IntArray,
     val x: FloatArray,
     val y: FloatArray,
@@ -25,8 +26,11 @@ class SimulationSnapshot(
     val lengths: FloatArray,
     val widths: FloatArray,
     val colors: IntArray,
-    /** Zustand je Ampel in der Reihenfolge von [Simulation.signalMarkers]. */
+    /** Positionen der Ampeln; ändert sich, wenn Ampeln gebaut oder abgerissen werden. */
+    val signalMarkers: SignalMarkers,
+    /** Zustand je Ampel in der Reihenfolge von [signalMarkers]. */
     val signalStates: Array<SignalState>,
+    val cameras: List<SpeedCamera>,
     val stats: SimulationStats,
 ) {
     val vehicleCount: Int get() = ids.size

@@ -8,7 +8,15 @@ Erste Stadt: **Pforzheim** (Straßennetz aus OpenStreetMap).
 
 ## Status
 
-Version 0.1 in Arbeit – M0 (Projekt-Setup), M1 (Karte) und M2 (Verkehr) stehen: In Pforzheim fahren rund 2.000 Fahrzeuge mit Ampeln, Vorfahrt und Navi. Werkzeuge zum Ausbremsen gibt es noch nicht.
+Version 0.1 ist spielbar (Meilensteine M0–M6): Pforzheim mit rund 2.000 gleichzeitig fahrenden Autos, Tagesgang mit Berufsverkehr, Werkzeuge (Tempolimit, Ampel, Blitzer), Bußgelder, Bürgerzorn, Abwahlindex, PR, Lokalzeitung und Wertung nach 14 Spieltagen. Grafik ist noch Platzhalter.
+
+## Spielen
+
+- Mausrad zoomt, Ziehen verschiebt die Karte.
+- Unten die Werkzeugleiste: Tempolimit (mit Wert), Ampel, Blitzer, Abbauen – dann auf eine Straße bzw. Kreuzung klicken.
+- Rechts oben: Zufriedenheit der Wohngebiete, Blitzer-Statistik, Haushalt & PR.
+- Leertaste pausiert, 1–4 wählen Tempo 1x/2x/4x/8x (nachts automatisch 8× schneller), Enter schließt den Tagesabschluss.
+- Ziel: nach 14 Tagen möglichst viel Geld in der Kasse und eine gute Reputation. Wird der Bürgerzorn zu groß, ist man vorher abgewählt.
 
 ## Entwickeln
 
@@ -18,12 +26,13 @@ Voraussetzung: JDK 25 (Gradle lädt sich selbst über den Wrapper).
 ./gradlew build                  # kompilieren, Tests, ktlint, detekt
 ./gradlew :desktop-app:run       # Spiel starten
 ./gradlew :desktop-app:run --args="--warmup 60"   # mit einer Stunde Vorlauf (volle Straßen)
-./gradlew :desktop-app:benchmark --args="5000 60" # Simulation ohne Oberfläche messen (Fahrten/h, Minuten)
+./gradlew :desktop-app:benchmark --args="5000 60" # Simulation ohne Oberfläche messen (Spitzen-Fahrten/h, Minuten)
+./gradlew :desktop-app:headless --args="7"        # Strategien ohne Oberfläche durchspielen (Balancing)
 scripts/import-pforzheim.sh      # OSM-Extrakt laden (155 MB) und data/cities/pforzheim.city erzeugen
 ./gradlew ktlintFormat           # Formatierung automatisch korrigieren
 ```
 
-Im Spiel: Mausrad zoomt, Ziehen verschiebt, Leertaste pausiert, 1–4 wählen Tempo 1x/2x/4x/8x.
+Spielwerte (Kosten, Bußgelder, Schwellen für Bürgerzorn usw.) stehen in `balancing/*.json`.
 
 | Modul         | Inhalt                                                      |
 |---------------|-------------------------------------------------------------|

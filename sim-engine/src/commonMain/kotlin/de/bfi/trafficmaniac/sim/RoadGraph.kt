@@ -29,7 +29,10 @@ class RoadGraph(
     val nodeCount: Int = network.nodes.size
     val nodeX: FloatArray = FloatArray(nodeCount) { network.nodes[it].x }
     val nodeY: FloatArray = FloatArray(nodeCount) { network.nodes[it].y }
+
+    /** Ampel am Knoten. Veränderlich: Der Spieler kann Ampeln bauen und abreißen. */
     val nodeHasSignals: BooleanArray = BooleanArray(nodeCount) { network.nodes[it].trafficSignals }
+    val segmentCount: Int = network.segments.size
 
     val linkCount: Int
     val linkFrom: IntArray
@@ -37,8 +40,18 @@ class RoadGraph(
     val linkLanes: IntArray
     val linkLength: FloatArray
 
-    /** Tempolimit in m/s. */
+    /** Aktuelles Tempolimit in m/s. Veränderlich über [setSegmentSpeedLimit]. */
     val linkSpeedLimit: FloatArray
+
+    /**
+     * Tempo in km/h, das sich auf der Straße "richtig anfühlt" – das ursprüngliche Limit aus OSM.
+     * Je weiter das aktuelle Limit darunter liegt, desto mehr Fahrer sind zu schnell.
+     */
+    val linkPerceivedSpeedKmh: FloatArray
+    val linkSegment: IntArray
+
+    /** Links (Fahrtrichtungen) je Straßenabschnitt. */
+    val segmentLinks: Array<IntArray>
     val linkRoadClass: Array<RoadClass>
     val linkOneway: BooleanArray
 
@@ -86,6 +99,10 @@ class RoadGraph(
         linkOneway = BooleanArray(linkCount) { specs[it].oneway }
         linkReverse = IntArray(linkCount) { specs[it].reverse }
         linkSpeedLimit = FloatArray(linkCount) { (specs[it].segment.maxSpeedKmh / KMH_PER_MS).toFloat() }
+        linkPerceivedSpeedKmh = FloatArray(linkCount) { specs[it].segment.maxSpeedKmh.toFloat() }
+        linkSegment = IntArray(linkCount) { specs[it].segment.id }
+        segmentLinks =
+            Array(segmentCount) { segment -> (0 until linkCount).filter { linkSegment[it] == segment }.toIntArray() }
         linkRoadClass = Array(linkCount) { specs[it].segment.roadClass }
         geometry = Array(linkCount) { specs[it].coordinates }
         cumulative = Array(linkCount) { cumulativeLengths(geometry[it]) }
@@ -99,6 +116,18 @@ class RoadGraph(
         for (link in 0 until linkCount) lists[nodeOfLink[link]] += link
         return Array(nodeCount) { lists[it].toIntArray() }
     }
+
+    /** Setzt das Tempolimit beider Fahrtrichtungen; `null` stellt das ursprüngliche Limit wieder her. */
+    fun setSegmentSpeedLimit(
+        segment: Int,
+        kmh: Int?,
+    ) {
+        for (link in segmentLinks[segment]) {
+            linkSpeedLimit[link] = ((kmh?.toFloat() ?: linkPerceivedSpeedKmh[link]) / KMH_PER_MS).toFloat()
+        }
+    }
+
+    fun speedLimitKmh(link: Int): Float = (linkSpeedLimit[link] * KMH_PER_MS).toFloat()
 
     /** Seitlicher Abstand der Spurmitte von der Mittellinie; positive Werte liegen rechts in Fahrtrichtung. */
     fun laneOffset(

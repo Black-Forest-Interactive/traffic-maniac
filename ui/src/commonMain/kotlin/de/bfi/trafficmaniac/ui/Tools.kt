@@ -1,0 +1,117 @@
+package de.bfi.trafficmaniac.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.formatEuro
+
+/** Werkzeuge der Werkzeugleiste. */
+enum class Tool(
+    val label: String,
+) {
+    LOOK("Ansehen"),
+    SPEED_LIMIT("Tempolimit"),
+    SIGNAL("Ampel"),
+    CAMERA("Blitzer"),
+    REMOVE("Abbauen"),
+}
+
+/** Gewählter Wert des Tempolimit-Werkzeugs; `null` = ursprüngliches Limit wiederherstellen. */
+data class ToolSelection(
+    val tool: Tool = Tool.LOOK,
+    val speedLimit: Int? = DEFAULT_SPEED_LIMIT,
+) {
+    companion object {
+        const val DEFAULT_SPEED_LIMIT = 30
+    }
+}
+
+private val BarBackground = Color(0xE61D1F2E)
+private val ButtonIdle = Color(0xFF3A3D52)
+private val ButtonActive = Color(0xFFE63946)
+private val TextColor = Color(0xFFF1F1F1)
+private const val WALKING_SPEED = 7
+
+/** Werkzeugleiste am unteren Rand: Werkzeug wählen, beim Tempolimit zusätzlich den Wert. */
+@Composable
+fun ToolBar(
+    selection: ToolSelection,
+    rules: GameRules,
+    onSelect: (ToolSelection) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .padding(12.dp)
+            .background(BarBackground, RoundedCornerShape(10.dp))
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (selection.tool == Tool.SPEED_LIMIT) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                for (kmh in rules.speedLimitOptions) {
+                    ToolButton(if (kmh == WALKING_SPEED) "Schritt" else "$kmh", selection.speedLimit == kmh) {
+                        onSelect(selection.copy(speedLimit = kmh))
+                    }
+                }
+                ToolButton("Original", selection.speedLimit == null) { onSelect(selection.copy(speedLimit = null)) }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (tool in Tool.entries) {
+                ToolButton(
+                    "${tool.label}${costHint(tool, rules)}",
+                    selection.tool == tool,
+                ) { onSelect(selection.copy(tool = tool)) }
+            }
+        }
+    }
+}
+
+private fun costHint(
+    tool: Tool,
+    rules: GameRules,
+): String =
+    when (tool) {
+        Tool.SPEED_LIMIT -> " (${formatEuro(rules.speedLimitSignCost)})"
+        Tool.SIGNAL -> " (${formatEuro(rules.signalCost)})"
+        Tool.CAMERA -> " (${formatEuro(rules.cameraCost)})"
+        else -> ""
+    }
+
+@Composable
+private fun ToolButton(
+    label: String,
+    active: Boolean,
+    onClick: () -> Unit,
+) {
+    BasicText(
+        label,
+        style =
+            TextStyle(
+                color = TextColor,
+                fontSize = 13.sp,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+            ),
+        modifier =
+            Modifier
+                .background(if (active) ButtonActive else ButtonIdle, RoundedCornerShape(6.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+    )
+}

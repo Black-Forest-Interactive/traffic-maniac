@@ -18,8 +18,10 @@ class Simulation(
 ) {
     val graph = RoadGraph(city.roads)
     private val random = Random(config.seed)
-    val signals = SignalSystem(graph, random)
-    val signalMarkers: SignalMarkers = SignalMarkers.create(graph, signals)
+    val signals = SignalSystem(graph)
+
+    /** Tempo, Überschreitungen und Blitzer. */
+    val speedControl = SpeedControl(graph, config, random)
     val clock = SimulationClock(config.ticksPerSecond)
 
     private val router = Router(graph)
@@ -37,8 +39,20 @@ class Simulation(
     private var completedTrips = 0
     private var stuckRemovals = 0
     private var totalTripSeconds = 0.0
+    private val dayStatistics = DayStatistics()
 
+    /** Beendete Fahrten seit dem letzten Abholen (für die Zufriedenheit der Bürger). */
+    val finishedTrips = TripLog()
+    private val reports = ArrayList<DayReport>()
+
+    /** Simulierte Sekunden seit dem Start. */
     val time: Double get() = clock.elapsedSeconds
+
+    /** Wochentag und Uhrzeit. */
+    val gameTime: GameTime get() = GameTime.at(time, config.startSecondOfDay)
+
+    /** Bilanzen aller abgeschlossenen Tage, ältester zuerst. */
+    val dayReports: List<DayReport> get() = reports
 
     fun step() {
         generateTrips()
@@ -49,20 +63,24 @@ class Simulation(
         laneChanger.changeLanes(clock.tick)
         if (clock.tick % QUEUE_UPDATE_TICKS == 0L) updateQueueTravelTimes()
         if (vehicles.any { !it.active }) vehicles.removeAll { !it.active }
+        val before = gameTime
+        dayStatistics.sampleVehicles(vehicles.size, before)
         clock.advance()
+        if (gameTime.day != before.day) reports += dayStatistics.finish(before.day, before.weekday)
     }
 
     // --- Fahrten erzeugen und einfahren -------------------------------------------------------------
 
     private fun generateTrips() {
         if (trips.isEmpty) return
-        tripAccumulator += config.tripsPerHour / SECONDS_PER_HOUR * dt
+        val now = gameTime
+        tripAccumulator += config.peakTripsPerHour * config.demandProfile.factor(now) / SECONDS_PER_HOUR * dt
         while (tripAccumulator >= 1) {
             tripAccumulator--
-            val trip = trips.next()
+            val trip = trips.next(now)
             val route = router.route(trip.originNode, trip.destinationNode)
             if (route != null && pending.size < config.maxPendingVehicles) {
-                pending.addLast(factory.create(route, trip.destinationNode, time))
+                pending.addLast(factory.create(route, trip, time, router.referenceTime(route)))
             }
         }
     }
@@ -78,8 +96,10 @@ class Simulation(
                 vehicle.position = vehicle.type.length.toDouble()
                 vehicle.speed = min(ENTRY_SPEED, graph.linkSpeedLimit[link].toDouble())
                 vehicle.linkEnterTime = time
+                speedControl.roll(vehicle, link)
                 lanes[link][lane].addLast(vehicle)
                 vehicles += vehicle
+                dayStatistics.tripStarted(gameTime)
             } else {
                 pending.addLast(vehicle)
             }
@@ -93,7 +113,7 @@ class Simulation(
             for (queue in lanes[link]) {
                 for (i in queue.indices) {
                     val vehicle = queue[i]
-                    val desired = min(graph.linkSpeedLimit[link] * vehicle.driver.speedFactor, vehicle.type.maxSpeed)
+                    val desired = speedControl.desiredSpeed(vehicle, link)
                     vehicle.acceleration =
                         if (i > 0) {
                             val leader = queue[i - 1]
@@ -152,10 +172,14 @@ class Simulation(
                     null
                 }
             val offset = if (i > 0) 0.0 else graph.linkLength[link].toDouble()
+            val oldPosition = vehicle.position
             moveVehicle(vehicle, leader, offset)
+            speedControl.measure(vehicle, link, oldPosition)
         }
         if (queue.any { !it.active }) {
-            stuckRemovals += queue.count { !it.active }
+            val stuck = queue.count { !it.active }
+            stuckRemovals += stuck
+            repeat(stuck) { dayStatistics.vehicleStuck() }
             queue.removeAll { !it.active }
         }
     }
@@ -218,6 +242,7 @@ class Simulation(
         vehicle.lane = lane
         vehicle.position = overflow
         vehicle.linkEnterTime = time
+        speedControl.roll(vehicle, next)
         lanes[next][lane].addLast(vehicle)
         if (time - vehicle.lastRerouteTime > config.rerouteIntervalSeconds) reroute(vehicle)
         return true
@@ -227,15 +252,20 @@ class Simulation(
         vehicle.active = false
         completedTrips++
         totalTripSeconds += time - vehicle.departureTime
+        finishedTrips.add(TripResult(vehicle.homeZone, time - vehicle.departureTime, vehicle.referenceSeconds))
+        dayStatistics.tripCompleted(time - vehicle.departureTime)
     }
 
     // --- Navi ---------------------------------------------------------------------------------------------
 
-    /** Lange Warteschlangen fließen schon vor der ersten Ausfahrt in die Fahrzeitschätzung ein. */
+    /**
+     * Lange Warteschlangen fließen schon vor der ersten Ausfahrt in die Fahrzeitschätzung ein;
+     * auf Links ohne Stau kehrt die Schätzung langsam zur freien Fahrt zurück.
+     */
     private fun updateQueueTravelTimes() {
         for (link in 0 until graph.linkCount) {
             val wait = lanes.longestFrontWait(link)
-            if (wait > 0) router.raiseTo(link, router.freeFlowTime(link) + wait)
+            if (wait > 0) router.raiseTo(link, router.freeFlowTime(link) + wait) else router.relax(link)
         }
     }
 
@@ -267,6 +297,7 @@ class Simulation(
         return SimulationSnapshot(
             tick = clock.tick,
             time = time,
+            gameTime = gameTime,
             ids = IntArray(count) { vehicles[it].id },
             x = positions[LOCATE_X],
             y = positions[LOCATE_Y],
@@ -275,7 +306,9 @@ class Simulation(
             lengths = FloatArray(count) { vehicles[it].type.length },
             widths = FloatArray(count) { vehicles[it].type.width },
             colors = IntArray(count) { vehicles[it].color },
-            signalStates = Array(signalMarkers.links.size) { signals.state(signalMarkers.links[it], time) },
+            signalMarkers = signals.markers,
+            signalStates = Array(signals.markers.links.size) { signals.state(signals.markers.links[it], time) },
+            cameras = speedControl.cameras.toList(),
             stats = stats(),
         )
     }

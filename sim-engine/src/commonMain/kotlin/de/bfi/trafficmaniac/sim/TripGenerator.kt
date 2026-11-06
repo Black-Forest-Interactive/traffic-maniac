@@ -8,12 +8,29 @@ import kotlin.random.Random
 data class Trip(
     val originNode: Int,
     val destinationNode: Int,
+    /** Wohngebiet, aus dem der Fahrer stammt (Start oder Ziel), oder -1 bei Durchgangsverkehr. */
+    val homeZone: Int = -1,
+)
+
+/** Gruppen von Zonen, zwischen denen Fahrten stattfinden. */
+internal enum class ZoneGroup {
+    HOME,
+    WORK,
+    SHOP,
+    ANY,
+}
+
+/** Anteil [share] der Fahrten führt von [from] nach [to]. */
+internal class TripPattern(
+    val from: ZoneGroup,
+    val to: ZoneGroup,
+    val share: Double,
 )
 
 /**
- * Würfelt Fahrten zwischen den Zonen. Startgewicht: vor allem Wohngebiete, Zielgewicht: vor allem Arbeit
- * und Einkauf. Ein fester Anteil sind Durchgangs-, Pendler- und Autobahnverkehr über die Stadtränder.
- * Nur Zonen im größten zusammenhängenden Teil des Netzes werden genutzt.
+ * Würfelt Fahrten zwischen den Zonen – abhängig von Wochentag und Uhrzeit: morgens von zu Hause zur Arbeit,
+ * abends zurück, mittags und samstags zum Einkaufen. Ein fester Anteil ist Durchgangs-, Pendler- und
+ * Autobahnverkehr über die Stadtränder. Nur Zonen im größten zusammenhängenden Teil des Netzes werden genutzt.
  */
 class TripGenerator(
     zones: List<Zone>,
@@ -23,35 +40,37 @@ class TripGenerator(
     private val usable = reachableNodes(graph).let { reachable -> zones.filter { it.node in reachable } }
     private val gates = usable.filter { it.kind == ZoneKind.GATE }
     private val areas = usable.filter { it.kind != ZoneKind.GATE }
-    private val origins =
-        WeightedChoice(areas) {
-            if (it.kind ==
-                ZoneKind.RESIDENTIAL
-            ) {
-                it.area
-            } else {
-                it.area * SECONDARY_WEIGHT
-            }
-        }
-    private val destinations =
-        WeightedChoice(areas) {
-            if (it.kind ==
-                ZoneKind.RESIDENTIAL
-            ) {
-                it.area * SECONDARY_WEIGHT
-            } else {
-                it.area
-            }
-        }
+    private val groups =
+        mapOf(
+            ZoneGroup.HOME to WeightedChoice(areas) { if (it.kind == ZoneKind.RESIDENTIAL) it.area else 0f },
+            ZoneGroup.WORK to WeightedChoice(areas) { if (it.kind in WORK_KINDS) it.area else it.area * MINOR_WEIGHT },
+            ZoneGroup.SHOP to WeightedChoice(areas) { if (it.kind in SHOP_KINDS) it.area else it.area * MINOR_WEIGHT },
+            ZoneGroup.ANY to WeightedChoice(areas) { it.area },
+        )
 
     val isEmpty: Boolean get() = areas.isEmpty()
 
-    fun next(): Trip {
+    fun next(time: GameTime = GameTime(0, 0.0)): Trip {
+        val pattern = pick(patternsFor(time))
         val throughOrigin = gates.isNotEmpty() && random.nextDouble() < GATE_SHARE
         val throughDestination = gates.isNotEmpty() && random.nextDouble() < GATE_SHARE
-        val origin = if (throughOrigin) gates.random(random) else origins.pick(random)
-        val destination = if (throughDestination) gates.random(random) else destinations.pick(random)
-        return Trip(origin.node, destination.node)
+        val origin = if (throughOrigin) gates.random(random) else groups.getValue(pattern.from).pick(random)
+        val destination = if (throughDestination) gates.random(random) else groups.getValue(pattern.to).pick(random)
+        val home =
+            when {
+                origin.kind == ZoneKind.RESIDENTIAL -> origin.id
+                destination.kind == ZoneKind.RESIDENTIAL -> destination.id
+                else -> -1
+            }
+        return Trip(origin.node, destination.node, home)
+    }
+
+    private fun pick(patterns: List<TripPattern>): TripPattern {
+        var roll = random.nextDouble() * patterns.sumOf { it.share }
+        return patterns.firstOrNull {
+            roll -= it.share
+            roll <= 0
+        } ?: patterns.last()
     }
 
     private class WeightedChoice(
@@ -69,6 +88,8 @@ class TripGenerator(
         }
 
         fun pick(random: Random): Zone {
+            // Leere Gruppe (z. B. Stadt ohne Gewerbe): auf alle Flächen ausweichen
+            if (cumulative.isEmpty() || cumulative.last() <= 0.0) return zones[random.nextInt(zones.size)]
             val target = random.nextDouble() * cumulative.last()
             val index = cumulative.indexOfFirst { it >= target }
             return zones[if (index >= 0) index else zones.lastIndex]
@@ -79,8 +100,54 @@ class TripGenerator(
         /** Anteil der Fahrten, die am Stadtrand beginnen bzw. enden. */
         const val GATE_SHARE = 0.25
 
-        /** Gewichtung der "falschen" Richtung, z. B. Fahrten von Gewerbe- zu Gewerbegebiet. */
-        const val SECONDARY_WEIGHT = 0.3f
+        /** Gewicht von Flächen, die nicht zum eigentlichen Zweck passen (z. B. Wohngebiet als Einkaufsziel). */
+        const val MINOR_WEIGHT = 0.1f
+        val WORK_KINDS = setOf(ZoneKind.COMMERCIAL, ZoneKind.INDUSTRIAL, ZoneKind.RETAIL)
+        val SHOP_KINDS = setOf(ZoneKind.RETAIL, ZoneKind.COMMERCIAL)
+
+        private const val MORNING_START = 5
+        private const val MORNING_END = 10
+        private const val EVENING_START = 15
+        private const val EVENING_END = 20
+        private const val SHOPPING_START = 8
+        private const val SHOPPING_END = 19
+
+        private val mixed = listOf(TripPattern(ZoneGroup.ANY, ZoneGroup.ANY, 1.0))
+        private val workdayMorning =
+            listOf(
+                TripPattern(ZoneGroup.HOME, ZoneGroup.WORK, 0.7),
+                TripPattern(ZoneGroup.HOME, ZoneGroup.SHOP, 0.1),
+                TripPattern(ZoneGroup.ANY, ZoneGroup.ANY, 0.2),
+            )
+        private val workdayMidday =
+            listOf(
+                TripPattern(ZoneGroup.ANY, ZoneGroup.SHOP, 0.4),
+                TripPattern(ZoneGroup.ANY, ZoneGroup.ANY, 0.6),
+            )
+        private val workdayEvening =
+            listOf(
+                TripPattern(ZoneGroup.WORK, ZoneGroup.HOME, 0.6),
+                TripPattern(ZoneGroup.SHOP, ZoneGroup.HOME, 0.2),
+                TripPattern(ZoneGroup.ANY, ZoneGroup.ANY, 0.2),
+            )
+        private val saturdayShopping =
+            listOf(
+                TripPattern(ZoneGroup.HOME, ZoneGroup.SHOP, 0.5),
+                TripPattern(ZoneGroup.SHOP, ZoneGroup.HOME, 0.3),
+                TripPattern(ZoneGroup.ANY, ZoneGroup.ANY, 0.2),
+            )
+
+        private fun patternsFor(time: GameTime): List<TripPattern> {
+            val hour = time.hour
+            return when {
+                time.weekday == Weekday.SATURDAY && hour in SHOPPING_START until SHOPPING_END -> saturdayShopping
+                !time.weekday.isWorkday -> mixed
+                hour in MORNING_START until MORNING_END -> workdayMorning
+                hour in EVENING_START until EVENING_END -> workdayEvening
+                hour in MORNING_END until EVENING_START -> workdayMidday
+                else -> mixed
+            }
+        }
 
         /** Knoten der größten stark zusammenhängenden Komponente (Kosaraju). */
         fun reachableNodes(graph: RoadGraph): Set<Int> {

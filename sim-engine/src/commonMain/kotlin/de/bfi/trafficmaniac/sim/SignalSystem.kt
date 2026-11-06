@@ -3,7 +3,6 @@ package de.bfi.trafficmaniac.sim
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.hypot
-import kotlin.random.Random
 
 enum class SignalState {
     NONE,
@@ -17,20 +16,34 @@ enum class SignalState {
  * nahe beieinander liegende Ampelknoten werden deshalb zu einer Anlage zusammengefasst.
  * Jede Anlage hat zwei Phasen: Zufahrten etwa entlang einer Achse sind gemeinsam grün.
  * Gibt es nur eine Achse (z. B. Fußgängerampel), folgt auf die Autophase eine kurze Fußgängerphase.
+ *
+ * Der Versatz der Programme hängt nur von den Knoten ab – baut der Spieler eine Ampel, ändern sich
+ * die übrigen Anlagen nicht.
  */
 class SignalSystem(
     private val graph: RoadGraph,
-    random: Random,
 ) {
-    private val linkGroup = IntArray(graph.linkCount) { NO_GROUP }
+    private val linkGroup = IntArray(graph.linkCount)
     private val linkPhase = IntArray(graph.linkCount)
-    private val groupOffset: DoubleArray
-    private val groupCycle: DoubleArray
+    private var groupOffset = DoubleArray(0)
+    private var groupCycle = DoubleArray(0)
 
     /** Alle Links, deren Ende von einer Ampel geregelt wird. */
-    val controlledLinks: IntArray
+    var controlledLinks: IntArray = IntArray(0)
+        private set
+
+    /** Positionen der Ampeln für die Darstellung. */
+    var markers: SignalMarkers = SignalMarkers(IntArray(0), FloatArray(0), FloatArray(0))
+        private set
 
     init {
+        rebuild()
+    }
+
+    /** Berechnet alle Anlagen neu, z. B. nachdem [RoadGraph.nodeHasSignals] geändert wurde. */
+    fun rebuild() {
+        linkGroup.fill(NO_GROUP)
+        linkPhase.fill(0)
         val groups = clusterSignalNodes()
         val controlled = ArrayList<Int>()
         val twoPhase = BooleanArray(groups.size)
@@ -42,7 +55,17 @@ class SignalSystem(
         controlledLinks = controlled.toIntArray()
         groupCycle =
             DoubleArray(groups.size) { if (twoPhase[it]) CYCLE_SECONDS else PHASE_SECONDS + PEDESTRIAN_SECONDS }
-        groupOffset = DoubleArray(groups.size) { random.nextDouble() * groupCycle[it] }
+        groupOffset = DoubleArray(groups.size) { offsetFraction(groups[it].min()) * groupCycle[it] }
+        markers = SignalMarkers.create(graph, this)
+    }
+
+    /** Baut ([enabled]) oder entfernt eine Ampel an [node] und berechnet die Anlagen neu. */
+    fun setSignal(
+        node: Int,
+        enabled: Boolean,
+    ) {
+        graph.nodeHasSignals[node] = enabled
+        rebuild()
     }
 
     fun isControlled(link: Int): Boolean = linkGroup[link] != NO_GROUP
@@ -108,6 +131,9 @@ class SignalSystem(
         return approaches
     }
 
+    /** Pseudozufälliger, aber fester Anteil 0..1 je Knoten (Fibonacci-Hashing). */
+    private fun offsetFraction(node: Int): Double = (node * GOLDEN_RATIO_FRACTION) % 1.0
+
     /** Richtung ohne Vorzeichen: Gegenverkehr liegt auf derselben Achse. */
     private fun axis(heading: Double): Double = ((heading % PI) + PI) % PI
 
@@ -122,5 +148,6 @@ class SignalSystem(
         const val PEDESTRIAN_SECONDS = 12.0
         const val CLUSTER_RADIUS = 35f
         private const val NO_GROUP = -1
+        private const val GOLDEN_RATIO_FRACTION = 0.6180339887
     }
 }

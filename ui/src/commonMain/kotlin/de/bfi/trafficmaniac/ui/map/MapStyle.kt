@@ -16,6 +16,10 @@ object MapStyle {
     val trafficSignal = Color(0xFFD7263D)
     val signalGreen = Color(0xFF2DC653)
     val signalYellow = Color(0xFFFFC300)
+    val camera = Color(0xFF22252F)
+    val moodGood = Color(0xFF2DC653)
+    val moodBad = Color(0xFFD7263D)
+    val cameraFlash = Color(0xFFFFF3B0)
     val attribution = Color(0xFF555555)
     val attributionBackground = Color(0xB3FFFFFF)
 

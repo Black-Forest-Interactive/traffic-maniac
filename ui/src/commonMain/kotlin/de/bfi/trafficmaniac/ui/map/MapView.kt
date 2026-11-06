@@ -3,6 +3,7 @@ package de.bfi.trafficmaniac.ui.map
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -31,12 +33,13 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.game.TrafficFrame
-import de.bfi.trafficmaniac.sim.SignalMarkers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -46,6 +49,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private const val ZOOM_PER_SCROLL_STEP = 1.2f
 private const val NANOS_PER_SECOND = 1_000_000_000L
+private const val WALKING_SPEED_KMH = 7
 private val RERENDER_DELAY = 150.milliseconds
 
 /**
@@ -54,54 +58,38 @@ private val RERENDER_DELAY = 150.milliseconds
  *
  * [traffic] wird erst beim Zeichnen abgefragt: So muss die Oberfläche nicht bei jedem Simulationsschritt
  * neu aufgebaut werden, sondern nur der Verkehrs-Layer in jedem Bildschirm-Frame neu gezeichnet.
+ *
+ * [onMapClick] erhält die Weltkoordinaten eines Klicks und die aktuelle Größe eines Pixels in Metern.
  */
 @Composable
 fun MapView(
     city: CityMap,
     modifier: Modifier = Modifier,
     traffic: (() -> TrafficFrame?)? = null,
-    signalMarkers: SignalMarkers? = null,
     onFps: (Int) -> Unit = {},
+    onMapClick: (x: Float, y: Float, metersPerPixel: Float) -> Unit = { _, _, _ -> },
+    showMoods: Boolean = false,
 ) {
     val layers = remember(city) { MapLayers(city) }
+    val picker = remember(city) { MapPicker(city) }
+    val textMeasurer = rememberTextMeasurer()
+    val clickHandler by rememberUpdatedState(onMapClick)
     val frameTick = rememberFrameTick(onFps)
-    var camera by remember(city) { mutableStateOf<Camera?>(null) }
-    var viewportWidth by remember { mutableStateOf(0f) }
-    var viewportHeight by remember { mutableStateOf(0f) }
+    val view = remember(city) { ViewState() }
+    val camera = view.camera
 
     Box(
         modifier
             .fillMaxSize()
             .background(MapStyle.land)
             .onSizeChanged {
-                viewportWidth = it.width.toFloat()
-                viewportHeight = it.height.toFloat()
-                if (camera == null && it.width > 0) camera = Camera.fit(city.bounds, viewportWidth, viewportHeight)
-            }.pointerInput(city) {
-                detectDragGestures { _, drag -> camera = camera?.pan(drag.x, drag.y) }
-            }.pointerInput(city) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull()
-                        if (event.type == PointerEventType.Scroll && change != null) {
-                            val factor = ZOOM_PER_SCROLL_STEP.pow(-change.scrollDelta.y)
-                            camera =
-                                camera?.zoomAt(
-                                    factor,
-                                    change.position.x,
-                                    change.position.y,
-                                    viewportWidth,
-                                    viewportHeight,
-                                )
-                            change.consume()
-                        }
-                    }
-                }
-            },
+                view.width = it.width.toFloat()
+                view.height = it.height.toFloat()
+                if (view.camera == null && it.width > 0) view.camera = Camera.fit(city.bounds, view.width, view.height)
+            }.mapGestures(city, view) { x, y, metersPerPixel -> clickHandler(x, y, metersPerPixel) },
     ) {
         val currentCamera = camera
-        val renderedMap = rememberRenderedMap(layers, currentCamera, viewportWidth, viewportHeight, traffic == null)
+        val renderedMap = rememberRenderedMap(layers, currentCamera, view.width, view.height, traffic == null)
         Canvas(Modifier.fillMaxSize()) {
             if (currentCamera != null) renderedMap?.draw(this, currentCamera)
         }
@@ -110,7 +98,10 @@ fun MapView(
             Canvas(Modifier.fillMaxSize()) {
                 frameTick.value
                 val frame = traffic()
-                if (currentCamera != null && frame != null) drawTraffic(currentCamera, frame, signalMarkers)
+                if (currentCamera != null && frame != null) {
+                    if (showMoods) inWorld(currentCamera) { drawMoods(frame.game.zoneMoods, currentCamera.scale) }
+                    drawTraffic(currentCamera, frame, picker, textMeasurer)
+                }
             }
         }
         BasicText(
@@ -124,6 +115,46 @@ fun MapView(
         )
     }
 }
+
+/** Kamera und Fenstergröße der Karte (beobachtbarer Compose-Zustand). */
+private class ViewState {
+    var camera by mutableStateOf<Camera?>(null)
+    var width by mutableStateOf(0f)
+    var height by mutableStateOf(0f)
+}
+
+/** Klick (Werkzeug), Ziehen (Verschieben) und Mausrad (Zoom um den Mauszeiger). */
+private fun Modifier.mapGestures(
+    key: Any,
+    view: ViewState,
+    onClick: (x: Float, y: Float, metersPerPixel: Float) -> Unit,
+): Modifier =
+    pointerInput(key) {
+        detectTapGestures { position ->
+            view.camera?.let {
+                onClick(
+                    it.screenToWorldX(position.x, view.width),
+                    it.screenToWorldY(position.y, view.height),
+                    1f / it.scale,
+                )
+            }
+        }
+    }.pointerInput(key) {
+        detectDragGestures { _, drag -> view.camera = view.camera?.pan(drag.x, drag.y) }
+    }.pointerInput(key) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull()
+                if (event.type == PointerEventType.Scroll && change != null) {
+                    val factor = ZOOM_PER_SCROLL_STEP.pow(-change.scrollDelta.y)
+                    view.camera =
+                        view.camera?.zoomAt(factor, change.position.x, change.position.y, view.width, view.height)
+                    change.consume()
+                }
+            }
+        }
+    }
 
 /**
  * Rastert die statische Karte im Hintergrund, sobald sich Kamera oder Fenstergröße ändern.
@@ -207,12 +238,20 @@ internal fun DrawScope.drawStaticMap(
 private fun DrawScope.drawTraffic(
     camera: Camera,
     traffic: TrafficFrame,
-    signalMarkers: SignalMarkers?,
+    picker: MapPicker,
+    textMeasurer: TextMeasurer,
 ) = inWorld(camera) {
     drawVehicles(traffic, camera.scale)
-    if (signalMarkers != null && camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
-        drawSignals(signalMarkers, traffic.current.signalStates, camera.scale)
+    if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
+        drawSignals(traffic.current.signalMarkers, traffic.current.signalStates, camera.scale)
     }
+    drawCameras(traffic.current.cameras, camera.scale)
+    val signs =
+        traffic.game.speedLimits.map { (segment, kmh) ->
+            val (x, y) = picker.midpoint(segment)
+            SpeedSign(x, y, if (kmh <= WALKING_SPEED_KMH) "S" else "$kmh")
+        }
+    drawSpeedSigns(signs, camera.scale, textMeasurer)
 }
 
 private fun DrawScope.drawSceneryLines(

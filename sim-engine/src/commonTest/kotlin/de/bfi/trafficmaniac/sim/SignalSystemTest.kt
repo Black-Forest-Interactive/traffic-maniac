@@ -1,6 +1,5 @@
 package de.bfi.trafficmaniac.sim
 
-import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -8,7 +7,7 @@ import kotlin.test.assertTrue
 
 class SignalSystemTest {
     private val graph = RoadGraph(crossroads().roads)
-    private val signals = SignalSystem(graph, Random(1))
+    private val signals = SignalSystem(graph)
 
     private fun approachFrom(node: Int) = graph.inLinks[0].single { graph.linkFrom[it] == node }
 
