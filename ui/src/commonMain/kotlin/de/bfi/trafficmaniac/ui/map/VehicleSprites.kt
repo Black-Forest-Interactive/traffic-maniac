@@ -130,6 +130,35 @@ internal class FlowLayer(
         }
 }
 
+/** Ein einzelnes Sprite, nach Osten fahrend, mit der Mitte bei (0, 0) – für die Legende. */
+internal fun DrawScope.drawVehicleSprite(
+    type: VehicleType,
+    role: VehicleRole,
+    color: Color,
+    flags: Int,
+    trouble: IncidentKind?,
+    scale: Float,
+    seconds: Double,
+) {
+    val length = type.length * SPRITE_LENGTH_FACTOR
+    val vehicle =
+        VehicleView(
+            id = 0,
+            x = length / 2,
+            y = 0f,
+            dirX = 1f,
+            dirY = 0f,
+            length = length,
+            width = type.width * SPRITE_WIDTH_FACTOR,
+            color = color,
+            flags = flags,
+            type = type,
+            role = role,
+            trouble = trouble,
+        )
+    SpriteBuilder(scale, seconds).draw(this, vehicle)
+}
+
 /** Ein Fahrzeug, fertig interpoliert. [x], [y] ist die Front, [dirX], [dirY] die Fahrtrichtung. */
 private class VehicleView(
     val id: Int,
@@ -199,15 +228,18 @@ private class SpriteBuilder(
 
     /** Karosserie mit abgerundeten Ecken (abgeschrägt), Farbe nach Rolle. */
     private fun DrawScope.drawBody(v: VehicleView) {
+        // Einsatzfahrzeuge im deutschen Stil: RTW weiß, Polizei silber, Feuerwehr feuerrot
         val body =
             when (v.role) {
                 VehicleRole.AMBULANCE -> Color.White
+                VehicleRole.POLICE -> POLICE_SILVER
+                VehicleRole.FIRE_BRIGADE -> FIRE_RED
                 VehicleRole.TOW_TRUCK, VehicleRole.STREET_SERVICE -> SERVICE_ORANGE
                 else -> v.color
             }
         when (v.type) {
             VehicleType.TRUCK -> {
-                quad(v, 0f, CARGO_END, -1f, 1f, CARGO)
+                quad(v, 0f, CARGO_END, -1f, 1f, if (v.role == VehicleRole.FIRE_BRIGADE) FIRE_RED else CARGO)
                 quad(v, CAB_START, 1f, -CAB_WIDTH, CAB_WIDTH, body)
             }
 
@@ -237,11 +269,39 @@ private class SpriteBuilder(
                 outlined = false,
             )
         }
+
+        // Farbige Streifen längs an beiden Fahrzeugseiten
+        fun sideBands(
+            v: VehicleView,
+            color: Color,
+        ) {
+            quad(v, BAND_START, BAND_END, -1f, -BAND_INNER, color, outlined = false)
+            quad(v, BAND_START, BAND_END, BAND_INNER, 1f, color, outlined = false)
+        }
         when (v.role) {
-            VehicleRole.AMBULANCE -> quad(v, STRIPE_START, STRIPE_END, -1f, 1f, SIREN_RED, outlined = false)
-            VehicleRole.POLICE -> quad(v, STRIPE_START, STRIPE_END, -1f, 1f, Color.White, outlined = false)
-            VehicleRole.TOW_TRUCK -> drawLine(MapStyle.ink, v.point(0f, 0f), v.point(-HOOK, 0f), v.width * HOOK_WIDTH)
-            else -> Unit
+            // Leuchtrote Streifen längs an beiden Seiten
+            VehicleRole.AMBULANCE -> {
+                sideBands(v, RESCUE_RED)
+            }
+
+            // Blaues Band längs, wie beim blau-silbernen Streifenwagen
+            VehicleRole.POLICE -> {
+                sideBands(v, POLICE_BLUE)
+            }
+
+            VehicleRole.FIRE_BRIGADE -> {
+                sideBands(v, Color.White)
+                // Steckleiter auf dem Dach
+                quad(v, LADDER_START, CARGO_END, -LADDER_WIDTH, LADDER_WIDTH, LADDER_SILVER, outlined = false)
+            }
+
+            VehicleRole.TOW_TRUCK -> {
+                drawLine(MapStyle.ink, v.point(0f, 0f), v.point(-HOOK, 0f), v.width * HOOK_WIDTH)
+            }
+
+            else -> {
+                Unit
+            }
         }
         if (v.has(FLAG_ELECTRIC)) drawCircle(ELECTRIC_GREEN, v.width * ROOF_DOT, v.point(ROOF, 0f))
     }
@@ -440,6 +500,11 @@ private val CARGO = Color(0xFFDEE2E6)
 private val FLATBED = Color(0xFF495057)
 private val LOAD = Color(0xFFF4A261)
 private val SERVICE_ORANGE = Color(0xFFFF8C00)
+private val POLICE_SILVER = Color(0xFFDCE1E6)
+private val POLICE_BLUE = Color(0xFF1D4F91)
+private val RESCUE_RED = Color(0xFFFF4F1F)
+private val FIRE_RED = Color(0xFFC1121F)
+private val LADDER_SILVER = Color(0xFFC9CED6)
 private val SIREN_RED = Color(0xFFE63946)
 private val BRAKE_RED = Color(0xFFFF1744)
 private val ELECTRIC_GREEN = Color(0xFF06D6A0)
@@ -459,8 +524,11 @@ private const val VAN_WINDSHIELD = 0.8f
 private const val WINDSHIELD_DEPTH = 0.15f
 private const val REAR_WINDOW = 0.1f
 private const val WINDOW_WIDTH = 0.72f
-private const val STRIPE_START = 0.3f
-private const val STRIPE_END = 0.45f
+private const val BAND_START = 0.06f
+private const val BAND_END = 0.94f
+private const val BAND_INNER = 0.62f
+private const val LADDER_START = 0.08f
+private const val LADDER_WIDTH = 0.25f
 private const val HOOK = 0.08f
 private const val HOOK_WIDTH = 0.25f
 private const val ROOF = 0.45f

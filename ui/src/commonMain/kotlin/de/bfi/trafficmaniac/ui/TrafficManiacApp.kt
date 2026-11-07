@@ -29,8 +29,10 @@ import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameMessage
 import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
+import de.bfi.trafficmaniac.ui.map.MapFocus
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.MapView
 import kotlinx.coroutines.delay
@@ -69,11 +71,11 @@ fun TrafficManiacApp(
     var fps by remember { mutableStateOf(0) }
     var selection by remember { mutableStateOf(ToolSelection()) }
     var panel by remember { mutableStateOf(SidePanel.NONE) }
-    var showMoods by remember { mutableStateOf(false) }
-    var showCondition by remember { mutableStateOf(false) }
-    var environmentLayer by remember { mutableStateOf(EnvironmentLayer.NONE) }
+    val toggles = remember { MapToggles() }
     val picker = remember(city) { MapPicker(city) }
     val zoom = remember { floatArrayOf(1f) }
+    var focus by remember { mutableStateOf<MapFocus?>(null) }
+    val show: (MapPlace) -> Unit = { focus = MapFocus(it.x, it.y) }
     val command: (GameCommand) -> Unit = {
         sound.play(SoundEffect.CLICK)
         onCommand(it)
@@ -81,12 +83,13 @@ fun TrafficManiacApp(
     val hudFrame by rememberHudFrame(traffic, sound, zoom)
     Box(Modifier.fillMaxSize()) {
         MapView(
+            focus = focus,
             city = city,
             traffic = traffic?.let { flow -> { flow.value } },
             onFps = { fps = it },
-            showMoods = showMoods,
-            environmentLayer = environmentLayer,
-            showCondition = showCondition || selection.tool == Tool.DETOUR,
+            showMoods = toggles.showMoods,
+            environmentLayer = toggles.environmentLayer,
+            showCondition = toggles.showCondition || selection.tool == Tool.DETOUR,
             onZoom = { zoom[0] = it },
             onMapClick = { x, y, metersPerPixel ->
                 val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
@@ -103,19 +106,13 @@ fun TrafficManiacApp(
                 rules = rules,
                 panel = panel,
                 onPanel = { panel = if (panel == it) SidePanel.NONE else it },
-                showMoods = showMoods,
-                onToggleMoods = { showMoods = !showMoods },
-                showCondition = showCondition,
-                onToggleCondition = { showCondition = !showCondition },
-                environmentLayer = environmentLayer,
-                onNextEnvironmentLayer = {
-                    environmentLayer =
-                        EnvironmentLayer.entries[(environmentLayer.ordinal + 1) % EnvironmentLayer.entries.size]
-                },
+                toggles = toggles,
                 onCommand = command,
+                picker = picker,
+                onShow = show,
                 modifier = Modifier.align(Alignment.TopEnd),
             )
-            Messages(frame.game.messages, Modifier.align(Alignment.BottomStart).padding(bottom = 24.dp))
+            Messages(frame.game.messages, show, Modifier.align(Alignment.BottomStart).padding(bottom = 24.dp))
         }
         if (traffic != null) ToolBar(selection, rules, { selection = it }, Modifier.align(Alignment.BottomCenter))
         hudFrame?.let { EndOfDayOverlays(it, onContinueDay) }
@@ -154,101 +151,6 @@ private fun EndOfDayOverlays(
     when {
         frame.game.isGameOver || frame.game.isTermOver -> ResultOverlay(frame.game)
         report != null -> DayReportOverlay(report, edition?.takeIf { it.day == report.day }, onContinueDay)
-    }
-}
-
-/** Einblendbare Fenster rechts oben. */
-private enum class SidePanel(
-    val label: String,
-) {
-    NONE(""),
-    CAMERAS("Blitzer-Statistik"),
-    BUDGET("Haushalt & PR"),
-    OFFICE("Ordnungsamt"),
-    MAINTENANCE("Bauamt"),
-    PARKING("Parken"),
-    CITIZENS("Bürger"),
-    EVENTS("Kalender"),
-    ACHIEVEMENTS("Achievements"),
-}
-
-@Composable
-private fun SidePanels(
-    frame: TrafficFrame,
-    rules: GameRules,
-    panel: SidePanel,
-    onPanel: (SidePanel) -> Unit,
-    showMoods: Boolean,
-    onToggleMoods: () -> Unit,
-    showCondition: Boolean,
-    onToggleCondition: () -> Unit,
-    environmentLayer: EnvironmentLayer,
-    onNextEnvironmentLayer: () -> Unit,
-    onCommand: (GameCommand) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier, horizontalAlignment = Alignment.End) {
-        Row {
-            val layerLabel =
-                if (environmentLayer ==
-                    EnvironmentLayer.NONE
-                ) {
-                    "Umwelt"
-                } else {
-                    "Umwelt: ${environmentLayer.label}"
-                }
-            SmallButton(layerLabel, onNextEnvironmentLayer)
-            SmallButton(if (showMoods) "Zufriedenheit ausblenden" else "Zufriedenheit", onToggleMoods)
-            SmallButton(if (showCondition) "Zustand ausblenden" else "Zustand", onToggleCondition)
-            for (option in SidePanel.entries.drop(1)) SmallButton(option.label) { onPanel(option) }
-        }
-        when (panel) {
-            SidePanel.CAMERAS -> {
-                CameraStatsPanel(frame.game.cameras)
-            }
-
-            SidePanel.BUDGET -> {
-                BudgetPanel(
-                    frame.game,
-                    rules,
-                    onContract = { onCommand(GameCommand.SetPrContract(it)) },
-                    onArguments = { onCommand(GameCommand.SetArgumentsCampaign(it)) },
-                    onCeremony = { onCommand(GameCommand.HoldCeremony) },
-                )
-            }
-
-            SidePanel.OFFICE -> {
-                OfficePanel(frame.game.fineOffice, rules, frame.game.bannedDrivers, onCommand)
-            }
-
-            SidePanel.MAINTENANCE -> {
-                MaintenancePanel(frame.game.maintenance, rules, onCommand)
-            }
-
-            SidePanel.PARKING -> {
-                ParkingPanel(
-                    frame.game.parkingOffice,
-                    frame.current.parking,
-                    frame.current.parkingLots,
-                    rules,
-                    onCommand,
-                )
-            }
-
-            SidePanel.CITIZENS -> {
-                CitizensPanel(frame.game)
-            }
-
-            SidePanel.EVENTS -> {
-                EventsPanel(frame.game.events, frame.current.gameTime.day)
-            }
-
-            SidePanel.ACHIEVEMENTS -> {
-                AchievementsPanel(frame.game.achievementList)
-            }
-
-            SidePanel.NONE -> {}
-        }
     }
 }
 
@@ -370,37 +272,24 @@ private fun removeCommandFor(
 @Composable
 private fun Messages(
     messages: List<GameMessage>,
+    onShow: (MapPlace) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         for (message in messages.takeLast(VISIBLE_MESSAGES)) {
+            // Meldungen mit Ort: Klick zeigt die Stelle auf der Karte
+            val place = message.place
             BasicText(
-                "${message.time.clockText}  ${message.text}",
+                "${message.time.clockText}  ${message.text}" + if (place != null) "  ▸" else "",
                 style = TextStyle(color = MessageText, fontSize = 13.sp),
                 modifier =
                     Modifier
                         .comicPanel(shadow = 3.dp)
+                        .then(if (place != null) Modifier.clickable { onShow(place) } else Modifier)
                         .padding(horizontal = 10.dp, vertical = 5.dp),
             )
         }
     }
-}
-
-@Composable
-private fun SmallButton(
-    label: String,
-    onClick: () -> Unit,
-) {
-    BasicText(
-        label,
-        style = TextStyle(color = MessageText, fontSize = 13.sp),
-        modifier =
-            Modifier
-                .padding(top = 12.dp, end = 12.dp)
-                .comicButton(active = false)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-    )
 }
 
 @Composable

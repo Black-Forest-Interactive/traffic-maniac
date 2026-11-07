@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.ui.map
 
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.Polyline
+import de.bfi.trafficmaniac.game.MapPlace
 import kotlin.math.hypot
 
 /** Findet Straßenabschnitte und Knoten in der Nähe eines Klicks (Weltkoordinaten in Metern). */
@@ -67,6 +68,15 @@ class MapPicker(
         }
         return line.x(line.pointCount - 1) to line.y(line.pointCount - 1)
     }
+
+    /** Kartenort eines Abschnitts (seine Mitte). */
+    fun place(segment: Int): MapPlace = midpoint(segment).let { (x, y) -> MapPlace(x, y) }
+
+    /** Kartenort mehrerer Abschnitte: die Mitte des mittleren. */
+    fun place(segments: Collection<Int>): MapPlace? = segments.elementAtOrNull(segments.size / 2)?.let(::place)
+
+    /** Kartenort eines Knotens (z. B. einer Ampel). */
+    fun placeOfNode(node: Int): MapPlace = MapPlace(city.roads.nodes[node].x, city.roads.nodes[node].y)
 
     /** Länge des Abschnitts in Metern. */
     fun lengthOf(segment: Int): Float = length(city.roads.segments[segment].geometry)

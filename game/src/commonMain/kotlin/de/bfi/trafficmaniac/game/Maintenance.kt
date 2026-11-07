@@ -129,12 +129,12 @@ internal class MaintenanceNews {
  * wächst die bestehende Meldung, statt eine neue zu öffnen. Brücken und Ampeln werden einzeln gemeldet.
  */
 internal class Maintenance(
-    city: CityMap,
+    private val city: CityMap,
     private val simulation: Simulation,
     private val rules: GameRules,
     private val treasury: Treasury,
     private val works: PublicWorks,
-    private val message: (String) -> Unit,
+    private val messenger: Messenger,
 ) {
     private val random = Random(RANDOM_SEED)
     private val places = DamagePlaces(city)
@@ -149,7 +149,7 @@ internal class Maintenance(
     private var lawsuits = 0
     var today = MaintenanceNews()
         private set
-    internal val construction = Construction(simulation, rules, treasury, { today }, message)
+    internal val construction = Construction(simulation, rules, treasury, { today }, messenger, places::locate)
 
     fun state(time: Double): MaintenanceState =
         MaintenanceState(
@@ -198,7 +198,10 @@ internal class Maintenance(
                 )
             if (event.segment >= 0) case.segments += event.segment
             cases += case
-            message("Schadensmeldung: ${event.kind.label} – ${case.place} (Frist ${rules.damageDeadlineHours} Std.)")
+            messenger.say(
+                "Schadensmeldung: ${event.kind.label} – ${case.place} (Frist ${rules.damageDeadlineHours} Std.)",
+                places.locate(case),
+            )
             return
         }
         grow(existing, event, time)
@@ -225,7 +228,7 @@ internal class Maintenance(
             case.deadline = time + rules.damageDeadlineHours * SECONDS_PER_HOUR
         }
         val hint = if (signNoLongerEnough) " – ein Schild reicht nicht mehr: sperren oder reparieren!" else ""
-        if (worse) message("Es wird schlimmer: ${event.kind.label} – ${case.place}$hint")
+        if (worse) messenger.say("Es wird schlimmer: ${event.kind.label} – ${case.place}$hint", places.locate(case))
     }
 
     private fun collapse(
@@ -252,9 +255,10 @@ internal class Maintenance(
         case.status = DamageStatus.COLLAPSED
         today.collapses += place to event.victims
         if (event.victims > 0) sue(rules.lawsuitMax * event.victims, "Einsturz der Brücke")
-        message(
+        messenger.say(
             "EINSTURZ: $place ist eingestürzt" +
                 if (event.victims > 0) " – ${event.victims} Fahrzeuge in der Tiefe" else "",
+            city.placeOfSegment(event.segment),
         )
     }
 
@@ -277,7 +281,7 @@ internal class Maintenance(
         lawsuits++
         today.lawsuitCosts += cost
         today.lawsuits++
-        message("Schadensersatz: −${formatEuro(cost)} ($what)")
+        messenger.say("Schadensersatz: −${formatEuro(cost)} ($what)")
     }
 
     fun respond(
@@ -286,9 +290,9 @@ internal class Maintenance(
         time: Double,
     ) {
         val case = cases.firstOrNull { it.id == reportId } ?: return
-        if (case.status == DamageStatus.COLLAPSED) return message("Da ist nichts mehr zu retten.")
+        if (case.status == DamageStatus.COLLAPSED) return messenger.say("Da ist nichts mehr zu retten.")
         val busy = case.status == DamageStatus.TENDER || case.status == DamageStatus.CONSTRUCTION
-        if (busy) return message("Hier wird schon gebaut.")
+        if (busy) return messenger.say("Hier wird schon gebaut.")
         when (response) {
             is DamageResponse.Repair -> {
                 construction.order(case, response.method, time)
@@ -304,7 +308,7 @@ internal class Maintenance(
 
             DamageResponse.Ignore -> {
                 case.status = DamageStatus.IGNORED
-                message("Ignoriert: ${case.kind.label} – ${case.place}")
+                messenger.say("Ignoriert: ${case.kind.label} – ${case.place}", places.locate(case))
             }
         }
     }
@@ -314,7 +318,7 @@ internal class Maintenance(
         kmh: Int,
     ) {
         val report = report(case, 0.0)
-        if (!report.canSign) return message("Ein Schild reicht hier nicht mehr – sperren oder reparieren!")
+        if (!report.canSign) return messenger.say("Ein Schild reicht hier nicht mehr – sperren oder reparieren!")
         if (!treasury.pay(rules.warningSignCost, "Warnschild")) return
         case.status = DamageStatus.SIGNED
         if (case.segments.isNotEmpty()) {
@@ -331,7 +335,7 @@ internal class Maintenance(
         }
         val weight = if (case.kind.isBridge) ", ${rules.bridgeWeightLimitTons} t" else ""
         val text = if (case.node >= 0) "„Ampel ausgefallen“" else "„Vorsicht Straßenschäden“ (Tempo $kmh$weight)"
-        message("Warnschild $text: ${case.place}")
+        messenger.say("Warnschild $text: ${case.place}", places.locate(case))
     }
 
     private fun close(case: DamageCase) {
@@ -340,7 +344,7 @@ internal class Maintenance(
         case.status = DamageStatus.CLOSED
         for (segment in case.segments) simulation.infrastructure.closures.setBridgeClosed(segment, true)
         today.closedBridges += case.place
-        message("Brücke gesperrt: ${case.place}")
+        messenger.say("Brücke gesperrt: ${case.place}", places.locate(case))
     }
 
     /** Jede Stunde: Fristen und Bauphasen. */
@@ -348,7 +352,10 @@ internal class Maintenance(
         for (case in cases.toList()) {
             if (case.status == DamageStatus.OPEN && time > case.deadline) {
                 case.status = DamageStatus.IGNORED
-                message("Frist verstrichen: ${case.kind.label} – ${case.place} bleibt, wie es ist")
+                messenger.say(
+                    "Frist verstrichen: ${case.kind.label} – ${case.place} bleibt, wie es ist",
+                    places.locate(case),
+                )
             }
             if (construction.advance(case, time)) cases.remove(case)
         }
@@ -368,7 +375,10 @@ internal class Maintenance(
             if (case.status == DamageStatus.PLANNING && random.nextDouble() < PLANNING_EVENT_CHANCE) {
                 val (event, years) = PLANNING_EVENTS[random.nextInt(PLANNING_EVENTS.size)]
                 case.planningYear += years
-                message("Planfeststellung ${case.place}: $event – Fertigstellung voraussichtlich ${case.planningYear}")
+                messenger.say(
+                    "Planfeststellung ${case.place}: $event – Fertigstellung voraussichtlich ${case.planningYear}",
+                    places.locate(case),
+                )
             }
         }
     }

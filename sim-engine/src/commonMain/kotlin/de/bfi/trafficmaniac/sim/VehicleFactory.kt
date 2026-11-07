@@ -97,12 +97,13 @@ internal class VehicleFactory(
         Vehicle(
             id = nextId++,
             type =
-                if (role == VehicleRole.TOW_TRUCK ||
-                    role == VehicleRole.STREET_SERVICE
-                ) {
-                    VehicleType.VAN
-                } else {
-                    VehicleType.CAR
+                when (role) {
+                    VehicleRole.TOW_TRUCK, VehicleRole.STREET_SERVICE -> VehicleType.VAN
+
+                    // Löschfahrzeug: so groß wie ein LKW
+                    VehicleRole.FIRE_BRIGADE -> VehicleType.TRUCK
+
+                    else -> VehicleType.CAR
                 },
             driver = DriverProfile.NORMALO,
             color = SERVICE_COLORS.getValue(role),
@@ -151,6 +152,7 @@ internal class VehicleFactory(
             mapOf(
                 VehicleRole.AMBULANCE to 0xFFFFFFFF.toInt(),
                 VehicleRole.POLICE to 0xFF1E6FD9.toInt(),
+                VehicleRole.FIRE_BRIGADE to 0xFFC1121F.toInt(),
                 VehicleRole.TOW_TRUCK to 0xFFFF8C00.toInt(),
                 VehicleRole.STREET_SERVICE to 0xFFFFA500.toInt(),
                 VehicleRole.PRIVATE to 0xFF888888.toInt(),

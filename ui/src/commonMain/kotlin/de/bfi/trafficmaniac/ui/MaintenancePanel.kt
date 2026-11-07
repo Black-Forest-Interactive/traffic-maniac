@@ -48,6 +48,8 @@ fun MaintenancePanel(
     rules: GameRules,
     onCommand: (GameCommand) -> Unit,
     modifier: Modifier = Modifier,
+    /** Klick auf eine Meldung: die Karte zeigt die Stelle. */
+    onShow: (DamageReport) -> Unit = {},
 ) {
     val title = TextStyle(color = PanelText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     val text = TextStyle(color = PanelText, fontSize = 12.sp)
@@ -87,7 +89,7 @@ fun MaintenancePanel(
                 .sortedWith(compareBy({ it.status != DamageStatus.OPEN }, { it.hoursLeft }))
                 .take(MAX_REPORTS)
         if (reports.isEmpty()) BasicText("Keine Schadensmeldungen – noch.", style = muted)
-        for (report in reports) ReportRow(report, rules, onCommand, text, muted)
+        for (report in reports) ReportRow(report, rules, onCommand, text, muted, onShow)
         if (state.reports.size >
             MAX_REPORTS
         ) {
@@ -103,9 +105,14 @@ private fun ReportRow(
     onCommand: (GameCommand) -> Unit,
     text: TextStyle,
     muted: TextStyle,
+    onShow: (DamageReport) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        BasicText(headline(report), style = text.copy(color = colorOf(report), fontWeight = FontWeight.Bold))
+        BasicText(
+            "▸ " + headline(report),
+            style = text.copy(color = colorOf(report), fontWeight = FontWeight.Bold),
+            modifier = Modifier.clickable { onShow(report) },
+        )
         BasicText(statusText(report), style = muted)
         val busy = report.status == DamageStatus.TENDER || report.status == DamageStatus.CONSTRUCTION
         if (report.isActionable && !busy) {
