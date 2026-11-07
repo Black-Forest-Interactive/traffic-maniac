@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" fill="none" stroke="#3B2F2F" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+  <rect transform="translate(30 34) rotate(25)" x="-11" y="-13" width="7" height="4" rx="1.5" fill="#3B2F2F"/>
+  <rect transform="translate(30 34) rotate(25)" x="-11" y="9" width="7" height="4" rx="1.5" fill="#3B2F2F"/>
+  <rect transform="translate(30 34) rotate(25)" x="6" y="-13" width="7" height="4" rx="1.5" fill="#3B2F2F"/>
+  <rect transform="translate(30 34) rotate(25)" x="6" y="9" width="7" height="4" rx="1.5" fill="#3B2F2F"/>
+  <path transform="translate(30 34) rotate(25)" d="M-15,-10 Q-17,0 -15,10 Q-13,11 0,11 L8,11 L12,7 L15,9 L13,3 L17,0 L13,-4 L16,-8 L10,-8 L7,-11 L0,-11 Q-13,-11 -15,-10 Z" fill="#E63946"/>
+  <rect transform="translate(30 34) rotate(25)" x="-6" y="-7" width="11" height="14" rx="2" fill="#A9D8F5"/>
+  <rect transform="translate(50 50) rotate(-120)" x="-11" y="-13" width="7" height="4" rx="1.5" fill="#3B2F2F"/>
+  <rect transform="translate(50 50) rotate(-120)" x="-11" y="9" width="7" height="4" rx="1.5" fill="#3B2F2F"/>
+  <rect transform="translate(50 50) rotate(-120)" x="6" y="-13" width="7" height="4" rx="1.5" fill="#3B2F2F"/>
+  <rect transform="translate(50 50) rotate(-120)" x="6" y="9" width="7" height="4" rx="1.5" fill="#3B2F2F"/>
+  <path transform="translate(50 50) rotate(-120)" d="M-15,-10 Q-17,0 -15,10 Q-13,11 0,11 L8,11 L12,7 L15,9 L13,3 L17,0 L13,-4 L16,-8 L10,-8 L7,-11 L0,-11 Q-13,-11 -15,-10 Z" fill="#1E6FD9"/>
+  <rect transform="translate(50 50) rotate(-120)" x="-6" y="-7" width="11" height="14" rx="2" fill="#A9D8F5"/>
+  <polygon points="56,20 60,15 61,22" fill="#A9D8F5"/>
+  <polygon points="18,58 14,63 22,64" fill="#A9D8F5"/>
+  <polygon points="62,30 68,28 65,34" fill="#A9D8F5"/>
+  <polygon points="36,64 40,70 43,64" fill="#A9D8F5"/>
+  <polygon points="46,25 48,30.54 53.79,29.5 50,34 53.79,38.5 48,37.46 46,43 44,37.46 38.21,38.5 42,34 38.21,29.5 44,30.54" fill="#FFC300"/>
+</svg>
