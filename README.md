@@ -4,7 +4,7 @@ Eine Parodie auf klassische Verkehrssimulatoren: Statt den Verkehr einer echten 
 
 Gewonnen hat aber nicht, wer die Stadt am besten lahmlegt, sondern wer dabei **am meisten Geld verdient und sich am besten präsentiert**. Ob die Stadt am Ende in Trümmern liegt oder strahlt, ist völlig egal.
 
-Erste Stadt: **Pforzheim** (Straßennetz aus OpenStreetMap).
+Erste Stadt: **Pforzheim** (Straßennetz aus OpenStreetMap). Weitere Städte kommen als Stadtpakete nach `cities/` (siehe `cities/README.md`).
 
 ## Status
 
@@ -29,7 +29,7 @@ Voraussetzung: JDK 25 (Gradle lädt sich selbst über den Wrapper).
 ./gradlew :desktop-app:run --args="--warmup 60"   # mit einer Stunde Vorlauf (volle Straßen)
 ./gradlew :desktop-app:benchmark --args="5000 60" # Simulation ohne Oberfläche messen (Spitzen-Fahrten/h, Minuten)
 ./gradlew :desktop-app:headless --args="7"        # Strategien ohne Oberfläche durchspielen (Balancing)
-scripts/import-pforzheim.sh      # OSM-Extrakt laden (155 MB) und data/cities/pforzheim.city erzeugen (Format 4 seit 0.5: neu importieren!)
+scripts/import-city.sh pforzheim # OSM-Extrakt laden (155 MB) und cities/pforzheim/map.city erzeugen
 ./gradlew ktlintFormat           # Formatierung automatisch korrigieren
 ```
 

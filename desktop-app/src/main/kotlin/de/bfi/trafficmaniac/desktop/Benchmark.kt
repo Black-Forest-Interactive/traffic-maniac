@@ -16,7 +16,6 @@ private const val SECONDS_PER_MINUTE = 60
 private const val MINUTES_PER_HOUR = 60
 private const val NANOS_PER_MILLI = 1_000_000.0
 private const val LONG_RUN_MINUTES = 6 * 60
-private const val CITY_FILE = "data/cities/pforzheim.city"
 
 /**
  * Performance- und Stabilitätsmessung ohne Oberfläche. Gibt Uhrzeit, Fahrzeuganzahl, Kennzahlen und
@@ -28,9 +27,9 @@ private const val CITY_FILE = "data/cities/pforzheim.city"
  * Mit `konstant` läuft die Nachfrage rund um die Uhr auf Spitzenniveau (Lasttest),
  * sonst nach Tagesgang ab Montag 5 Uhr.
  */
+
 fun main(args: Array<String>) {
-    // Eine andere Stadtdatei lässt sich als zusätzliches Argument "….city" angeben
-    val city = CityMapCodec.decode(File(args.firstOrNull { it.endsWith(".city") } ?: CITY_FILE).readBytes())
+    val city = benchmarkCity(args)
     val peak = args.getOrNull(0)?.toDouble() ?: SimulationConfig().peakTripsPerHour
     val minutes = args.getOrNull(1)?.toInt() ?: DEFAULT_MINUTES
     val profile = if (args.getOrNull(2) == "konstant") DemandProfile.CONSTANT else DemandProfile.DEFAULT
@@ -118,3 +117,8 @@ private const val NEIGHBORHOOD = 2
 private const val PERCENT = 100
 private val PERCENTILES = listOf(10, 50, 90, 100)
 private val AIR = listOf(Pollutant.NOX, Pollutant.PM_EXHAUST, Pollutant.PM_TIRES, Pollutant.PM_BRAKES)
+
+/** Eine andere Stadtdatei lässt sich als zusätzliches Argument "….city" angeben, sonst Pforzheim. */
+private fun benchmarkCity(args: Array<String>): CityMap =
+    args.firstOrNull { it.endsWith(".city") }?.let { CityMapCodec.decode(File(it).readBytes()) }
+        ?: CityPacks.discover().first { it.id == "pforzheim" }.map

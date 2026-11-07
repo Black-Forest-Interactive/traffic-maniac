@@ -66,7 +66,7 @@ data class Scenario(
                     id = "erste-amtszeit",
                     title = "Erste Amtszeit",
                     description =
-                        "Zwei Wochen Pforzheim, ein ganz normaler Start am Montag um 5 Uhr. " +
+                        "Zwei Wochen im Amt, ein ganz normaler Start am Montag um 5 Uhr. " +
                             "Lernen Sie die Stadt kennen – und ihre Autofahrer.",
                 ),
                 Scenario(

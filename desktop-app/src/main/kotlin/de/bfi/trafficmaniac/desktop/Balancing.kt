@@ -32,14 +32,26 @@ object Balancing {
     ): SimulationConfig {
         val config = load(File(directory, "simulation.json"), SimulationConfig.serializer(), SimulationConfig())
         if (overrides.isEmpty()) return config
-        // Einzelne Werte überschreiben: als JSON-Objekt ändern und neu einlesen
-        val tree = json.encodeToJsonElement(SimulationConfig.serializer(), config).jsonObject.toMutableMap()
-        overrides.forEach { (key, value) ->
-            tree[key] =
+        val values =
+            overrides.mapValues { (_, value) ->
                 value.toLongOrNull()?.let(::JsonPrimitive) ?: value.toDoubleOrNull()?.let(::JsonPrimitive)
                     ?: JsonPrimitive(value)
-        }
-        return json.decodeFromJsonElement(SimulationConfig.serializer(), JsonObject(tree))
+            }
+        return override(SimulationConfig.serializer(), config, JsonObject(values))
+    }
+
+    /** Ersetzt in [base] die Werte aus [overrides] (gleiche Namen wie in den JSON-Dateien), der Rest bleibt. */
+    fun <T> override(
+        serializer: KSerializer<T>,
+        base: T,
+        overrides: JsonObject,
+    ): T {
+        if (overrides.isEmpty()) return base
+        val tree = json.encodeToJsonElement(serializer, base).jsonObject.toMutableMap()
+        val unknown = overrides.keys - tree.keys
+        require(unknown.isEmpty()) { "Unbekannte Stellschrauben: ${unknown.joinToString()}" }
+        tree.putAll(overrides)
+        return json.decodeFromJsonElement(serializer, JsonObject(tree))
     }
 
     /** Szenarien für das Startmenü (`balancing/scenarios.json`, beim ersten Start mit den Standards angelegt). */

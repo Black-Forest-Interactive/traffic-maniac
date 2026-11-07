@@ -1,0 +1,18 @@
+{
+    "id": "pforzheim",
+    "texts": {
+        "name": "Pforzheim",
+        "genitive": "Pforzheims",
+        "nickname": "Goldstadt",
+        "newspaper": "PFORZHEIMER MORGENPOST",
+        "greeting": "Liebe Pforzheimerinnen und Pforzheimer,",
+        "tagline": "Die Verkehrs„beruhigung“ für Pforzheim – reich werden, gut dastehen, nicht abgewählt werden."
+    },
+    "description": "Goldstadt am Nordrand des Schwarzwalds: B 10 und B 294 mitten durch die Stadt, die A 8 vor der Tür, enge Täler mit wenigen Ausweichstrecken.",
+    "simulation": {},
+    "rules": {},
+    "import": {
+        "extract": "https://download.geofabrik.de/europe/germany/baden-wuerttemberg/karlsruhe-regbez-latest.osm.pbf",
+        "bbox": "8.60,48.83,8.80,48.94"
+    }
+}

@@ -14,7 +14,7 @@ internal object EventHeadlines {
     ): String? {
         val place = news.events.corsos.firstOrNull() ?: return null
         return if (friendly) {
-            "Pforzheim radelt: Fröhlicher Korso auf der $place – Stadt lobt „gelebte Verkehrswende“"
+            "${news.state.city.name} radelt: Fröhlicher Korso auf der $place – Stadt lobt „gelebte Verkehrswende“"
         } else {
             "Militante Radler legen die $place lahm – der neue Radweg daneben bleibt leer"
         }

@@ -7,6 +7,9 @@ import kotlinx.serialization.Serializable
 data class SaveInfo(
     /** Dateiname ohne Endung; „schnell“ ist der Schnellspeicher-Platz. */
     val id: String,
+    /** Stadtpaket (`cities/<id>`); ältere Spielstände stammen alle aus Pforzheim. */
+    val cityId: String = "pforzheim",
+    val cityName: String = "Pforzheim",
     val scenarioId: String,
     val scenarioTitle: String,
     val difficulty: Difficulty,

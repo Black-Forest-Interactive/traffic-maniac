@@ -3,6 +3,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     id("trafficmaniac.jvm")
     id("trafficmaniac.compose")
+    id("trafficmaniac.serialization")
 }
 
 dependencies {
@@ -25,7 +26,7 @@ compose.desktop {
     }
 }
 
-// Beim Start aus Gradle relativ zum Projektverzeichnis laufen, damit data/cities gefunden wird
+// Beim Start aus Gradle relativ zum Projektverzeichnis laufen, damit cities/ und balancing/ gefunden werden
 tasks.withType<JavaExec>().configureEach {
     workingDir = rootDir
 }

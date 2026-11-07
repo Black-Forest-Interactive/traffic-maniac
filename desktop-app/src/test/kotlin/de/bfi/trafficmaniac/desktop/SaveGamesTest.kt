@@ -16,7 +16,8 @@ class SaveGamesTest {
     private val directory: File = createTempDirectory("saves").toFile()
 
     /** Die echte Stadt (nicht im Repository, wird importiert); fehlt sie, wird der Test übersprungen. */
-    private val cityFile = File("../data/cities/pforzheim.city")
+    private val cityFile =
+        File("../cities/pforzheim/map.city").takeIf { it.isFile } ?: File("../data/cities/pforzheim.city")
 
     @AfterTest
     fun cleanUp() {
@@ -37,7 +38,7 @@ class SaveGamesTest {
         original.submit(GameCommand.SetSpeedLimit(segment, 30))
         repeat(TEN_MINUTES * config.ticksPerSecond) { original.step() }
 
-        val saves = SaveGames(city, directory)
+        val saves = SaveGames({ id -> city.takeIf { id == "pforzheim" } }, directory)
         val info = info()
         saves.save(original, info)
         File(directory, "kaputt.json").writeText("{ kaputt")

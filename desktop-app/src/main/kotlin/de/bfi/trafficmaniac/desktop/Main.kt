@@ -21,9 +21,12 @@ import androidx.compose.ui.window.rememberWindowState
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.game.GameInfo
+import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.HighscoreEntry
+import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
+import de.bfi.trafficmaniac.ui.CityChoice
 import de.bfi.trafficmaniac.ui.MainMenu
 import de.bfi.trafficmaniac.ui.NoSound
 import de.bfi.trafficmaniac.ui.SaveSlots
@@ -40,7 +43,6 @@ import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-private const val DEFAULT_CITY_FILE = "data/cities/pforzheim.city"
 private const val NOTICE_MILLIS = 2_500L
 private val SAVE_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
 
@@ -50,60 +52,72 @@ private val speedKeys = mapOf(Key.One to 1, Key.Two to 2, Key.Three to 4, Key.Fo
 /**
  * Startet das Spiel mit dem Startmenü (Szenario, Schwierigkeit, Highscores, Einstellungen, Credits).
  *
- * Argumente: `[Stadtdatei] [--scenario <id>] [--warmup <Minuten>] [--peak-trips <Anzahl>]`
+ * Argumente: `[--city <id>] [--scenario <id>] [--warmup <Minuten>] [--peak-trips <Anzahl>]`
+ * - `--city` wählt das Stadtpaket aus `cities/` vor (Standard: das erste, z. B. `pforzheim`).
  * - `--scenario` startet ohne Menü direkt in ein Szenario (z. B. `erste-amtszeit`, `berufsverkehr`).
  * - `--warmup` simuliert zusätzlich zum Vorlauf des Szenarios vor (volle Straßen).
  * - `--peak-trips` überschreibt die Fahrten pro Stunde in der Spitzenstunde (z. B. für Lasttests).
  */
 fun main(args: Array<String>) {
     val options = parseOptions(args)
-    val cityFile = File(options.cityFile ?: DEFAULT_CITY_FILE)
-    val city: CityMap? = cityFile.takeIf { it.isFile }?.let { CityMapCodec.decode(it.readBytes()) }
-    val missingMessage =
-        "Keine Stadtdatei gefunden:\n${cityFile.absolutePath}\n\nErzeugen mit: scripts/import-pforzheim.sh"
-    val sound = if (city != null) SynthSoundBoard.open() else NoSound
+    val packs = CityPacks.discover()
+    val sound = if (packs.isNotEmpty()) SynthSoundBoard.open() else NoSound
     val sprites = loadSprites()
-    val scenarios = Balancing.scenarios()
-    val userData = UserData()
-    val saves = city?.let { SaveGames(it) }
+    val library =
+        Library(packs, Balancing.scenarios(), UserData(), SaveGames({ id -> packs.firstOrNull { it.id == id }?.map }))
     application {
         // Die laufende Partie: Das Fenster leitet Tasten an sie weiter
         val session = remember { mutableStateOf<Session?>(null) }
         val scope = rememberCoroutineScope()
         Window(
             onCloseRequest = ::exitApplication,
-            title = city?.let { "${GameInfo.TITLE} – ${it.name}" } ?: GameInfo.TITLE,
+            title = session.value?.let { "${GameInfo.TITLE} – ${it.pack.name}" } ?: GameInfo.TITLE,
             state = rememberWindowState(size = DpSize(1280.dp, 800.dp)),
             onKeyEvent = { event ->
                 session.value?.let { current ->
-                    handleKey(event, current, sound) { saves?.let { scope.save(current, it, SaveInfo.QUICK_SAVE) } }
+                    handleKey(event, current, sound) { scope.save(current, library.saves, SaveInfo.QUICK_SAVE) }
                 } ?: false
             },
         ) {
-            if (city == null) {
-                TrafficManiacApp(city = null, missingCityMessage = missingMessage)
+            if (packs.isEmpty()) {
+                TrafficManiacApp(city = null, missingCityMessage = missingCitiesMessage())
             } else {
-                Game(city, scenarios, options, userData, sound, sprites, session, saves!!, ::exitApplication)
+                Game(library, options, sound, sprites, session, ::exitApplication)
             }
         }
     }
 }
 
+/** Was das Spiel an Inhalten kennt: Städte, Szenarien, Einstellungen und Spielstände. */
+private class Library(
+    val packs: List<CityPack>,
+    val scenarios: List<Scenario>,
+    val userData: UserData,
+    val saves: SaveGames,
+)
+
+private fun missingCitiesMessage(): String {
+    val missing = CityPacks.missingMaps().joinToString(" ") { it.name }.ifEmpty { "pforzheim" }
+    return "Keine Stadt mit Karte gefunden (Ordner ${File(CityPacks.DIRECTORY).absolutePath}).\n\n" +
+        "Karte erzeugen mit: scripts/import-city.sh $missing"
+}
+
 /** Menü oder laufendes Spiel; nach der Wertung geht es zurück ins Menü. */
 @Composable
 private fun Game(
-    city: CityMap,
-    scenarios: List<Scenario>,
+    library: Library,
     options: Options,
-    userData: UserData,
     sound: SoundBoard,
     sprites: SpriteSource,
     sessionState: MutableState<Session?>,
-    saves: SaveGames,
     onQuit: () -> Unit,
 ) {
+    val userData = library.userData
     var settings by remember { mutableStateOf(userData.settings()) }
     var highscores by remember { mutableStateOf(userData.highscores()) }
+    var pack by remember {
+        mutableStateOf(library.packs.firstOrNull { it.id == options.city } ?: library.packs.first())
+    }
     var session by sessionState
     var loading by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -113,18 +127,17 @@ private fun Game(
         userData.save(settings)
     }
     val start: (Scenario) -> Unit = { scenario ->
-        loading = "${scenario.title}: Pforzheim wird vorbereitet …"
+        loading = "${scenario.title}: ${pack.name} wird vorbereitet …"
         scope.launch {
-            val prepared = withContext(Dispatchers.Default) { Session.start(city, scenario, settings, options) }
-            session = prepared
+            session = withContext(Dispatchers.Default) { Session.start(pack, scenario, settings, options) }
             loading = null
         }
     }
-    LaunchedEffect(Unit) { options.scenario?.let { id -> scenarios.firstOrNull { it.id == id }?.let(start) } }
+    LaunchedEffect(Unit) { options.scenario?.let { id -> library.scenarios.firstOrNull { it.id == id }?.let(start) } }
     val load: (SaveInfo) -> Unit = { info ->
         loading = "Spielstand wird geladen …"
         scope.launch {
-            val loaded = resume(saves, info, scenarios)
+            val loaded = resume(library, info)
             loading = if (loaded == null) "Dieser Spielstand passt nicht mehr zum Spiel." else null
             session = loaded
             if (loaded == null) {
@@ -134,37 +147,59 @@ private fun Game(
         }
     }
     val current = session
-    var saveList by remember { mutableStateOf(saves.list()) }
-    LaunchedEffect(current == null) { saveList = saves.list() }
     if (current == null) {
-        MainMenu(
-            scenarios = scenarios,
-            highscores = highscores,
-            settings = settings,
-            onSettings = { settings = it },
-            onStart = start,
-            onQuit = onQuit,
-            attribution = city.attribution,
-            loading = loading,
-            saves =
-                SaveSlots(saveList, load) {
-                    saves.delete(it)
-                    saveList = saves.list()
-                },
-        )
+        Menu(library, pack, { pack = it }, settings, { settings = it }, highscores, start, load, loading, onQuit)
         return
     }
-    Playing(current, city, sound, if (settings.sprites) sprites else NoSprites, saves, { session = null }) { entry ->
+    val shown = if (settings.sprites) sprites else NoSprites
+    Playing(current, sound, shown, library.saves, { session = null }) { entry ->
         highscores = highscores.add(entry)
         userData.save(highscores)
     }
+}
+
+/** Startmenü mit Stadtauswahl und Spielständen. */
+@Composable
+private fun Menu(
+    library: Library,
+    pack: CityPack,
+    onPack: (CityPack) -> Unit,
+    settings: GameSettings,
+    onSettings: (GameSettings) -> Unit,
+    highscores: Highscores,
+    onStart: (Scenario) -> Unit,
+    onLoad: (SaveInfo) -> Unit,
+    loading: String?,
+    onQuit: () -> Unit,
+) {
+    val saves = library.saves
+    var saveList by remember { mutableStateOf(saves.list()) }
+    MainMenu(
+        scenarios = library.scenarios,
+        highscores = highscores,
+        settings = settings,
+        onSettings = onSettings,
+        onStart = onStart,
+        onQuit = onQuit,
+        attribution = pack.map.attribution,
+        loading = loading,
+        saves =
+            SaveSlots(saveList, onLoad) {
+                saves.delete(it)
+                saveList = saves.list()
+            },
+        tagline = pack.info.texts.tagline,
+        cities =
+            CityChoice(library.packs.map { it.name }, library.packs.indexOf(pack), pack.info.description) {
+                onPack(library.packs[it])
+            },
+    )
 }
 
 /** Die laufende Partie: Takt, Bestenliste am Ende und die Spieloberfläche. */
 @Composable
 private fun Playing(
     current: Session,
-    city: CityMap,
     sound: SoundBoard,
     sprites: SpriteSource,
     saves: SaveGames,
@@ -175,7 +210,7 @@ private fun Playing(
     LaunchedEffect(current) { current.runner.run() }
     LaunchedEffect(current) { current.result()?.let(onHighscore) }
     TrafficManiacApp(
-        city = city,
+        city = current.pack.map,
         traffic = current.runner.frames,
         rules = current.game.rules,
         onCommand = { current.game.submit(it) },
@@ -189,13 +224,13 @@ private fun Playing(
 
 /** Lädt [info] im Hintergrund; `null`, wenn der Spielstand nicht (mehr) passt. */
 private suspend fun resume(
-    saves: SaveGames,
+    library: Library,
     info: SaveInfo,
-    scenarios: List<Scenario>,
 ): Session? {
-    val scenario = scenarios.firstOrNull { it.id == info.scenarioId } ?: return null
+    val scenario = library.scenarios.firstOrNull { it.id == info.scenarioId } ?: return null
+    val pack = library.packs.firstOrNull { it.id == info.cityId } ?: return null
     return withContext(Dispatchers.IO) {
-        runCatching { Session.resume(saves, info, scenario) }
+        runCatching { Session.resume(library.saves, info, pack, scenario) }
             .onFailure { println("Spielstand ${info.id} nicht ladbar: $it") }
             .getOrNull()
     }
@@ -222,7 +257,8 @@ private fun loadSprites(): SvgSprites =
     }
 
 internal class Options(
-    val cityFile: String?,
+    /** Stadtpaket, das im Menü vorgewählt ist (`--city <id>`). */
+    val city: String?,
     val warmupMinutes: Int,
     val peakTrips: Double?,
     val scenario: String?,
@@ -235,13 +271,8 @@ private fun parseOptions(args: Array<String>): Options {
             .windowed(2)
             .filter { it[0].startsWith("--") }
             .associate { it[0] to it[1] }
-    val positional =
-        args.filterIndexed { i, arg ->
-            !arg.startsWith("--") &&
-                args.getOrNull(i - 1)?.startsWith("--") != true
-        }
     return Options(
-        positional.firstOrNull(),
+        named["--city"],
         named["--warmup"]?.toInt() ?: 0,
         named["--peak-trips"]?.toDouble(),
         named["--scenario"],
