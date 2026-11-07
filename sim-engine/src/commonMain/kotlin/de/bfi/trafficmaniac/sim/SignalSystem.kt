@@ -9,6 +9,9 @@ enum class SignalState {
     GREEN,
     YELLOW,
     RED,
+
+    /** Ausgefallen oder abgeschaltet: blinkt gelb, es gilt die Vorfahrt – im Zweifel rechts vor links. */
+    FLASHING,
 }
 
 /**
@@ -27,6 +30,8 @@ class SignalSystem(
     private val linkPhase = IntArray(graph.linkCount)
     private var groupOffset = DoubleArray(0)
     private var groupCycle = DoubleArray(0)
+    private var groupFailed = BooleanArray(0)
+    private val failedNode = BooleanArray(graph.nodeCount)
 
     /** Alle Links, deren Ende von einer Ampel geregelt wird. */
     var controlledLinks: IntArray = IntArray(0)
@@ -56,6 +61,7 @@ class SignalSystem(
         groupCycle =
             DoubleArray(groups.size) { if (twoPhase[it]) CYCLE_SECONDS else PHASE_SECONDS + PEDESTRIAN_SECONDS }
         groupOffset = DoubleArray(groups.size) { offsetFraction(groups[it].min()) * groupCycle[it] }
+        groupFailed = BooleanArray(groups.size) { group -> groups[group].any { failedNode[it] } }
         markers = SignalMarkers.create(graph, this)
     }
 
@@ -70,12 +76,25 @@ class SignalSystem(
 
     fun isControlled(link: Int): Boolean = linkGroup[link] != NO_GROUP
 
+    /** Ampel an [node] ausgefallen bzw. abgeschaltet – die ganze Anlage blinkt dann gelb. */
+    fun setFailed(
+        node: Int,
+        failed: Boolean,
+    ) {
+        if (failedNode[node] == failed) return
+        failedNode[node] = failed
+        rebuild()
+    }
+
+    fun isFailed(node: Int): Boolean = failedNode[node] && graph.nodeHasSignals[node]
+
     fun state(
         link: Int,
         time: Double,
     ): SignalState {
         val group = linkGroup[link]
         if (group == NO_GROUP) return SignalState.NONE
+        if (groupFailed[group]) return SignalState.FLASHING
         val t = (time + groupOffset[group]) % groupCycle[group]
         val activePhase = (t / PHASE_SECONDS).toInt()
         val inPhase = t - activePhase * PHASE_SECONDS

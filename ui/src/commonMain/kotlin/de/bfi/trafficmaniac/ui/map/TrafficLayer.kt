@@ -75,9 +75,12 @@ internal fun DrawScope.drawSignals(
     markers: SignalMarkers,
     states: Array<SignalState>,
     scale: Float,
+    blink: Boolean,
 ) {
     val width = max(2 * MapStyle.SIGNAL_RADIUS_METERS, MapStyle.MIN_SIGNAL_PIXELS / scale)
-    for (state in listOf(SignalState.GREEN, SignalState.YELLOW, SignalState.RED)) {
+    // Ausgefallene Ampeln blinken gelb
+    val shown = if (blink) listOf(SignalState.FLASHING) else emptyList()
+    for (state in listOf(SignalState.GREEN, SignalState.YELLOW, SignalState.RED) + shown) {
         val points = states.indices.filter { states[it] == state }.map { Offset(markers.x[it], markers.y[it]) }
         drawPoints(points, PointMode.Points, signalColor(state), strokeWidth = width, cap = StrokeCap.Round)
     }
@@ -86,7 +89,7 @@ internal fun DrawScope.drawSignals(
 private fun signalColor(state: SignalState): Color =
     when (state) {
         SignalState.GREEN -> MapStyle.signalGreen
-        SignalState.YELLOW -> MapStyle.signalYellow
+        SignalState.YELLOW, SignalState.FLASHING -> MapStyle.signalYellow
         else -> MapStyle.trafficSignal
     }
 
@@ -327,6 +330,12 @@ internal fun DrawScope.drawIncidents(
         when (incident.kind) {
             IncidentKind.OIL_SPILL -> {
                 drawCircle(MapStyle.oil, size * OIL_SCALE, c)
+            }
+
+            // LKW eingeklemmt: grauer Kasten mit Warnblinker
+            IncidentKind.TRUCK_STUCK -> {
+                drawRect(MapStyle.stuckTruck, c + Offset(-size, -size / 2), Size(size * 2, size))
+                drawCircle(MapStyle.hazardLight, size / 2, c)
             }
 
             IncidentKind.ACCIDENT -> {

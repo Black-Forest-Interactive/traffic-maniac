@@ -21,7 +21,7 @@ data class CityMap(
 ) {
     companion object {
         /** Wird erhöht, sobald sich das Dateiformat inkompatibel ändert. */
-        const val FORMAT_VERSION = 3
+        const val FORMAT_VERSION = 4
     }
 }
 

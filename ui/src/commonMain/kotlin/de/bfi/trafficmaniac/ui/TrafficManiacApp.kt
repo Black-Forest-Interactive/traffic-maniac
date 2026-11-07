@@ -63,6 +63,7 @@ fun TrafficManiacApp(
     var selection by remember { mutableStateOf(ToolSelection()) }
     var panel by remember { mutableStateOf(SidePanel.NONE) }
     var showMoods by remember { mutableStateOf(false) }
+    var showCondition by remember { mutableStateOf(false) }
     var environmentLayer by remember { mutableStateOf(EnvironmentLayer.NONE) }
     val picker = remember(city) { MapPicker(city) }
     // Die Kennzahlen reichen viermal pro Sekunde – die Karte liest den Verkehr selbst in jedem Frame
@@ -79,6 +80,7 @@ fun TrafficManiacApp(
             onFps = { fps = it },
             showMoods = showMoods,
             environmentLayer = environmentLayer,
+            showCondition = showCondition || selection.tool == Tool.DETOUR,
             onMapClick = { x, y, metersPerPixel ->
                 val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
                 commandFor(selection, picker, traffic?.value, x, y, radius)?.let(onCommand)
@@ -93,6 +95,8 @@ fun TrafficManiacApp(
                 onPanel = { panel = if (panel == it) SidePanel.NONE else it },
                 showMoods = showMoods,
                 onToggleMoods = { showMoods = !showMoods },
+                showCondition = showCondition,
+                onToggleCondition = { showCondition = !showCondition },
                 environmentLayer = environmentLayer,
                 onNextEnvironmentLayer = {
                     environmentLayer =
@@ -104,14 +108,21 @@ fun TrafficManiacApp(
             Messages(frame.game.messages, Modifier.align(Alignment.BottomStart).padding(bottom = 24.dp))
         }
         if (traffic != null) ToolBar(selection, rules, { selection = it }, Modifier.align(Alignment.BottomCenter))
-        hudFrame?.let { frame ->
-            val edition = frame.game.latestEdition
-            val report = frame.pendingReport
-            when {
-                frame.game.isGameOver || frame.game.isTermOver -> ResultOverlay(frame.game)
-                report != null -> DayReportOverlay(report, edition?.takeIf { it.day == report.day }, onContinueDay)
-            }
-        }
+        hudFrame?.let { EndOfDayOverlays(it, onContinueDay) }
+    }
+}
+
+/** Wertung am Ende der Amtszeit bzw. Tagesabschluss mit Zeitung. */
+@Composable
+private fun EndOfDayOverlays(
+    frame: TrafficFrame,
+    onContinueDay: () -> Unit,
+) {
+    val edition = frame.game.latestEdition
+    val report = frame.pendingReport
+    when {
+        frame.game.isGameOver || frame.game.isTermOver -> ResultOverlay(frame.game)
+        report != null -> DayReportOverlay(report, edition?.takeIf { it.day == report.day }, onContinueDay)
     }
 }
 
@@ -123,6 +134,8 @@ private enum class SidePanel(
     CAMERAS("Blitzer-Statistik"),
     BUDGET("Haushalt & PR"),
     OFFICE("Ordnungsamt"),
+    MAINTENANCE("Bauamt"),
+    PARKING("Parken"),
     CITIZENS("Bürger"),
 }
 
@@ -134,6 +147,8 @@ private fun SidePanels(
     onPanel: (SidePanel) -> Unit,
     showMoods: Boolean,
     onToggleMoods: () -> Unit,
+    showCondition: Boolean,
+    onToggleCondition: () -> Unit,
     environmentLayer: EnvironmentLayer,
     onNextEnvironmentLayer: () -> Unit,
     onCommand: (GameCommand) -> Unit,
@@ -151,6 +166,7 @@ private fun SidePanels(
                 }
             SmallButton(layerLabel, onNextEnvironmentLayer)
             SmallButton(if (showMoods) "Zufriedenheit ausblenden" else "Zufriedenheit", onToggleMoods)
+            SmallButton(if (showCondition) "Zustand ausblenden" else "Zustand", onToggleCondition)
             for (option in SidePanel.entries.drop(1)) SmallButton(option.label) { onPanel(option) }
         }
         when (panel) {
@@ -169,6 +185,20 @@ private fun SidePanels(
 
             SidePanel.OFFICE -> {
                 OfficePanel(frame.game.fineOffice, rules, frame.game.bannedDrivers, onCommand)
+            }
+
+            SidePanel.MAINTENANCE -> {
+                MaintenancePanel(frame.game.maintenance, rules, onCommand)
+            }
+
+            SidePanel.PARKING -> {
+                ParkingPanel(
+                    frame.game.parkingOffice,
+                    frame.current.parking,
+                    frame.current.parkingLots,
+                    rules,
+                    onCommand,
+                )
             }
 
             SidePanel.CITIZENS -> {
@@ -190,10 +220,36 @@ private fun commandFor(
     radius: Float,
 ): GameCommand? =
     when (selection.tool) {
-        Tool.LOOK -> null
-        Tool.SIGNAL -> picker.nearestNode(x, y, radius)?.let { GameCommand.BuildSignal(it) }
-        Tool.REMOVE -> removeCommandFor(picker, frame, x, y, radius)
-        else -> picker.nearestSegment(x, y, radius)?.let { segmentCommand(selection, it, frame) }
+        Tool.LOOK -> {
+            null
+        }
+
+        Tool.SIGNAL -> {
+            picker.nearestNode(x, y, radius)?.let { GameCommand.BuildSignal(it) }
+        }
+
+        Tool.REMOVE -> {
+            removeCommandFor(picker, frame, x, y, radius)
+        }
+
+        // Für die Umleitung kommen auch Nebenstraßen in Frage
+        Tool.DETOUR -> {
+            picker.nearestSegment(x, y, radius, allowPassive = { true })?.let {
+                GameCommand.SetDetour(it, it !in frame?.game?.detourSegments.orEmpty())
+            }
+        }
+
+        else -> {
+            // Zugeschaltete Nebenstraßen (Umleitung) lassen sich wie Hauptstraßen beschildern
+            val detour = frame?.game?.detourSegments.orEmpty()
+            picker
+                .nearestSegment(
+                    x,
+                    y,
+                    radius,
+                    allowPassive = { it in detour },
+                )?.let { segmentCommand(selection, it, frame) }
+        }
     }
 
 /** Werkzeuge, die auf einen Straßenabschnitt wirken. */
@@ -227,7 +283,8 @@ private fun removeCommandFor(
                 it.y - y,
             )
         }
-    val nearest = picker.nearestSegment(x, y, radius)
+    val detour = frame?.game?.detourSegments.orEmpty()
+    val nearest = picker.nearestSegment(x, y, radius, allowPassive = { it in detour })
     val segment = nearest?.takeIf { it in frame?.game?.speedLimits.orEmpty() }
     val nightSegment = nearest?.takeIf { it in frame?.game?.nightLimits.orEmpty() }
     val node = picker.nearestNode(x, y, radius)?.takeIf { it in signalNodes }

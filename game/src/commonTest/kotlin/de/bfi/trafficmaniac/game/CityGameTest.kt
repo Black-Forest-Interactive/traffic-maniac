@@ -80,7 +80,9 @@ class CityGameTest {
         // Bezahlt wird nur, was die Bußgeldstelle zuordnen konnte
         assertTrue(state.fineIncome < camera.totalRevenue)
         assertTrue(state.fineOffice.paid > 0)
-        assertEquals(game.rules.startBudget - state.expenses + state.fineIncome, state.balance)
+        // Parkgebühren und Knöllchen kommen noch dazu
+        val parking = state.parkingOffice.feeIncome + state.parkingOffice.ticketIncome
+        assertEquals(game.rules.startBudget - state.expenses + state.fineIncome + parking, state.balance)
         assertEquals(mapOf(0 to 20), state.speedLimits)
     }
 

@@ -31,6 +31,9 @@ class Simulation(
     private val trips = TripGenerator(city.zones, graph, random)
     private val factory = VehicleFactory(config, random)
     private val lanes = LaneQueues(graph)
+
+    /** Zustand von Straßen, Ampeln und Brücken; Baustellen, Sperrungen und Umleitungen. */
+    val infrastructure = Infrastructure(graph, signals, lanes, config, random)
     private val junctions = JunctionRules(graph, signals, lanes)
     private val laneChanger = LaneChanger(graph, lanes)
     private val behavior = DriverBehavior(speedControl, clock.tickDurationSeconds)
@@ -49,9 +52,13 @@ class Simulation(
             city.facilities,
             { pending.addLast(it) },
             dayStatistics,
+            infrastructure,
         )
 
-    private val deliveries = Deliveries(graph, config, random, dayStatistics)
+    private val deliveries = Deliveries(graph, config, random, dayStatistics) { parking.secondRowStop(it) }
+
+    /** Parkplätze, Straßenrand, Parksuchverkehr und Falschparker. */
+    val parking = Parking(config, city.facilities, city.zones, graph, router, random, dayStatistics)
 
     /** Elektroautos und Ladesäulen. */
     private val charging =
@@ -92,7 +99,11 @@ class Simulation(
     val dayReports: List<DayReport> get() = reports
 
     fun step() {
-        if (clock.tick % ENVIRONMENT_TICKS == 0L) updateEnvironment()
+        if (clock.tick % ENVIRONMENT_TICKS == 0L) {
+            updateEnvironment()
+            infrastructure.update(ENVIRONMENT_TICKS * dt, time)
+            parking.update(time)
+        }
         graph.setQuietHours(gameTime.isQuietHours)
         if (clock.tick % STRESS_UPDATE_TICKS == 0L) vehicles.forEach { behavior.updateStress(it, time) }
         generateTrips()
@@ -128,7 +139,9 @@ class Simulation(
             val route = router.route(trip.originNode, trip.destinationNode)
             if (route != null && pending.size < config.maxPendingVehicles) {
                 val vehicle = factory.create(route, trip, time, router.referenceTime(route))
+                router.planFor(vehicle, trip)
                 charging.planTrip(vehicle)
+                parking.planTrip(vehicle, trip)
                 pending.addLast(vehicle)
             }
         }
@@ -138,8 +151,6 @@ class Simulation(
     private fun enterPendingVehicles() {
         repeat(pending.size) {
             val vehicle = pending.removeFirst()
-            // Einsatz schon erledigt, bevor das Einsatzfahrzeug überhaupt losfahren konnte
-            if (vehicle.removedByIncident) return@repeat
             // Einsatz schon erledigt, bevor das Einsatzfahrzeug überhaupt losfahren konnte
             if (vehicle.removedByIncident) return@repeat
             val link = vehicle.link
@@ -169,7 +180,7 @@ class Simulation(
     // --- Fahrzeugfolge --------------------------------------------------------------------------------
 
     private fun computeAccelerations() {
-        for (link in 0 until graph.linkCount) {
+        for (link in graph.simulatedLinks) {
             for (queue in lanes[link]) {
                 for (i in queue.indices) {
                     val vehicle = queue[i]
@@ -209,7 +220,7 @@ class Simulation(
     // --- Bewegung -------------------------------------------------------------------------------------
 
     private fun move() {
-        for (link in 0 until graph.linkCount) {
+        for (link in graph.simulatedLinks) {
             for (queue in lanes[link]) moveQueue(queue, link)
         }
     }
@@ -273,7 +284,7 @@ class Simulation(
     // --- Knoten überqueren ----------------------------------------------------------------------------
 
     private fun crossNodes() {
-        for (link in 0 until graph.linkCount) {
+        for (link in graph.simulatedLinks) {
             val length = graph.linkLength[link]
             for (queue in lanes[link]) {
                 while (queue.firstOrNull()?.let { it.position >= length && tryLeaveLink(it, link, length) } == true) {
@@ -289,17 +300,19 @@ class Simulation(
         link: Int,
         length: Float,
     ): Boolean {
-        val next = vehicle.nextLink
         // Liegengebliebene und Wartende bleiben, wo sie sind
-        if (vehicle.isParked || next < 0) return finishRoute(vehicle, length)
+        if (vehicle.isParked || vehicle.nextLink < 0) return finishRoute(vehicle, length)
+        val next = nextOpenLink(vehicle)
         val overflow = vehicle.position - length
-        val lane = lanes.bestEntryLane(next, vehicle.lane)
-        if (lanes.freeSpaceAtStart(next, lane) < overflow + STANDSTILL_GAP) {
+        val lane = if (next >= 0) lanes.bestEntryLane(next, vehicle.lane) else 0
+        // Gesperrt oder kein Platz hinter dem Knoten: warten
+        if (next < 0 || lanes.freeSpaceAtStart(next, lane) < overflow + STANDSTILL_GAP) {
             vehicle.position = length.toDouble()
             vehicle.speed = 0.0
             return false
         }
         router.observe(link, time - vehicle.linkEnterTime)
+        infrastructure.vehiclePassed(link, vehicle)
         vehicle.routeIndex++
         vehicle.lane = lane
         vehicle.position = overflow
@@ -309,8 +322,19 @@ class Simulation(
         // Einsatzfahrzeuge behalten ihre Route zum Einsatzort
         val wantsReroute =
             vehicle.role == VehicleRole.PRIVATE && time - vehicle.lastRerouteTime > config.rerouteIntervalSeconds
-        if (wantsReroute) reroute(vehicle)
+        when {
+            infrastructure.truckGetsStuck(vehicle, next) -> incidents.breakdown(vehicle, IncidentKind.TRUCK_STUCK, time)
+            wantsReroute -> router.reroute(vehicle, time)
+        }
         return true
+    }
+
+    /** Nächster Link; vor einer Sperrung (Baustelle, Brücke) plant das Navi neu. -1, wenn es nicht weitergeht. */
+    private fun nextOpenLink(vehicle: Vehicle): Int {
+        val private = vehicle.role == VehicleRole.PRIVATE
+        if (private && !graph.isOpen(vehicle.nextLink)) router.reroute(vehicle, time)
+        val next = vehicle.nextLink
+        return if (next < 0 || (private && !graph.isOpen(next))) -1 else next
     }
 
     /** Ende der Route: ankommen, an die Ladesäule fahren oder (Einsatzfahrzeuge, Wartende) am Linkende halten. */
@@ -339,6 +363,12 @@ class Simulation(
                     true
                 }
 
+                // Am Ziel: Parkplatz suchen – wer weitersucht, hat schon eine neue Route
+                vehicle.parkingZone >= 0 -> {
+                    val outcome = parking.arrive(vehicle, vehicle.link, time)
+                    (outcome != ParkingOutcome.SEARCHING).also { if (it) arrive(vehicle) }
+                }
+
                 else -> {
                     true.also { arrive(vehicle) }
                 }
@@ -360,21 +390,6 @@ class Simulation(
     }
 
     // --- Navi ---------------------------------------------------------------------------------------------
-
-    private fun reroute(vehicle: Vehicle) {
-        vehicle.lastRerouteTime = time
-        val link = vehicle.link
-        val path =
-            router.route(
-                graph.linkTo[link],
-                vehicle.destinationNode,
-                forbiddenFirstLink = graph.linkReverse[link],
-            )
-        if (path != null) {
-            vehicle.route = intArrayOf(link) + path
-            vehicle.routeIndex = 0
-        }
-    }
 
     /** Jede Sekunde: Ausstoß an der Fahrzeugposition ablegen, Raster abbauen; alle 5 s veröffentlichen. */
     private fun updateEnvironment() {
@@ -415,6 +430,9 @@ class Simulation(
             environment = environment.snapshot,
             incidents = incidents.active.map { IncidentMarker(it.kind, it.x, it.y) },
             chargingStations = charging.states(),
+            infrastructure = infrastructure.snapshot(),
+            parkingLots = parking.states(),
+            parking = parking.summary(),
             flags = ByteArray(count) { flagsOf(vehicles[it]) },
             stats =
                 SimulationStats(

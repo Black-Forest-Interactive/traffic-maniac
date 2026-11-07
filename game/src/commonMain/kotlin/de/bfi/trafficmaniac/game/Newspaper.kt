@@ -22,6 +22,8 @@ internal class DayNews(
     val office: FineOffice.Counters,
     val revocations: Int,
     val commute: CommuteStats,
+    val maintenance: MaintenanceNews = MaintenanceNews(),
+    val parking: ParkingNews = ParkingNews(),
 )
 
 /**
@@ -49,11 +51,21 @@ internal object Newspaper {
         val headlines =
             listOfNotNull(
                 recall(news),
+                AdministrationHeadlines.collapse(news),
                 ambulance(news),
+                AdministrationHeadlines.bridgeClosed(news),
+                AdministrationHeadlines.truckStuck(news, random),
+                AdministrationHeadlines.crater(news, friendly),
+                AdministrationHeadlines.ripOffSign(news, friendly),
                 expired(news),
                 licenses(news),
+                AdministrationHeadlines.lawsuits(news),
                 record(news, friendly),
                 letterWave(news),
+                AdministrationHeadlines.planning(news),
+                AdministrationHeadlines.turbo(news),
+                AdministrationHeadlines.parkingSearch(news),
+                AdministrationHeadlines.tickets(news, friendly),
                 fines(news, friendly, random),
                 traffic(news),
                 stuckCommuter(news, random),

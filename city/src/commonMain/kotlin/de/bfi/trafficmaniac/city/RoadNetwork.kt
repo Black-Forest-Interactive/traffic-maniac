@@ -35,6 +35,16 @@ data class RoadSegment(
     val lanesBackward: Int,
     val maxSpeedKmh: Int,
     val name: String? = null,
+    /** Brücke (`bridge=*`): verfällt, bekommt Gewichtslimits, wird gesperrt oder stürzt ein. */
+    val bridge: Boolean = false,
+    /**
+     * Nebenstraße, die normalerweise nicht befahren wird (nur Kulisse). Eine Umleitung kann sie zuschalten –
+     * dann zählen [maxWeightTons], [maxWidthMeters] und [maxHeightMeters] für LKW.
+     */
+    val passive: Boolean = false,
+    val maxWeightTons: Float? = null,
+    val maxWidthMeters: Float? = null,
+    val maxHeightMeters: Float? = null,
 ) {
     val isOneway: Boolean get() = lanesBackward == 0
 }
@@ -53,6 +63,9 @@ enum class RoadClass(
     SECONDARY_LINK("secondary_link"),
     TERTIARY("tertiary"),
     TERTIARY_LINK("tertiary_link"),
+    UNCLASSIFIED("unclassified"),
+    RESIDENTIAL("residential"),
+    LIVING_STREET("living_street"),
     ;
 
     companion object {

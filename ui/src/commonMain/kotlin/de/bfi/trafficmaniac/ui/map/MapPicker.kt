@@ -8,25 +8,38 @@ import kotlin.math.hypot
 class MapPicker(
     private val city: CityMap,
 ) {
-    /** Nächster Straßenabschnitt innerhalb von [maxDistance] Metern oder `null`. */
+    /**
+     * Nächster Straßenabschnitt innerhalb von [maxDistance] Metern oder `null`.
+     * Passive Nebenstraßen kommen nur in Frage, wenn [allowPassive] sie zulässt.
+     */
     fun nearestSegment(
         x: Float,
         y: Float,
         maxDistance: Float,
+        allowPassive: (Int) -> Boolean = { false },
     ): Int? =
         city.roads.segments
+            .filter { !it.passive || allowPassive(it.id) }
             .map { it.id to distanceToPolyline(it.geometry, x, y) }
             .filter { it.second <= maxDistance }
             .minByOrNull { it.second }
             ?.first
 
-    /** Nächster Knoten des Straßennetzes innerhalb von [maxDistance] Metern oder `null`. */
+    /** Knoten an befahrenen Straßen – nur dort lassen sich Ampeln bauen. */
+    private val mainNodes =
+        city.roads.segments
+            .filter { !it.passive }
+            .flatMap { listOf(it.from, it.to) }
+            .toSet()
+            .map { city.roads.nodes[it] }
+
+    /** Nächster Knoten des befahrenen Straßennetzes innerhalb von [maxDistance] Metern oder `null`. */
     fun nearestNode(
         x: Float,
         y: Float,
         maxDistance: Float,
     ): Int? =
-        city.roads.nodes
+        mainNodes
             .map { it.id to hypot(it.x - x, it.y - y) }
             .filter { it.second <= maxDistance }
             .minByOrNull { it.second }

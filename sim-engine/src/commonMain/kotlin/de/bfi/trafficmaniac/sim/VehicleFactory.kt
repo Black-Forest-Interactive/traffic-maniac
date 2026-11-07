@@ -41,6 +41,11 @@ internal class VehicleFactory(
             ) {
                 vehicle.batteryKwh = config.batteryKwh * random.nextDouble(MIN_CHARGE, MAX_CHARGE)
             }
+            if (type ==
+                VehicleType.TRUCK
+            ) {
+                vehicle.ignoresWeightLimits = random.nextDouble() < config.weightLimitIgnoreShare
+            }
         }
     }
 

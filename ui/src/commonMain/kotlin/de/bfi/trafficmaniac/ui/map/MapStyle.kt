@@ -32,6 +32,16 @@ object MapStyle {
     val heatHigh = Color(0xFF9D0208)
     val moodBad = Color(0xFFD7263D)
     val cameraFlash = Color(0xFFFFF3B0)
+    val conditionGood = Color(0xFF2DC653)
+    val conditionFair = Color(0xFFFFC300)
+    val conditionBad = Color(0xFFD00000)
+    val detour = Color(0xFFFF7B00)
+    val works = Color(0xFFFF7B00)
+    val collapsed = Color(0xFF14141F)
+    val pothole = Color(0xFF5C4033)
+    val planning = Color(0xFF8D99AE)
+    val parking = Color(0xFF1E6FD9)
+    val stuckTruck = Color(0xFF5C6B7A)
     val attribution = Color(0xFF555555)
     val attributionBackground = Color(0xB3FFFFFF)
 
@@ -86,7 +96,7 @@ object MapStyle {
             RoadClass.TRUNK -> trunkStyle
             RoadClass.PRIMARY -> primaryStyle
             RoadClass.SECONDARY -> secondaryStyle
-            RoadClass.TERTIARY -> tertiaryStyle
+            RoadClass.TERTIARY, RoadClass.UNCLASSIFIED, RoadClass.RESIDENTIAL, RoadClass.LIVING_STREET -> tertiaryStyle
             RoadClass.MOTORWAY_LINK -> motorwayStyle.link()
             RoadClass.TRUNK_LINK -> trunkStyle.link()
             RoadClass.PRIMARY_LINK -> primaryStyle.link()

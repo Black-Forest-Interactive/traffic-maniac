@@ -40,8 +40,19 @@ data class ImportConfig(
     val box: GeoBox = GeoBox.PFORZHEIM,
     /** Straßenklassen, die simuliert werden. Alle anderen Straßen landen höchstens in der Kulisse. */
     val roadClasses: Set<RoadClass> = DEFAULT_ROAD_CLASSES,
+    /** Nebenstraßen, die als passive Abschnitte für Umleitungen mitkommen (gezeichnet werden sie als Kulisse). */
+    val passiveRoadClasses: Set<RoadClass> = DEFAULT_PASSIVE_ROAD_CLASSES,
 ) {
     companion object {
+        val DEFAULT_PASSIVE_ROAD_CLASSES =
+            setOf(
+                RoadClass.TERTIARY,
+                RoadClass.TERTIARY_LINK,
+                RoadClass.UNCLASSIFIED,
+                RoadClass.RESIDENTIAL,
+                RoadClass.LIVING_STREET,
+            )
+
         val DEFAULT_ROAD_CLASSES =
             setOf(
                 RoadClass.TRUNK,

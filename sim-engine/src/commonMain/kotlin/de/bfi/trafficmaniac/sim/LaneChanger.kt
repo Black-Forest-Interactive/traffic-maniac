@@ -9,7 +9,7 @@ internal class LaneChanger(
     private val lanes: LaneQueues,
 ) {
     fun changeLanes(tick: Long) {
-        for (link in 0 until graph.linkCount) {
+        for (link in graph.simulatedLinks) {
             if (graph.linkLanes[link] < 2) continue
             val desired = graph.linkSpeedLimit[link].toDouble()
             makeWayForEmergencies(link)

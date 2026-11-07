@@ -38,14 +38,20 @@ internal class JunctionRules(
             SignalState.GREEN -> false
 
             SignalState.NONE -> remaining < YIELD_CHECK_DISTANCE && mustYield(link)
+
+            // Ampel aus: Jeder wartet auf jeden – bis einer die Geduld verliert
+            SignalState.FLASHING -> remaining < YIELD_CHECK_DISTANCE && mustYield(link, anyone = true)
         }
 
     /** Ungeregelte Kreuzung: Die Straße mit niedrigerem Rang wartet auf herannahende Fahrzeuge der höherrangigen. */
-    private fun mustYield(link: Int): Boolean {
+    private fun mustYield(
+        link: Int,
+        anyone: Boolean = false,
+    ): Boolean {
         val rank = graph.priorityRank(link)
         return graph.inLinks[graph.linkTo[link]].any { other ->
             other != link &&
-                graph.priorityRank(other) < rank &&
+                (anyone || graph.priorityRank(other) < rank) &&
                 lanes[other].any { queue -> queue.firstOrNull()?.let { isApproaching(it, other) } == true }
         }
     }

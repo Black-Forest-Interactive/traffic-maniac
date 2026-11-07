@@ -70,4 +70,60 @@ sealed interface GameCommand {
     data class SetArgumentsCampaign(
         val enabled: Boolean,
     ) : GameCommand
+
+    // --- Bauamt ---
+
+    /** Antwort auf eine Schadensmeldung. */
+    data class RespondToDamage(
+        val reportId: Int,
+        val response: DamageResponse,
+    ) : GameCommand
+
+    data class SetMaintenanceBudget(
+        val budget: MaintenanceBudget,
+    ) : GameCommand
+
+    /** Abschnitt in die ausgeschilderte Umleitung aufnehmen oder herausnehmen (auch Nebenstraßen). */
+    data class SetDetour(
+        val segment: Int,
+        val enabled: Boolean,
+    ) : GameCommand
+
+    // --- Parken ---
+
+    /** Gebühr in Euro je Stunde für einen Parkplatz ([lot]) oder alle (`null`). */
+    data class SetParkingFee(
+        val lot: Int?,
+        val euros: Double,
+    ) : GameCommand
+
+    /** Gebühr am Parkscheinautomaten am Straßenrand (Euro je Stunde). */
+    data class SetCurbFee(
+        val euros: Double,
+    ) : GameCommand
+
+    /** Stellplätze eines Parkplatzes; 0 schafft ihn ab. */
+    data class SetParkingCapacity(
+        val lot: Int,
+        val capacity: Int,
+    ) : GameCommand
+
+    /** Ein Schritt Straßenrand-Parkplätze in Radspuren und Blumenkübel umwandeln. */
+    data object ConvertCurbParking : GameCommand
+
+    data class SetBreadButton(
+        val enabled: Boolean,
+    ) : GameCommand
+
+    data class SetResidentParking(
+        val enabled: Boolean,
+    ) : GameCommand
+
+    data class HireWardens(
+        val count: Int,
+    ) : GameCommand
+
+    data class FireWardens(
+        val count: Int,
+    ) : GameCommand
 }

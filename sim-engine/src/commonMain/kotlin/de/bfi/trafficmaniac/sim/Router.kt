@@ -48,7 +48,7 @@ class Router(
      * auf Links ohne Stau kehrt die Schätzung langsam zur freien Fahrt zurück.
      */
     internal fun updateFromQueues(lanes: LaneQueues) {
-        for (link in 0 until graph.linkCount) {
+        for (link in graph.simulatedLinks) {
             val wait = lanes.longestFrontWait(link)
             if (wait > 0) raiseTo(link, freeFlowTime(link) + wait) else relax(link)
         }
@@ -70,12 +70,18 @@ class Router(
         fromNode: Int,
         toNode: Int,
         forbiddenFirstLink: Int = -1,
+        /** Gesamtgewicht in Tonnen: Abschnitte mit kleinerem Gewichtslimit werden gemieden. */
+        weightTons: Double = 0.0,
+        /** Folgt der ausgeschilderten Umleitung (Ortsfremde): Umleitungsabschnitte wirken kürzer. */
+        followsDetour: Boolean = false,
     ): IntArray? {
         if (fromNode == toNode) return null
         stamp++
         heap.clear()
+        this.weightTons = weightTons
+        this.followsDetour = followsDetour && graph.hasDetours
         for (link in graph.outLinks[fromNode]) {
-            if (link != forbiddenFirstLink) relax(link, -1, travelTime[link].toDouble(), toNode)
+            if (link != forbiddenFirstLink && usable(link)) relax(link, -1, cost(link), toNode)
         }
         while (heap.isNotEmpty()) {
             val link = heap.pop()
@@ -85,13 +91,52 @@ class Router(
             if (node == toNode) return path(link)
             val outs = graph.outLinks[node]
             for (next in outs) {
-                if (next != graph.linkReverse[link] || outs.size == 1) {
-                    relax(next, link, cost[link] + travelTime[next], toNode)
+                if ((next != graph.linkReverse[link] || outs.size == 1) && usable(next)) {
+                    relax(next, link, cost[link] + cost(next), toNode)
                 }
             }
         }
         return null
     }
+
+    /** LKW meiden Gewichtslimits, Ortsfremde folgen der Umleitung – beides nur, wenn es so etwas gerade gibt. */
+    internal fun planFor(
+        vehicle: Vehicle,
+        trip: Trip,
+    ) {
+        val heavy = graph.hasWeightLimits && vehicle.routingTons > 0
+        val detour = graph.hasDetours && vehicle.followsDetour
+        if (!heavy && !detour) return
+        route(trip.originNode, trip.destinationNode, weightTons = vehicle.routingTons, followsDetour = detour)
+            ?.let { vehicle.route = it }
+    }
+
+    /** Neue Route ab dem Ende des aktuellen Links (ohne zu wenden); bleibt bei der alten, wenn es keine gibt. */
+    internal fun reroute(
+        vehicle: Vehicle,
+        time: Double,
+    ) {
+        vehicle.lastRerouteTime = time
+        val link = vehicle.link
+        val path =
+            route(
+                graph.linkTo[link],
+                vehicle.destinationNode,
+                forbiddenFirstLink = graph.linkReverse[link],
+                weightTons = vehicle.routingTons,
+                followsDetour = vehicle.followsDetour,
+            ) ?: return
+        vehicle.route = intArrayOf(link) + path
+        vehicle.routeIndex = 0
+    }
+
+    private var weightTons = 0.0
+    private var followsDetour = false
+
+    private fun usable(link: Int): Boolean = graph.isOpen(link) && graph.allowsWeight(link, weightTons)
+
+    private fun cost(link: Int): Double =
+        travelTime[link] * if (followsDetour && graph.isDetour(link)) DETOUR_FACTOR else 1.0
 
     private fun relax(
         link: Int,
@@ -123,6 +168,9 @@ class Router(
 
         /** Bei Aufruf alle 10 s: Halbwertszeit rund 6 Minuten. */
         const val RELAX_WEIGHT = 0.02f
+
+        /** Ausgeschilderte Umleitungen "fühlen" sich für Ortsfremde nur halb so lang an. */
+        const val DETOUR_FACTOR = 0.5
     }
 
     /** Binärer Min-Heap für (Link, Priorität). */

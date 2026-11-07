@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.osmimport
 
 import de.bfi.trafficmaniac.city.Bounds
 import de.bfi.trafficmaniac.city.RoadNetwork
+import de.bfi.trafficmaniac.city.RoadNode
 import de.bfi.trafficmaniac.city.Zone
 import de.bfi.trafficmaniac.city.ZoneKind
 import kotlin.math.abs
@@ -29,6 +30,8 @@ internal class ZoneBuilder(
     private val network: RoadNetwork,
     private val bounds: Bounds,
 ) {
+    private val nodes = activeNodes(network)
+
     fun build(
         areas: List<ZoneArea>,
         motorwayNodeIds: Set<Int>,
@@ -51,6 +54,7 @@ internal class ZoneBuilder(
     private fun gateNodes(motorwayNodeIds: Set<Int>): List<Int> {
         val degree = IntArray(network.nodes.size)
         for (segment in network.segments) {
+            if (segment.passive) continue
             degree[segment.from]++
             degree[segment.to]++
         }
@@ -71,7 +75,7 @@ internal class ZoneBuilder(
     private fun nearestNode(
         x: Float,
         y: Float,
-    ): Int = nearestNode(network, x, y)
+    ): Int = nearestNode(nodes, x, y)
 
     companion object {
         /** Kleinere Flächen (einzelne Grundstücke) erzeugen keinen nennenswerten Verkehr. */
@@ -117,13 +121,24 @@ internal fun centroid(polygon: FloatArray): Pair<Float, Float> {
     return cx / divisor to cy / divisor
 }
 
-/** Nächster Knoten des Straßennetzes. */
+/** Knoten, an denen mindestens ein befahrener (nicht passiver) Abschnitt hängt. */
+internal fun activeNodes(network: RoadNetwork): List<RoadNode> {
+    val used = HashSet<Int>()
+    for (segment in network.segments) {
+        if (segment.passive) continue
+        used += segment.from
+        used += segment.to
+    }
+    return network.nodes.filter { it.id in used }
+}
+
+/** Nächster der [nodes]. */
 internal fun nearestNode(
-    network: RoadNetwork,
+    nodes: List<RoadNode>,
     x: Float,
     y: Float,
 ): Int =
-    network.nodes
+    nodes
         .minBy { node ->
             val dx = node.x - x
             val dy = node.y - y

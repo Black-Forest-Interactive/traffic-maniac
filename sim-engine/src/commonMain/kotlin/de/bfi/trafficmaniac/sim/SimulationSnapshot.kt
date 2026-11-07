@@ -38,6 +38,10 @@ class SimulationSnapshot(
     /** Umweltraster (wird alle 5 Sekunden Spielzeit erneuert). */
     val environment: EnvironmentSnapshot,
     val stats: SimulationStats,
+    /** Straßenzustand, Ampelausfälle, Baustellen, Sperrungen und Umleitungen. */
+    val infrastructure: InfrastructureSnapshot = InfrastructureSnapshot.EMPTY,
+    val parkingLots: List<ParkingLotState> = emptyList(),
+    val parking: ParkingSummary = ParkingSummary(),
 ) {
     val vehicleCount: Int get() = ids.size
 }

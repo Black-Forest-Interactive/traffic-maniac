@@ -50,15 +50,26 @@ class CityExtractor(
         facilityKindOf(tags)?.let { kind ->
             project(refs)?.let { polygon ->
                 val (x, y) = centroid(polygon)
-                facilities += RawFacility(kind, x, y, tags)
+                facilities += RawFacility(kind, x, y, tags, polygonArea(polygon))
             }
         }
-        if (roadClass != null && roadClass in config.roadClasses) {
-            val attributes = RoadTags.parse(tags, roadClass)
-            roads += RawRoad(if (attributes.reversed) refs.reversedArray() else refs, roadClass, attributes)
-        } else {
-            addScenery(refs, tags)
-        }
+        val simulated = roadClass != null && roadClass in config.roadClasses
+        if (roadClass != null) addRoad(refs, tags, roadClass, simulated)
+        // Passive Nebenstraßen bleiben Kulisse, bis eine Umleitung sie zuschaltet
+        if (!simulated) addScenery(refs, tags)
+    }
+
+    /** Simulierte Straße oder passive Nebenstraße (für Umleitungen); alles andere wird ignoriert. */
+    private fun addRoad(
+        refs: LongArray,
+        tags: Map<String, String>,
+        roadClass: RoadClass,
+        simulated: Boolean,
+    ) {
+        val passive = !simulated && roadClass in config.passiveRoadClasses
+        if (!simulated && !passive) return
+        val attributes = RoadTags.parse(tags, roadClass)
+        roads += RawRoad(if (attributes.reversed) refs.reversedArray() else refs, roadClass, attributes, passive)
     }
 
     private fun addScenery(
@@ -166,6 +177,11 @@ class CityExtractor(
                     lanesBackward = road.attributes.lanesBackward,
                     maxSpeedKmh = road.attributes.maxSpeedKmh,
                     name = road.attributes.name,
+                    bridge = road.attributes.bridge,
+                    passive = road.passive,
+                    maxWeightTons = road.attributes.maxWeightTons,
+                    maxWidthMeters = road.attributes.maxWidthMeters,
+                    maxHeightMeters = road.attributes.maxHeightMeters,
                 )
         }
 
@@ -214,6 +230,7 @@ class CityExtractor(
         val refs: LongArray,
         val roadClass: RoadClass,
         val attributes: RoadAttributes,
+        val passive: Boolean = false,
     )
 
     companion object {

@@ -10,9 +10,11 @@ data class Facility(
     val x: Float,
     val y: Float,
     val node: Int,
-    /** Ladepunkte einer Ladesäule bzw. Fahrzeuge einer Wache. */
+    /** Ladepunkte einer Ladesäule, Fahrzeuge einer Wache bzw. Stellplätze eines Parkplatzes. */
     val capacity: Int = 1,
     val name: String? = null,
+    /** Parkplatz kostet schon in OSM Gebühr (`fee=yes`) bzw. ist ein Parkhaus. */
+    val paid: Boolean = false,
 )
 
 enum class FacilityKind {
@@ -20,4 +22,7 @@ enum class FacilityKind {
     FIRE_STATION,
     POLICE,
     AMBULANCE_STATION,
+
+    /** Parkhaus oder Parkplatz (`amenity=parking`). */
+    PARKING,
 }

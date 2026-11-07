@@ -13,7 +13,9 @@ Optionen:
   --name <Name>                         Name der Stadt (Standard: Pforzheim)
   --bbox <minLon,minLat,maxLon,maxLat>  Ausschnitt (Standard: Pforzheim)
   --road-classes <klasse,klasse,...>    simulierte OSM-Straßenklassen
-                                        (Standard: trunk,trunk_link,primary,primary_link,secondary,secondary_link)"""
+                                        (Standard: trunk,trunk_link,primary,primary_link,secondary,secondary_link)
+  --passive-road-classes <klasse,...>   Nebenstraßen für Umleitungen, "none" für keine
+                                        (Standard: tertiary,tertiary_link,unclassified,residential,living_street)"""
 
 private const val METERS_PER_KM = 1000.0
 private const val BYTES_PER_KB = 1024
@@ -49,9 +51,15 @@ fun main(args: Array<String>) {
     println(
         """
         Fertig in $duration → $output (${output.length() / BYTES_PER_KB} KB)
-          Straßennetz: ${map.roads.nodes.size} Knoten, ${map.roads.segments.size} Abschnitte, ${"%.1f".format(
+          Straßennetz: ${map.roads.nodes.size} Knoten, ${map.roads.segments.count {
+            !it.passive
+        }} Abschnitte, ${"%.1f".format(
             roadKm,
-        )} km
+        )} km (mit Nebenstraßen)
+          Nebenstraßen: ${map.roads.segments.count { it.passive }} passive Abschnitte für Umleitungen
+          Brücken:     ${map.roads.segments.count {
+            it.bridge && !it.passive
+        }} Abschnitte (${map.roads.segments.count { it.bridge && it.passive }} an Nebenstraßen)
           Ampeln:      ${map.roads.nodes.count { it.trafficSignals }}
           Zonen:       ${map.zones.groupingBy { it.kind }.eachCount()}
           Einrichtungen: ${map.facilities.groupingBy { it.kind }.eachCount()}
@@ -80,6 +88,7 @@ private fun parseArgs(args: Array<String>): Arguments {
                     "--name" -> config.copy(name = value)
                     "--bbox" -> config.copy(box = GeoBox.parse(value))
                     "--road-classes" -> config.copy(roadClasses = parseRoadClasses(value))
+                    "--passive-road-classes" -> config.copy(passiveRoadClasses = parseRoadClasses(value))
                     else -> throw IllegalArgumentException("Unknown option $arg")
                 }
             i += 2
@@ -93,7 +102,11 @@ private fun parseArgs(args: Array<String>): Arguments {
 }
 
 private fun parseRoadClasses(value: String): Set<RoadClass> =
-    value
-        .split(',')
-        .map { name -> requireNotNull(RoadClass.fromOsm(name.trim())) { "Unknown road class '$name'" } }
-        .toSet()
+    if (value == "none") {
+        emptySet()
+    } else {
+        value
+            .split(',')
+            .map { name -> requireNotNull(RoadClass.fromOsm(name.trim())) { "Unknown road class '$name'" } }
+            .toSet()
+    }

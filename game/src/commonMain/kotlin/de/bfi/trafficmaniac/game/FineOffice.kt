@@ -13,10 +13,12 @@ enum class Strictness(
     val appealSuccess: Double,
     /** So sehr ärgern sich die Bürger über einen Bescheid. */
     val painFactor: Double,
+    /** Knöllchen erst nach so vielen Minuten Falschparken. */
+    val parkingGraceMinutes: Double,
 ) {
-    LENIENT("kulant", toleranceKmh = 5.0, appealSuccess = 0.15, painFactor = 0.8),
-    NORMAL("normal", toleranceKmh = 3.0, appealSuccess = 0.05, painFactor = 1.0),
-    RUTHLESS("gnadenlos", toleranceKmh = 1.0, appealSuccess = 0.0, painFactor = 1.3),
+    LENIENT("kulant", toleranceKmh = 5.0, appealSuccess = 0.15, painFactor = 0.8, parkingGraceMinutes = 15.0),
+    NORMAL("normal", toleranceKmh = 3.0, appealSuccess = 0.05, painFactor = 1.0, parkingGraceMinutes = 5.0),
+    RUTHLESS("gnadenlos", toleranceKmh = 1.0, appealSuccess = 0.0, painFactor = 1.3, parkingGraceMinutes = 0.0),
 }
 
 /** Was passiert, wenn auf dem Foto niemand zu erkennen ist. */

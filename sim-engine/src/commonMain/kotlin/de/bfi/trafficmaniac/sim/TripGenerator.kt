@@ -12,6 +12,10 @@ data class Trip(
     val homeZone: Int = -1,
     /** Fahrer aus dem Wohngebiet (für Punkte und Führerschein) oder -1 bei Durchgangsverkehr. */
     val person: Int = -1,
+    /** Zielzone, in der geparkt werden muss (Gewerbe, Einkauf, Industrie), oder -1 (nach Hause, Stadtrand). */
+    val parkingZone: Int = -1,
+    /** Einkaufsfahrt: kurzer Aufenthalt am Ziel. */
+    val shortStay: Boolean = false,
 )
 
 /** Gruppen von Zonen, zwischen denen Fahrten stattfinden. */
@@ -65,7 +69,15 @@ class TripGenerator(
                 else -> -1
             }
         val person = if (home >= 0) home * PERSONS_PER_ZONE_BLOCK + random.nextInt(driversIn(home)) else -1
-        return Trip(origin.node, destination.node, home, person)
+        val parks = destination.kind != ZoneKind.RESIDENTIAL && destination.kind != ZoneKind.GATE
+        return Trip(
+            origin.node,
+            destination.node,
+            home,
+            person,
+            parkingZone = if (parks) destination.id else -1,
+            shortStay = pattern.to == ZoneGroup.SHOP || destination.kind == ZoneKind.RETAIL,
+        )
     }
 
     /** Anzahl Autofahrer eines Wohngebiets (wächst mit der Fläche). */
@@ -175,7 +187,7 @@ class TripGenerator(
                         start,
                         visited,
                         order,
-                    ) { node -> graph.outLinks[node].map { graph.linkTo[it] } }
+                    ) { node -> graph.outLinks[node].filter { !graph.linkPassive[it] }.map { graph.linkTo[it] } }
                 }
             }
             val component = IntArray(graph.nodeCount) { -1 }
@@ -187,6 +199,7 @@ class TripGenerator(
                 while (stack.isNotEmpty()) {
                     val node = stack.removeLast()
                     for (link in graph.inLinks[node]) {
+                        if (graph.linkPassive[link]) continue
                         val previous = graph.linkFrom[link]
                         if (component[previous] < 0) {
                             component[previous] = count
