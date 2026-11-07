@@ -197,6 +197,9 @@ class RoadGraph(
     /** Tempo-Faktor durch Vorfälle (Ölspur, Gaffer); 1 = normal. */
     internal val linkSlowdown = FloatArray(linkCount) { 1f }
 
+    /** Höchsttempo in m/s, solange ein Rad-Korso auf dem Link fährt – überholt wird er nicht. */
+    internal val linkEventSpeedCap = FloatArray(linkCount) { Float.MAX_VALUE }
+
     /** Vom Spieler zur Vorfahrtsstraße erklärt: Rang 0 schlägt an ungeregelten Kreuzungen alles. */
     private val linkPriority = BooleanArray(linkCount)
 

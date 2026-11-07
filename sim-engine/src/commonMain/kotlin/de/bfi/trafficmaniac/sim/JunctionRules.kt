@@ -17,8 +17,8 @@ internal class JunctionRules(
         when {
             vehicle.holdAtEnd -> true
 
-            // Blaulicht fährt über Rot und nimmt sich die Vorfahrt
-            vehicle.role.isEmergency -> false
+            // Blaulicht, Rad-Korso und Schwertransport fahren über Rot und nehmen sich die Vorfahrt
+            vehicle.role.ignoresSignals -> false
 
             else -> signalOrYield(vehicle, link, remaining, time)
         }

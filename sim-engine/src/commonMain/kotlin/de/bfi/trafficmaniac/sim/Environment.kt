@@ -126,9 +126,9 @@ class Environment internal constructor(
         val a = vehicle.acceleration
         val electric = vehicle.drivetrain == Drivetrain.ELECTRIC
         val drivePower = type.massKg * (a * v + GRAVITY * ROLLING_RESISTANCE * v) + AIR_DRAG_FACTOR * v.pow(3)
-        // Elektroautos tanken nicht – ihr Strom zählt hier nicht als Abgas
+        // Elektroautos tanken nicht – ihr Strom zählt hier nicht als Abgas; Radfahrer schon gar nicht
         val fuel =
-            if (electric) {
+            if (electric || type.musclePowered) {
                 0.0
             } else {
                 (

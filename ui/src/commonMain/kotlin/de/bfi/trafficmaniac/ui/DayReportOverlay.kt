@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -107,11 +108,21 @@ private fun Newspaper(edition: NewspaperEdition) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         BasicText(
-            "PFORZHEIMER MORGENPOST",
+            "PFORZHEIMER MORGENPOST" + if (edition.tone.isNotEmpty()) "  ·  Tonlage: ${edition.tone}" else "",
             style = TextStyle(color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Black),
         )
         for (headline in edition.headlines) {
             BasicText("• $headline", style = TextStyle(color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold))
+        }
+        if (edition.letters.isNotEmpty()) {
+            BasicText(
+                "LESERBRIEFE",
+                style = TextStyle(color = Ink, fontSize = 11.sp, fontWeight = FontWeight.Black),
+                modifier = Modifier.padding(top = 6.dp),
+            )
+            for (letter in edition.letters) {
+                BasicText(letter, style = TextStyle(color = Ink, fontSize = 12.sp, fontStyle = FontStyle.Italic))
+            }
         }
     }
 }

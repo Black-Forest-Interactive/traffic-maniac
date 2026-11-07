@@ -123,6 +123,9 @@ sealed interface GameCommand {
         val count: Int,
     ) : GameCommand
 
+    /** Spatenstich oder Eröffnung mit Presse – einmal am Tag. */
+    data object HoldCeremony : GameCommand
+
     data class FireWardens(
         val count: Int,
     ) : GameCommand

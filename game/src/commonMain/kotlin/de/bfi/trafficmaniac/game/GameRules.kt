@@ -46,8 +46,10 @@ data class GameRules(
     val angerThreshold: Double = 0.35,
     /** Ab diesem Anteil ist der Zorn maximal. */
     val angerFullAt: Double = 0.75,
-    /** Ab diesem Anteil wirkt PR nur noch halb. */
+    /** Ab diesem Anteil Unzufriedener verpufft PR allmählich ... */
     val prLimitShare: Double = 0.7,
+    /** ... und ab diesem hilft auch die schönste Story nichts mehr (kein Dämpfen, kein Image, kritische Presse). */
+    val prNoEffectShare: Double = 0.85,
     /** Der Abwahlindex steigt, solange der Zorn darüber liegt ... */
     val recallAngerThreshold: Double = 30.0,
     /** ... und zwar um (Zorn − Schwelle) / [recallDivisor] pro Spielstunde. */
@@ -132,6 +134,33 @@ data class GameRules(
     /** Anwohnerparken: Anteil der Straßenrand-Parkplätze, die für Besucher wegfallen, und Einnahmen pro Woche. */
     val residentParkingCurbShare: Double = 0.4,
     val residentPermitWeekly: Long = 3_000,
+    /** Rad-Korso (10–18 Uhr): Chance je Stunde am Wochenende ... */
+    val corsoChanceWeekend: Double = 0.1,
+    /** ... plus je Dauerstau-Tag in Folge ... */
+    val corsoChancePerJamDay: Double = 0.04,
+    /** ... plus bis zu diesem Wert, wenn [corsoBannedReference] Bürger ihren Führerschein los sind. */
+    val corsoChanceBanned: Double = 0.1,
+    val corsoBannedReference: Int = 100,
+    /** Ein Tag gilt als Dauerstau-Tag, wenn mindestens dieser Anteil der Pendler zu spät kam. */
+    val jamLateShare: Double = 0.2,
+    val maxCorsosPerDay: Int = 2,
+    /** Spontandemos (9–20 Uhr) erst ab diesem Zorn; die Chance je Stunde wächst bis [demoChancePerHour]. */
+    val demoMinAnger: Double = 20.0,
+    val demoChancePerHour: Double = 0.25,
+    val maxDemosPerDay: Int = 4,
+    val demoMinHours: Double = 1.0,
+    val demoMaxHours: Double = 3.0,
+    /** Schwertransport: Chance je Nacht (Start 23 Uhr). */
+    val heavyTransportChancePerNight: Double = 0.4,
+    /** Die Zeitung nähert ihren Ton jeden Tag um diesen Anteil der Tonlage an, die der PR-Vertrag vorgibt. */
+    val pressToneInertia: Double = 0.6,
+    /** Image je Tag bei ganz freundlicher (+) bzw. ganz kritischer (−) Zeitung. */
+    val pressReputationPerDay: Double = 1.5,
+    /** PR-Aufschlag für die Lücke zwischen Story und Realität: bis zu diesem Anteil der Vertragskosten. */
+    val prGapCostFactor: Double = 1.5,
+    /** Spatenstich oder Eröffnung: Kosten und Image (jede weitere in derselben Woche bringt weniger). */
+    val ceremonyCost: Long = 6_000,
+    val ceremonyReputation: Double = 4.0,
 ) {
     companion object {
         val DEFAULT_SPEED_LIMITS = listOf(7, 10, 20, 30, 40, 50, 70)

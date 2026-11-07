@@ -163,8 +163,8 @@ internal class PublicWorks(
                 area.any { it in bikeCrossings } &&
                 cameraCounters.values.count { it.segment in area } >= 2
         if (complete) {
+            // Gemeldet wird über die Achievements des Spiels
             achievements += SIGN_FOREST
-            message("Achievement freigeschaltet: $SIGN_FOREST!")
         }
     }
 
@@ -185,7 +185,7 @@ internal class PublicWorks(
 
     private fun streetName(segment: Int): String = city.roads.segments[segment].name ?: "Straße ohne Namen"
 
-    private companion object {
+    companion object {
         const val SIGN_FOREST = "Schilderwald"
     }
 }

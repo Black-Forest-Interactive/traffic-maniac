@@ -42,6 +42,8 @@ class SimulationSnapshot(
     val infrastructure: InfrastructureSnapshot = InfrastructureSnapshot.EMPTY,
     val parkingLots: List<ParkingLotState> = emptyList(),
     val parking: ParkingSummary = ParkingSummary(),
+    /** Laufende Ereignisse (Demos, Feste, Korsos, Schwertransporte). */
+    val events: List<EventMarker> = emptyList(),
 ) {
     val vehicleCount: Int get() = ids.size
 }
@@ -58,10 +60,15 @@ const val FLAG_EMERGENCY = 2
 const val FLAG_ELECTRIC = 4
 const val FLAG_SERVICE = 8
 
+/** Rad-Korso oder Schwertransport (Ereignis). */
+const val FLAG_EVENT = 16
+
 internal fun flagsOf(vehicle: Vehicle): Byte {
     var flags = 0
     if (vehicle.disabled) flags = flags or FLAG_DISABLED
-    if (vehicle.role.isEmergency) flags = flags or FLAG_EMERGENCY
+    // Der Schwertransport fährt mit Polizeibegleitung – also mit Blaulicht
+    if (vehicle.role.isEmergency || vehicle.role == VehicleRole.HEAVY_TRANSPORT) flags = flags or FLAG_EMERGENCY
+    if (vehicle.role.isEvent) flags = flags or FLAG_EVENT
     if (vehicle.drivetrain == Drivetrain.ELECTRIC) flags = flags or FLAG_ELECTRIC
     if (vehicle.role != VehicleRole.PRIVATE) flags = flags or FLAG_SERVICE
     return flags.toByte()

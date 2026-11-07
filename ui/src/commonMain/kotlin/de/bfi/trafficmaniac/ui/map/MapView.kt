@@ -116,6 +116,7 @@ fun MapView(
                     inWorld(currentCamera) {
                         if (showCondition) drawCondition(segmentPaths, infrastructure, currentCamera.scale)
                         drawWorksAndDetours(segmentPaths, infrastructure, currentCamera.scale)
+                        drawEvents(segmentPaths, frame.current.events, currentCamera.scale)
                     }
                     drawTraffic(currentCamera, frame, picker, textMeasurer)
                 }

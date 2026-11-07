@@ -117,7 +117,33 @@ internal class VehicleFactory(
             role = role,
         ).also { it.incidentId = incidentId }
 
+    /** Rad-Korso (eine Gruppe) oder Schwertransport für ein Ereignis. */
+    fun createEvent(
+        role: VehicleRole,
+        route: IntArray,
+        time: Double,
+    ): Vehicle {
+        val corso = role == VehicleRole.BIKE_CORSO
+        return Vehicle(
+            id = nextId++,
+            type = if (corso) VehicleType.BIKE_CORSO else VehicleType.HEAVY_TRANSPORT,
+            driver = DriverProfile.GEMUETLICHER,
+            color = if (corso) CORSO_COLOR else HEAVY_TRANSPORT_COLOR,
+            route = route,
+            destinationNode = -1,
+            departureTime = time,
+            knowsCameras = true,
+            homeZone = -1,
+            person = -1,
+            referenceSeconds = 0.0,
+            drivetrain = if (corso) Drivetrain.PETROL else Drivetrain.DIESEL,
+            role = role,
+        )
+    }
+
     private companion object {
+        const val CORSO_COLOR = 0xFF2DC653.toInt()
+        const val HEAVY_TRANSPORT_COLOR = 0xFFFFD60A.toInt()
         const val MIN_CHARGE = 0.1
         const val MAX_CHARGE = 0.95
         const val VAN_COLOR = 0xFFE9ECEF.toInt()

@@ -1,6 +1,8 @@
 package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.city.CityMap
+import de.bfi.trafficmaniac.sim.EventKind
+import de.bfi.trafficmaniac.sim.IncidentKind
 import de.bfi.trafficmaniac.sim.Simulation
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import de.bfi.trafficmaniac.sim.Weekday
@@ -28,6 +30,13 @@ class CityGame(
     private val maintenance = Maintenance(city, simulation, rules, treasury, works, ::message)
     private val parkingOffice = ParkingOffice(simulation, rules, treasury, citizens, ::message)
     private val politics = Politics(rules)
+    private val events = EventPlanner(city, simulation, rules, ::message)
+    private val press = Press(rules, treasury, ::message)
+    private val achievements = Achievements(::message)
+    private val bridges =
+        city.roads.segments
+            .filter { it.bridge && !it.passive }
+            .map { it.id }
     private var prContract = PrContract.NONE
     private var argumentsCampaign = false
     private var moods: List<ZoneMood> = citizens.moods(argumentsCampaign = false)
@@ -59,9 +68,15 @@ class CityGame(
 
     fun step() {
         if (isFinished) return
+        var executed = false
         while (true) {
             val command = commands.tryReceive().getOrNull() ?: break
             execute(command)
+            executed = true
+        }
+        // Der Schilderwald entsteht durch Werkzeuge – er wird sofort gefeiert, nicht erst zur vollen Stunde
+        if (executed && PublicWorks.SIGN_FOREST in works.achievements) {
+            achievements.check(AchievementFacts(signForest = true), simulation.gameTime.day)
         }
         val reportsBefore = simulation.dayReports.size
         simulation.step()
@@ -80,7 +95,7 @@ class CityGame(
             nightLimits = works.nightLimits.toMap(),
             priorityRoads = works.priorityRoads.toSet(),
             bikeCrossings = works.bikeCrossings.toSet(),
-            achievements = works.achievements.toList(),
+            achievements = achievements.titles,
             signalNodes = works.signalNodes,
             cameras = works.cameraCounters.values.map { it.toRecord() },
             messages = messages.toList(),
@@ -107,6 +122,9 @@ class CityGame(
             maintenance = maintenance.state(simulation.time),
             parkingOffice = parkingOffice.state(),
             detourSegments = works.detourSegments.toSet(),
+            events = events.state(),
+            press = press.state(unhappyShare, maintenance.state(simulation.time)),
+            achievementList = achievements.state(),
         )
 
     private fun hourIndex() = (simulation.time / SECONDS_PER_HOUR).toInt()
@@ -137,7 +155,30 @@ class CityGame(
         val incomeThisHour = treasury.fineIncome - fineIncomeAtHourStart
         fineIncomeAtHourStart = treasury.fineIncome
         politics.hourPassed(unhappyShare, prContract, argumentsCampaign, incomeThisHour).forEach(::message)
+        press.hourPassed(unhappyShare)
+        events.hourPassed(politics.anger, drivers.bannedCount, moods)
+        achievements.check(hourlyFacts(), simulation.gameTime.day)
         if (isGameOver) message("Der Gemeinderat hat Ihnen das Vertrauen entzogen. Sie sind abgewählt!")
+    }
+
+    private fun hourlyFacts(): AchievementFacts {
+        val stats = simulation.snapshot().stats
+        val infrastructure = simulation.infrastructure.snapshot()
+        val maintenanceState = maintenance.state(simulation.time)
+        val unusable = infrastructure.closedSegments + infrastructure.collapsedSegments
+        return AchievementFacts(
+            activeVehicles = stats.activeVehicles,
+            meanSpeedKmh = stats.meanSpeedKmh,
+            bridgesOpen = if (bridges.isEmpty()) -1 else bridges.count { it !in unusable },
+            signForest = PublicWorks.SIGN_FOREST in works.achievements,
+            cameras = works.cameraCounters.size,
+            collapses = infrastructure.collapsedSegments.size,
+            plannings = maintenanceState.reports.count { it.status == DamageStatus.PLANNING },
+            corsos = events.state().totals[EventKind.BIKE_CORSO] ?: 0,
+            revocations = drivers.revocations,
+            lawsuits = maintenanceState.lawsuits,
+            reputation = politics.reputation,
+        )
     }
 
     /** Mitternacht: Zeitung drucken, Lasertrupps bezahlen, sonntags Haushaltsrunde. */
@@ -150,11 +191,24 @@ class CityGame(
         maintenance.dayPassed()
         val maintenanceToday = maintenance.startNewDay()
         val parkingToday = parkingOffice.startNewDay()
+        val eventsToday = events.dayEnded(commuteYesterday)
+        val ceremoniesToday = press.startNewDay()
+        politics.press(press.dayEnded(prContract, unhappyShare))
         // Ohne PR-Vertrag kostet jede Schlagzeile über Krater und Einstürze Image
         if (prContract == PrContract.NONE) {
             val stories = maintenanceToday.ignoredCraters.size + maintenanceToday.collapses.size * COLLAPSE_STORY_WEIGHT
-            politics.badPress(stories * rules.ignoredDamageReputationLoss)
+            politics.press(-stories * rules.ignoredDamageReputationLoss)
         }
+        achievements.check(
+            hourlyFacts().copy(
+                lateShare = commuteYesterday.lateShare,
+                lettersToday = officeToday.paid,
+                demosToday = eventsToday.demos.size,
+                recordRatio = recordToday?.let { (measured, limit) -> measured / limit } ?: 0.0,
+                trucksStuck = report.incidents[IncidentKind.TRUCK_STUCK] ?: 0,
+            ),
+            report.day,
+        )
         val previous = reports.getOrNull(reports.size - 2)
         latestEdition =
             Newspaper.edition(
@@ -169,6 +223,9 @@ class CityGame(
                     commuteYesterday,
                     maintenanceToday,
                     parkingToday,
+                    eventsToday,
+                    ceremoniesToday,
+                    press.tone,
                 ),
             )
         finesToday = 0
@@ -185,7 +242,7 @@ class CityGame(
             BudgetRound(
                 simulation.gameTime,
                 rules.weeklyAllowance,
-                prContract.weeklyCost,
+                press.weeklyPrCost(prContract),
                 argumentsCost,
                 office.weeklySalaries() + parkingOffice.weeklySalaries(),
                 maintenance.weeklyCost(),
@@ -334,6 +391,12 @@ class CityGame(
 
             is GameCommand.FireWardens -> {
                 parkingOffice.fire(command.count)
+            }
+
+            GameCommand.HoldCeremony -> {
+                val gain =
+                    press.ceremony(maintenance.state(simulation.time)) { maintenance.construction.lastRepaired = null }
+                politics.press(gain)
             }
 
             else -> {
