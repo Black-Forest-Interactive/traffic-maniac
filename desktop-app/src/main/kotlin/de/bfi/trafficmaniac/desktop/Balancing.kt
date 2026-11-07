@@ -1,8 +1,10 @@
 package de.bfi.trafficmaniac.desktop
 
 import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -39,6 +41,10 @@ object Balancing {
         }
         return json.decodeFromJsonElement(SimulationConfig.serializer(), JsonObject(tree))
     }
+
+    /** Szenarien für das Startmenü (`balancing/scenarios.json`, beim ersten Start mit den Standards angelegt). */
+    fun scenarios(directory: File = File(DIRECTORY)): List<Scenario> =
+        load(File(directory, "scenarios.json"), ListSerializer(Scenario.serializer()), Scenario.DEFAULTS)
 
     private fun <T> load(
         file: File,

@@ -42,6 +42,8 @@ fun DayReportOverlay(
     edition: NewspaperEdition?,
     onContinue: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Erster Spieltag des Szenarios. */
+    firstDay: Int = 0,
 ) {
     Box(modifier.fillMaxSize().background(ComicTheme.scrim), contentAlignment = Alignment.Center) {
         Column(
@@ -52,7 +54,7 @@ fun DayReportOverlay(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             BasicText(
-                "Tagesabschluss: ${report.weekday.germanName}, Tag ${report.day + 1}",
+                "Tagesabschluss: ${report.weekday.germanName}, Tag ${report.day - firstDay + 1}",
                 style = TextStyle(color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold),
             )
             val text = TextStyle(color = Ink, fontSize = 15.sp)
@@ -76,7 +78,7 @@ fun DayReportOverlay(
                     )
                 }
             }
-            edition?.let { ComicNewspaper(it, Modifier.padding(top = 8.dp)) }
+            edition?.let { ComicNewspaper(it, Modifier.padding(top = 8.dp), firstDay) }
             BasicText(
                 "Weiter zum nächsten Tag (Enter)",
                 style = TextStyle(color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold),

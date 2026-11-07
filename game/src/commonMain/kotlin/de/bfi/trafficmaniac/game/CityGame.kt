@@ -33,6 +33,7 @@ class CityGame(
     private val events = EventPlanner(city, simulation, rules, ::message)
     private val press = Press(rules, treasury, ::message)
     private val achievements = Achievements(::message)
+    private val firstDay = simulation.gameTime.day
     private val bridges =
         city.roads.segments
             .filter { it.bridge && !it.passive }
@@ -125,6 +126,7 @@ class CityGame(
             events = events.state(),
             press = press.state(unhappyShare, maintenance.state(simulation.time)),
             achievementList = achievements.state(),
+            firstDay = firstDay,
         )
 
     private fun hourIndex() = (simulation.time / SECONDS_PER_HOUR).toInt()

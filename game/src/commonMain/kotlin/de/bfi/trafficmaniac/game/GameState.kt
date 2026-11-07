@@ -66,7 +66,12 @@ data class GameState(
     val press: PressState = PressState(),
     /** Alle Achievements mit Freischalt-Tag ([achievements] enthält nur die Titel der freigeschalteten). */
     val achievementList: List<AchievementStatus> = emptyList(),
-)
+    /** Erster Spieltag (Tage seit dem Montag der ersten Woche) – Szenarien beginnen nicht immer montags. */
+    val firstDay: Int = 0,
+) {
+    /** Tag der Amtszeit, ab 1 gezählt. */
+    fun termDay(day: Int): Int = day - firstDay + 1
+}
 
 /**
  * Wertung: Es zählen nur selbst verdientes Geld und Image – ob die Stadt in Trümmern liegt, ist egal.

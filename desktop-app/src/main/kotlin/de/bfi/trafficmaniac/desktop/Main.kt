@@ -1,6 +1,13 @@
 package de.bfi.trafficmaniac.desktop
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -13,13 +20,17 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
-import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.GameInfo
-import de.bfi.trafficmaniac.game.GameRules
-import de.bfi.trafficmaniac.game.GameRunner
+import de.bfi.trafficmaniac.game.Scenario
+import de.bfi.trafficmaniac.ui.MainMenu
 import de.bfi.trafficmaniac.ui.NoSound
 import de.bfi.trafficmaniac.ui.SoundBoard
 import de.bfi.trafficmaniac.ui.TrafficManiacApp
+import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.SpriteSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val DEFAULT_CITY_FILE = "data/cities/pforzheim.city"
@@ -27,52 +38,104 @@ private const val DEFAULT_CITY_FILE = "data/cities/pforzheim.city"
 /** Tasten 1–4 → Zeitraffer 1x, 2x, 4x, 8x. */
 private val speedKeys = mapOf(Key.One to 1, Key.Two to 2, Key.Three to 4, Key.Four to 8)
 
-private const val TICKS_PER_MINUTE = 60
-
 /**
- * Startet das Spiel.
+ * Startet das Spiel mit dem Startmenü (Szenario, Schwierigkeit, Highscores, Einstellungen, Credits).
  *
- * Argumente: `[Stadtdatei] [--warmup <Minuten>] [--peak-trips <Anzahl>]`
- * - `--warmup` simuliert vor dem Öffnen des Fensters ohne Darstellung vor (nicht auf volle Straßen warten).
+ * Argumente: `[Stadtdatei] [--scenario <id>] [--warmup <Minuten>] [--peak-trips <Anzahl>]`
+ * - `--scenario` startet ohne Menü direkt in ein Szenario (z. B. `erste-amtszeit`, `berufsverkehr`).
+ * - `--warmup` simuliert zusätzlich zum Vorlauf des Szenarios vor (volle Straßen).
  * - `--peak-trips` überschreibt die Fahrten pro Stunde in der Spitzenstunde (z. B. für Lasttests).
- *
- * Das Spiel beginnt montags um 5 Uhr; `--warmup 120` startet also mitten im Berufsverkehr.
  */
 fun main(args: Array<String>) {
     val options = parseOptions(args)
-    val balancing = Balancing.simulationConfig()
-    val config = options.peakTrips?.let { balancing.copy(peakTripsPerHour = it) } ?: balancing
     val cityFile = File(options.cityFile ?: DEFAULT_CITY_FILE)
     val city: CityMap? = cityFile.takeIf { it.isFile }?.let { CityMapCodec.decode(it.readBytes()) }
     val missingMessage =
-        "Keine Stadtdatei gefunden:\n${cityFile.absolutePath}\n\n" +
-            "Erzeugen mit: scripts/import-pforzheim.sh"
-    val game = city?.let { CityGame(it, config, Balancing.gameRules()) }
-    game?.let { repeat(options.warmupMinutes * TICKS_PER_MINUTE * config.ticksPerSecond) { _ -> it.step() } }
-    val runner = game?.let { GameRunner(it) }
+        "Keine Stadtdatei gefunden:\n${cityFile.absolutePath}\n\nErzeugen mit: scripts/import-pforzheim.sh"
     val sound = if (city != null) SynthSoundBoard.open() else NoSound
     val sprites = loadSprites()
-
+    val scenarios = Balancing.scenarios()
+    val userData = UserData()
     application {
-        runner?.let { LaunchedEffect(it) { it.run() } }
+        // Die laufende Partie: Das Fenster leitet Tasten an sie weiter
+        val session = remember { mutableStateOf<Session?>(null) }
         Window(
             onCloseRequest = ::exitApplication,
             title = city?.let { "${GameInfo.TITLE} – ${it.name}" } ?: GameInfo.TITLE,
             state = rememberWindowState(size = DpSize(1280.dp, 800.dp)),
-            onKeyEvent = { event -> runner != null && handleKey(event, runner, sound) },
+            onKeyEvent = { event -> session.value?.let { handleKey(event, it, sound) } ?: false },
         ) {
-            TrafficManiacApp(
-                city = city,
-                missingCityMessage = missingMessage,
-                traffic = runner?.frames,
-                rules = game?.rules ?: GameRules(),
-                onCommand = { game?.submit(it) },
-                onContinueDay = { runner?.acknowledgeReport() },
-                sound = sound,
-                sprites = sprites,
-            )
+            if (city == null) {
+                TrafficManiacApp(city = null, missingCityMessage = missingMessage)
+            } else {
+                Game(city, scenarios, options, userData, sound, sprites, session, ::exitApplication)
+            }
         }
     }
+}
+
+/** Menü oder laufendes Spiel; nach der Wertung geht es zurück ins Menü. */
+@Composable
+private fun Game(
+    city: CityMap,
+    scenarios: List<Scenario>,
+    options: Options,
+    userData: UserData,
+    sound: SoundBoard,
+    sprites: SpriteSource,
+    sessionState: MutableState<Session?>,
+    onQuit: () -> Unit,
+) {
+    var settings by remember { mutableStateOf(userData.settings()) }
+    var highscores by remember { mutableStateOf(userData.highscores()) }
+    var session by sessionState
+    var loading by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(settings) {
+        sound.muted = !settings.sound
+        sound.music = settings.music
+        userData.save(settings)
+    }
+    val start: (Scenario) -> Unit = { scenario ->
+        loading = "${scenario.title}: Pforzheim wird vorbereitet …"
+        scope.launch {
+            val prepared = withContext(Dispatchers.Default) { Session.start(city, scenario, settings, options) }
+            session = prepared
+            loading = null
+        }
+    }
+    LaunchedEffect(Unit) { options.scenario?.let { id -> scenarios.firstOrNull { it.id == id }?.let(start) } }
+    val current = session
+    if (current == null) {
+        MainMenu(
+            scenarios = scenarios,
+            highscores = highscores,
+            settings = settings,
+            onSettings = { settings = it },
+            onStart = start,
+            onQuit = onQuit,
+            attribution = city.attribution,
+            loading = loading,
+        )
+        return
+    }
+    LaunchedEffect(current) { current.runner.run() }
+    LaunchedEffect(current) {
+        current.result()?.let { entry ->
+            highscores = highscores.add(entry)
+            userData.save(highscores)
+        }
+    }
+    TrafficManiacApp(
+        city = city,
+        traffic = current.runner.frames,
+        rules = current.game.rules,
+        onCommand = { current.game.submit(it) },
+        onContinueDay = { current.runner.acknowledgeReport() },
+        sound = sound,
+        sprites = if (settings.sprites) sprites else NoSprites,
+        onMenu = { session = null },
+    )
 }
 
 /** Grafiken aus `assets/sprites/`; fehlende zeichnet das Spiel selbst. */
@@ -81,10 +144,11 @@ private fun loadSprites(): SvgSprites =
         if (it.count > 0) println("${it.count} Grafiken aus ${SvgSprites.DEFAULT_FOLDER} geladen")
     }
 
-private class Options(
+internal class Options(
     val cityFile: String?,
     val warmupMinutes: Int,
     val peakTrips: Double?,
+    val scenario: String?,
 )
 
 private fun parseOptions(args: Array<String>): Options {
@@ -99,16 +163,22 @@ private fun parseOptions(args: Array<String>): Options {
             !arg.startsWith("--") &&
                 args.getOrNull(i - 1)?.startsWith("--") != true
         }
-    return Options(positional.firstOrNull(), named["--warmup"]?.toInt() ?: 0, named["--peak-trips"]?.toDouble())
+    return Options(
+        positional.firstOrNull(),
+        named["--warmup"]?.toInt() ?: 0,
+        named["--peak-trips"]?.toDouble(),
+        named["--scenario"],
+    )
 }
 
-/** Leertaste: Pause, Enter: Tagesabschluss schließen, 1–4: Tempo, M: stumm, N: Musik an/aus. */
+/** Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo, M Ton, N Musik. */
 private fun handleKey(
     event: KeyEvent,
-    runner: GameRunner,
+    session: Session,
     sound: SoundBoard,
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
+    val runner = session.runner
     val speed = speedKeys[event.key]
     when {
         event.key == Key.Spacebar -> runner.togglePause()

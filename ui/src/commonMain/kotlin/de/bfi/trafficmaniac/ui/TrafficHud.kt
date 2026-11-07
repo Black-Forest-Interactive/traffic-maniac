@@ -40,7 +40,7 @@ fun TrafficHud(
         }
     val vehicles = "Fahrzeuge ${stats.activeVehicles} (+${stats.pendingVehicles} wartend)"
     val tripMinutes = "%.1f".format(stats.meanTripMinutes)
-    val day = "${time.weekday.germanName}, Tag ${time.day + 1}/${frame.game.termDays}"
+    val day = "${time.weekday.germanName}, Tag ${frame.game.termDay(time.day)}/${frame.game.termDays}"
     val lines =
         listOf(
             "$day · ${time.clockText} Uhr · Tempo $tempo",

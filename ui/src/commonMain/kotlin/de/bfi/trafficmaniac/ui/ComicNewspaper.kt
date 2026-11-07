@@ -34,13 +34,15 @@ private val Newsprint = Color(0xFFF5EEDC)
 fun ComicNewspaper(
     edition: NewspaperEdition,
     modifier: Modifier = Modifier,
+    /** Erster Spieltag des Szenarios – die Ausgabe zählt ab Tag 1 der Amtszeit. */
+    firstDay: Int = 0,
 ) {
     val ink = ComicTheme.ink
     Column(
         modifier.fillMaxWidth().comicPanel(background = Newsprint, shadow = 4.dp).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Masthead(edition)
+        Masthead(edition, firstDay)
         edition.headlines.firstOrNull()?.let {
             BasicText(
                 it,
@@ -90,7 +92,10 @@ fun ComicNewspaper(
 
 /** Zeitungskopf zwischen Doppellinie und Linie, darunter Ausgabe und Tonlage. */
 @Composable
-private fun Masthead(edition: NewspaperEdition) {
+private fun Masthead(
+    edition: NewspaperEdition,
+    firstDay: Int,
+) {
     val ink = ComicTheme.ink
     BasicText(
         "PFORZHEIMER MORGENPOST",
@@ -107,7 +112,7 @@ private fun Masthead(edition: NewspaperEdition) {
     DoubleRule()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         val small = TextStyle(color = ink, fontSize = 11.sp, fontFamily = FontFamily.Serif)
-        BasicText("Ausgabe Tag ${edition.day + 1} · Preis: Ihr Vertrauen", style = small)
+        BasicText("Ausgabe Tag ${edition.day - firstDay + 1} · Preis: Ihr Vertrauen", style = small)
         if (edition.tone.isNotEmpty()) {
             BasicText(
                 "Tonlage: ${edition.tone}",

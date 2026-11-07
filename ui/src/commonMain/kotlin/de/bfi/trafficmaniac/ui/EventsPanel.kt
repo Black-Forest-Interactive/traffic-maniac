@@ -30,6 +30,8 @@ fun EventsPanel(
     events: EventsState,
     today: Int,
     modifier: Modifier = Modifier,
+    /** Erster Spieltag des Szenarios (für "Tag n"). */
+    firstDay: Int = 0,
     /** Klick auf ein Ereignis: die Karte zeigt die Strecke. */
     onShow: (Set<Int>) -> Unit = {},
 ) {
@@ -59,7 +61,14 @@ fun EventsPanel(
         BasicText("Geplant", style = heading)
         if (events.calendar.isEmpty()) BasicText("Keine Termine mehr in dieser Amtszeit.", style = muted)
         for (entry in events.calendar.take(CALENDAR_ROWS)) {
-            val day = if (entry.day == today) "heute" else "${entry.weekday.germanName} (Tag ${entry.day + 1})"
+            val day =
+                if (entry.day ==
+                    today
+                ) {
+                    "heute"
+                } else {
+                    "${entry.weekday.germanName} (Tag ${entry.day - firstDay + 1})"
+                }
             BasicText(
                 "$day ${entry.startHour}–${entry.endHour} Uhr · ${entry.kind.label}: ${entry.place}",
                 style = text,
@@ -85,6 +94,7 @@ fun EventsPanel(
 fun AchievementsPanel(
     achievements: List<AchievementStatus>,
     modifier: Modifier = Modifier,
+    firstDay: Int = 0,
 ) {
     val title = TextStyle(color = PanelText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     val unlocked = TextStyle(color = Highlight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -103,7 +113,7 @@ fun AchievementsPanel(
             style = title,
         )
         for (status in achievements) {
-            val day = status.unlockedDay?.let { " · Tag ${it + 1}" } ?: ""
+            val day = status.unlockedDay?.let { " · Tag ${it - firstDay + 1}" } ?: ""
             BasicText(
                 (if (status.unlocked) "★ " else "☆ ") + status.achievement.title + day,
                 style = if (status.unlocked) unlocked else locked,

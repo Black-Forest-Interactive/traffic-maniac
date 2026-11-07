@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +48,7 @@ private const val SEAL_INK = 2f
 fun ResultOverlay(
     state: GameState,
     modifier: Modifier = Modifier,
+    onMenu: (() -> Unit)? = null,
 ) {
     val recalled = state.isGameOver
     val text = TextStyle(color = ComicTheme.ink, fontSize = 14.sp)
@@ -96,8 +98,26 @@ fun ResultOverlay(
                 }
                 Certificate(honorary = !recalled && state.reputation >= HONORARY_CITIZEN, recalled = recalled)
             }
+            onMenu?.let { BackToMenu(it, Modifier.align(Alignment.End)) }
         }
     }
+}
+
+@Composable
+private fun BackToMenu(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BasicText(
+        "Zurück zum Menü",
+        style = TextStyle(color = ComicTheme.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+        modifier =
+            modifier
+                .comicButton(
+                    active = true,
+                ).clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+    )
 }
 
 /** Urkunde: goldenes Siegel für die Ehrenbürgerschaft, sonst ein schiefer roter Stempel. */
