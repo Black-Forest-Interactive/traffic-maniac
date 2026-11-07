@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -44,6 +45,8 @@ private val MessageText = Color(0xFFF1F1F1)
 private const val PICK_RADIUS_PIXELS = 14f
 private const val MIN_PICK_RADIUS_METERS = 6f
 private const val VISIBLE_MESSAGES = 3
+private const val MONEY_RAIN_WIDTH = 360
+private const val MONEY_RAIN_HEIGHT = 260
 
 /** Wurzel der Spieloberfläche. Ohne Stadt wird ein Hinweis angezeigt, wie man sie erzeugt. */
 @Composable
@@ -88,6 +91,9 @@ fun TrafficManiacApp(
         )
         hudFrame?.let { frame ->
             TrafficHud(frame, fps, Modifier.align(Alignment.TopStart))
+            val income =
+                frame.game.fineIncome + frame.game.parkingOffice.feeIncome + frame.game.parkingOffice.ticketIncome
+            MoneyRain(income, Modifier.align(Alignment.TopStart).size(MONEY_RAIN_WIDTH.dp, MONEY_RAIN_HEIGHT.dp))
             SidePanels(
                 frame = frame,
                 rules = rules,

@@ -31,68 +31,6 @@ import kotlin.math.PI
 import kotlin.math.max
 import kotlin.math.sqrt
 
-private const val MIN_VEHICLE_PIXELS = 2.5f
-
-/**
- * Zeichnet alle Fahrzeuge als Striche von Heck zu Front (in Weltkoordinaten).
- * Positionen werden zwischen den beiden Snapshots des [TrafficFrame] interpoliert.
- */
-internal fun DrawScope.drawVehicles(
-    frame: TrafficFrame,
-    scale: Float,
-) {
-    val previous = frame.previous
-    val current = frame.current
-    val t = frame.interpolation()
-    // Blinken im Sekundentakt der Spielzeit
-    val blink = (current.time * BLINKS_PER_SECOND).toInt() % 2 == 0
-    var j = 0
-    for (i in 0 until current.vehicleCount) {
-        val id = current.ids[i]
-        // Beide Snapshots sind nach ID sortiert: passendes Fahrzeug im vorherigen Snapshot suchen
-        while (j < previous.vehicleCount && previous.ids[j] < id) j++
-        var x = current.x[i]
-        var y = current.y[i]
-        if (j < previous.vehicleCount && previous.ids[j] == id) {
-            x = previous.x[j] + (x - previous.x[j]) * t
-            y = previous.y[j] + (y - previous.y[j]) * t
-        }
-        val length = current.lengths[i]
-        val width = max(current.widths[i], MIN_VEHICLE_PIXELS / scale)
-        drawLine(
-            color = Color(current.colors[i]),
-            start = Offset(x - current.dirX[i] * length, y - current.dirY[i] * length),
-            end = Offset(x, y),
-            strokeWidth = width,
-            cap = StrokeCap.Butt,
-        )
-        drawVehicleLights(current.flags[i].toInt(), x, y, width, blink)
-    }
-}
-
-/** Ampeln als farbige Punkte an den Haltelinien. */
-internal fun DrawScope.drawSignals(
-    markers: SignalMarkers,
-    states: Array<SignalState>,
-    scale: Float,
-    blink: Boolean,
-) {
-    val width = max(2 * MapStyle.SIGNAL_RADIUS_METERS, MapStyle.MIN_SIGNAL_PIXELS / scale)
-    // Ausgefallene Ampeln blinken gelb
-    val shown = if (blink) listOf(SignalState.FLASHING) else emptyList()
-    for (state in listOf(SignalState.GREEN, SignalState.YELLOW, SignalState.RED) + shown) {
-        val points = states.indices.filter { states[it] == state }.map { Offset(markers.x[it], markers.y[it]) }
-        drawPoints(points, PointMode.Points, signalColor(state), strokeWidth = width, cap = StrokeCap.Round)
-    }
-}
-
-private fun signalColor(state: SignalState): Color =
-    when (state) {
-        SignalState.GREEN -> MapStyle.signalGreen
-        SignalState.YELLOW, SignalState.FLASHING -> MapStyle.signalYellow
-        else -> MapStyle.trafficSignal
-    }
-
 /** Tempolimit-Schilder (rot umrandete Kreise) an den vom Spieler geänderten Abschnitten. */
 internal fun DrawScope.drawSpeedSigns(
     signs: List<SpeedSign>,
@@ -132,19 +70,6 @@ internal fun DrawScope.drawSpeedSigns(
     }
 }
 
-/** Feste Blitzer als dunkle Kästen mit "Blitz". */
-internal fun DrawScope.drawCameras(
-    cameras: List<SpeedCamera>,
-    scale: Float,
-) {
-    val size = max(CAMERA_SIZE_METERS, CAMERA_MIN_PIXELS / scale)
-    for (camera in cameras) {
-        val body = if (camera.mobile) MapStyle.laser else MapStyle.camera
-        drawRect(body, topLeft = Offset(camera.x - size / 2, camera.y - size / 2), size = Size(size, size))
-        drawCircle(MapStyle.cameraFlash, size / CAMERA_LENS_RATIO, Offset(camera.x, camera.y))
-    }
-}
-
 /** Ein Schild an einem Abschnitt in Weltkoordinaten. */
 class SpeedSign(
     val x: Float,
@@ -158,9 +83,6 @@ private const val SIGN_MIN_PIXELS = 9f
 private const val SIGN_RING = 0.3f
 private const val SIGN_FONT_SIZE = 12f
 private const val SIGN_TEXT_FACTOR = 0.9f
-private const val CAMERA_SIZE_METERS = 8f
-private const val CAMERA_MIN_PIXELS = 10f
-private const val CAMERA_LENS_RATIO = 4f
 
 /** Zufriedenheit je Wohngebiet als Kreis: grün = zufrieden, rot = unzufrieden. */
 internal fun DrawScope.drawMoods(
@@ -302,23 +224,6 @@ private const val HEAT_ALPHA_BASE = 0.25f
 private const val HEAT_ALPHA_RANGE = 0.45f
 private const val GRAMS_PER_KG = 1_000f
 
-/** Blaulicht (blau) und Warnblinker (orange) als Punkt an der Fahrzeugfront. */
-private fun DrawScope.drawVehicleLights(
-    flags: Int,
-    x: Float,
-    y: Float,
-    width: Float,
-    blink: Boolean,
-) {
-    val light =
-        when {
-            flags and FLAG_EMERGENCY != 0 -> if (blink) MapStyle.blueLight else MapStyle.redLight
-            flags and FLAG_DISABLED != 0 && blink -> MapStyle.hazardLight
-            else -> return
-        }
-    drawCircle(light, width * LIGHT_SIZE, Offset(x, y))
-}
-
 /** Vorfälle: Ölspur (braune Pfütze), Unfall (rotes Kreuz), Panne (oranges Warndreieck). */
 internal fun DrawScope.drawIncidents(
     incidents: List<IncidentMarker>,
@@ -387,8 +292,6 @@ internal fun DrawScope.drawChargingStations(
     }
 }
 
-private const val BLINKS_PER_SECOND = 2.0
-private const val LIGHT_SIZE = 0.7f
 private const val INCIDENT_SIZE_METERS = 6f
 private const val INCIDENT_MIN_PIXELS = 7f
 private const val OIL_SCALE = 1.6f

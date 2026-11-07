@@ -22,6 +22,12 @@ class Router(
 
     fun freeFlowTime(link: Int): Float = graph.linkLength[link] / graph.linkSpeedLimit[link]
 
+    /** Verkehrsfluss je Abschnitt: freie / beobachtete Fahrzeit des langsamsten Links (1 = frei). */
+    internal fun segmentFlow(): FloatArray =
+        FloatArray(graph.segmentCount) { segment ->
+            graph.segmentLinks[segment].minOf { (freeFlowTime(it) / travelTime[it]).coerceIn(0f, 1f) }
+        }
+
     /** Fahrzeit einer Route bei freier Fahrt und den ursprünglichen Tempolimits. */
     fun referenceTime(route: IntArray): Double =
         route.sumOf { link -> graph.linkLength[link] * KMH_PER_MS / graph.linkPerceivedSpeedKmh[link] }

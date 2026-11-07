@@ -1,5 +1,6 @@
 package de.bfi.trafficmaniac.ui.map
 
+import androidx.compose.ui.geometry.Rect
 import de.bfi.trafficmaniac.city.Bounds
 import kotlin.math.min
 
@@ -85,3 +86,15 @@ data class Camera(
             )
     }
 }
+
+/** Sichtbarer Ausschnitt in Weltkoordinaten für ein Fenster der Größe [width] × [height]. */
+internal fun Camera.viewport(
+    width: Float,
+    height: Float,
+): Rect =
+    Rect(
+        screenToWorldX(0f, width),
+        screenToWorldY(height, height),
+        screenToWorldX(width, width),
+        screenToWorldY(0f, height),
+    )

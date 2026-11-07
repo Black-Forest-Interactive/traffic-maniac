@@ -3,20 +3,36 @@ package de.bfi.trafficmaniac.ui.map
 import androidx.compose.ui.graphics.Color
 import de.bfi.trafficmaniac.city.RoadClass
 
-/** Platzhalter-Kartenstil für Version 0.1. Der Cartoon-Look folgt in Version 0.7. */
+/**
+ * Cartoon-Kartenstil: kräftige, leicht übersättigte Farben, dicke Straßen mit dunklem "Tusche"-Umriss,
+ * vereinfachte Gebäude mit Schlagschatten, viel Grün und leuchtend blaue Enz und Nagold.
+ */
 object MapStyle {
-    val land = Color(0xFFF2EFE9)
-    val green = Color(0xFFCDE6B0)
-    val water = Color(0xFFA9D3F0)
-    val building = Color(0xFFD9D3CC)
+    /** Tusche: Umrisse von Straßen, Gebäuden und Figuren. */
+    val ink = Color(0xFF3B2F2F)
+    val land = Color(0xFFF7EBC8)
+    val green = Color(0xFF9BD770)
+    val greenOutline = Color(0xFF5FA845)
+    val water = Color(0xFF5EC3F2)
+    val waterOutline = Color(0xFF2F8FCB)
+    val building = Color(0xFFF2C6A0)
+    val buildingShadow = Color(0x40311F1F)
     val minorRoad = Color(0xFFFFFFFF)
-    val minorRoadOutline = Color(0xFFCFC9C1)
-    val motorway = Color(0xFFB8B0A8)
-    val roadOutline = Color(0xFF8C7B6B)
+    val minorRoadOutline = Color(0xFFB9A88F)
+    val motorway = Color(0xFFE8A0A0)
+    val roadOutline = ink
+    val centerLine = Color(0xCCFFFFFF)
+    val label = Color(0xFF2B2121)
+    val labelHalo = Color(0xE6FFF8E7)
     val trafficSignal = Color(0xFFD7263D)
     val signalGreen = Color(0xFF2DC653)
     val signalYellow = Color(0xFFFFC300)
-    val camera = Color(0xFF22252F)
+    val signalOff = Color(0xFF6C6F7D)
+    val lens = Color(0xFF14213D)
+    val excavator = Color(0xFFFFB703)
+    val angerCloud = Color(0xFF5A5560)
+    val bolt = Color(0xFFFF3B30)
+    val camera = Color(0xFF8D99AE)
     val blueLight = Color(0xFF00B4FF)
     val redLight = Color(0xFFFF2D55)
     val hazardLight = Color(0xFFFF9500)
@@ -48,10 +64,22 @@ object MapStyle {
     val attribution = Color(0xFF555555)
     val attributionBackground = Color(0xB3FFFFFF)
 
-    const val WATERWAY_WIDTH_METERS = 12f
+    const val WATERWAY_WIDTH_METERS = 14f
     const val MINOR_ROAD_WIDTH_METERS = 6f
     const val MOTORWAY_WIDTH_METERS = 20f
-    const val OUTLINE_METERS = 1.5f
+    const val OUTLINE_METERS = 2.5f
+    const val SCENERY_OUTLINE_METERS = 1.2f
+
+    /** Schlagschatten der Gebäude nach Südosten (Meter). */
+    const val SHADOW_OFFSET_METERS = 2.5f
+
+    /** Detailstufen (Pixel pro Meter): Gebäudeumrisse und Mittellinien, Straßennamen, Fahrzeug-Sprites. */
+    const val OUTLINE_MIN_SCALE = 0.8f
+    const val LABEL_MIN_SCALE = 0.9f
+    const val CENTER_LINE_MIN_SCALE = 2f
+
+    /** Darunter zeigt die Karte Staufarben statt einzelner Fahrzeuge. */
+    const val FLOW_MAX_SCALE = 0.3f
     const val SIGNAL_RADIUS_METERS = 4f
 
     /** Breiten unter dieser Pixelzahl werden angehoben, damit Linien beim Herauszoomen sichtbar bleiben. */
@@ -84,11 +112,16 @@ object MapStyle {
             RoadClass.MOTORWAY,
         )
 
-    private val motorwayStyle = RoadStyle(fill = Color(0xFFE892A2), widthMeters = 16f)
-    private val trunkStyle = RoadStyle(fill = Color(0xFFF9B29C), widthMeters = 14f)
-    private val primaryStyle = RoadStyle(fill = Color(0xFFFCD6A4), widthMeters = 12f)
-    private val secondaryStyle = RoadStyle(fill = Color(0xFFF7FABF), widthMeters = 10f)
-    private val tertiaryStyle = RoadStyle(fill = Color.White, widthMeters = 8f)
+    private val motorwayStyle = RoadStyle(fill = Color(0xFFFF6B6B), widthMeters = 20f)
+    private val trunkStyle = RoadStyle(fill = Color(0xFFFF9F59), widthMeters = 17f)
+    private val primaryStyle = RoadStyle(fill = Color(0xFFFFD166), widthMeters = 15f)
+    private val secondaryStyle = RoadStyle(fill = Color(0xFFFFF1A6), widthMeters = 12f)
+    private val tertiaryStyle = RoadStyle(fill = Color.White, widthMeters = 10f)
+
+    /** Staufarben: frei → zäh → Stillstand. */
+    val flowFree = Color(0xFF2DC653)
+    val flowSlow = Color(0xFFFFB703)
+    val flowJam = Color(0xFFD62828)
 
     /** Auffahrten und Verbindungsrampen sind schmaler als die Straße selbst. */
     private const val LINK_WIDTH_FACTOR = 0.6f

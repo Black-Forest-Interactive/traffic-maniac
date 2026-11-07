@@ -11,5 +11,9 @@ kotlin {
             api(libs.compose.foundation)
             api(libs.compose.ui)
         }
+        // Rendering-Tests brauchen Skias native Bibliotheken
+        jvmTest.dependencies {
+            implementation(compose.desktop.currentOs)
+        }
     }
 }

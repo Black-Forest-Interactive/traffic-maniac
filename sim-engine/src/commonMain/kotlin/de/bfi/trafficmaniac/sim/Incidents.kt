@@ -120,6 +120,7 @@ internal class Incidents(
         time: Double,
     ) {
         vehicle.disabled = true
+        vehicle.trouble = kind
         val incident = open(kind, vehicle.link, vehicle.position, time)
         incident.vehicles += vehicle
         dispatch(incident, VehicleRole.TOW_TRUCK)
@@ -146,10 +147,12 @@ internal class Incidents(
     ) {
         val incident = open(IncidentKind.ACCIDENT, link, vehicle.position, time)
         vehicle.disabled = true
+        vehicle.trouble = IncidentKind.ACCIDENT
         incident.vehicles += vehicle
         // Der Vordermann ist meist beteiligt
         crashPartner(vehicle, link)?.let {
             it.disabled = true
+            it.trouble = IncidentKind.ACCIDENT
             incident.vehicles += it
         }
         // Gaffer auf der Gegenfahrbahn

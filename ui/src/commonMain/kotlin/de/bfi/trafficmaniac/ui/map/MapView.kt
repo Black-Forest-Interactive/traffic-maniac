@@ -21,6 +21,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PointMode
@@ -79,6 +80,7 @@ fun MapView(
     val picker = remember(city) { MapPicker(city) }
     val segmentPaths = remember(city) { SegmentPaths(city) }
     val environmentCache = remember(city) { EnvironmentCache() }
+    val flashes = remember(city) { FlashTracker() }
     val textMeasurer = rememberTextMeasurer()
     val clickHandler by rememberUpdatedState(onMapClick)
     val frameTick = rememberFrameTick(onFps)
@@ -103,13 +105,12 @@ fun MapView(
         // Verkehr: in jedem Bildschirm-Frame neu, damit die Fahrzeuge flüssig interpoliert werden
         if (traffic != null) {
             Canvas(Modifier.fillMaxSize()) {
-                frameTick.value
+                val nanos = frameTick.value
                 val frame = traffic()
                 if (currentCamera != null && frame != null) {
-                    if (environmentLayer != EnvironmentLayer.NONE) {
-                        inWorld(
-                            currentCamera,
-                        ) { environmentCache.draw(this, frame.current.environment, environmentLayer) }
+                    val layer = environmentLayer
+                    if (layer != EnvironmentLayer.NONE) {
+                        inWorld(currentCamera) { environmentCache.draw(this, frame.current.environment, layer) }
                     }
                     if (showMoods) inWorld(currentCamera) { drawMoods(frame.game.zoneMoods, currentCamera.scale) }
                     val infrastructure = frame.current.infrastructure
@@ -118,7 +119,10 @@ fun MapView(
                         drawWorksAndDetours(segmentPaths, infrastructure, currentCamera.scale)
                         drawEvents(segmentPaths, frame.current.events, currentCamera.scale)
                     }
-                    drawTraffic(currentCamera, frame, picker, textMeasurer)
+                    val viewport = currentCamera.viewport(size.width, size.height)
+                    val seconds = nanos / NANOS_PER_SECOND.toDouble()
+                    flashes.update(frame.game.cameras, seconds)
+                    drawTraffic(currentCamera, frame, picker, textMeasurer, segmentPaths, viewport, seconds, flashes)
                 }
             }
         }
@@ -188,13 +192,23 @@ private fun rememberRenderedMap(
     showStaticSignals: Boolean,
 ): RenderedMap? {
     val density = LocalDensity.current
+    // Eigener Messer für den Hintergrund-Thread: TextMeasurer ist nicht threadsicher
+    val labelMeasurer = rememberTextMeasurer()
     var rendered by remember(layers) { mutableStateOf<RenderedMap?>(null) }
     LaunchedEffect(layers, camera, width, height, showStaticSignals) {
         if (camera == null || width < 1f || height < 1f) return@LaunchedEffect
         if (rendered != null) delay(RERENDER_DELAY)
         rendered =
             withContext(Dispatchers.Default) {
-                RenderedMap.render(layers, camera, width.toInt(), height.toInt(), density, showStaticSignals)
+                RenderedMap.render(
+                    layers,
+                    camera,
+                    width.toInt(),
+                    height.toInt(),
+                    density,
+                    showStaticSignals,
+                    labelMeasurer,
+                )
             }
     }
     return rendered
@@ -220,7 +234,7 @@ private fun rememberFrameTick(onFps: (Int) -> Unit): State<Long> =
     }
 
 /** Zeichnet [block] in Weltkoordinaten (Meter, y nach Norden). */
-private inline fun DrawScope.inWorld(
+internal inline fun DrawScope.inWorld(
     camera: Camera,
     block: DrawScope.() -> Unit,
 ) {
@@ -231,46 +245,36 @@ private inline fun DrawScope.inWorld(
     }, block)
 }
 
-internal fun DrawScope.drawStaticMap(
-    layers: MapLayers,
-    camera: Camera,
-    showStaticSignals: Boolean,
-) = inWorld(camera) {
-    val scale = camera.scale
-    drawPath(layers.green, MapStyle.green)
-    drawPath(layers.water, MapStyle.water)
-    drawPath(layers.buildings, MapStyle.building)
-    drawSceneryLines(layers, scale)
-    drawRoads(layers, scale)
-    if (showStaticSignals && scale >= MapStyle.SIGNAL_MIN_SCALE) {
-        drawPoints(
-            points = layers.trafficSignals,
-            pointMode = PointMode.Points,
-            color = MapStyle.trafficSignal,
-            strokeWidth = max(2 * MapStyle.SIGNAL_RADIUS_METERS, MapStyle.MIN_SIGNAL_PIXELS / scale),
-            cap = StrokeCap.Round,
-        )
-    }
-}
-
 private fun DrawScope.drawTraffic(
     camera: Camera,
     traffic: TrafficFrame,
     picker: MapPicker,
     textMeasurer: TextMeasurer,
+    segmentPaths: SegmentPaths,
+    viewport: Rect,
+    seconds: Double,
+    flashes: FlashTracker,
 ) = inWorld(camera) {
+    drawFlow(segmentPaths, traffic.current.segmentFlow, camera.scale)
     drawIncidents(traffic.current.incidents, camera.scale)
     drawDamage(traffic.game.maintenance.reports, picker, camera.scale)
+    drawExcavators(
+        traffic.current.infrastructure.worksSegments
+            .map { picker.midpoint(it) },
+        camera.scale,
+    )
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
         drawChargingStations(traffic.current.chargingStations, camera.scale)
         drawParkingLots(traffic.current.parkingLots, camera.scale)
     }
-    drawVehicles(traffic, camera.scale)
+    drawVehicles(traffic, camera.scale, viewport, seconds)
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
         val blink = (traffic.current.time * SIGNAL_BLINKS_PER_SECOND).toInt() % 2 == 0
-        drawSignals(traffic.current.signalMarkers, traffic.current.signalStates, camera.scale, blink)
+        drawSignals(traffic.current.signalMarkers, traffic.current.signalStates, camera.scale, blink, viewport)
     }
     drawCameras(traffic.current.cameras, camera.scale)
+    drawCameraFlashes(traffic.current.cameras, flashes, camera.scale, seconds)
+    drawAngerClouds(traffic.current, camera.scale, seconds)
     val signs =
         traffic.game.speedLimits.map { (segment, kmh) ->
             val (x, y) = picker.midpoint(segment)
@@ -285,59 +289,4 @@ private fun DrawScope.drawTraffic(
     val priority = traffic.game.priorityRoads.map { picker.midpoint(it) }
     val crossings = traffic.game.bikeCrossings.map { picker.midpoint(it) }
     drawRoadMarkers(priority, crossings, camera.scale)
-}
-
-private fun DrawScope.drawSceneryLines(
-    layers: MapLayers,
-    scale: Float,
-) {
-    val minPixels = MapStyle.MIN_LINE_PIXELS
-    drawLine(layers.waterways, MapStyle.water, MapStyle.WATERWAY_WIDTH_METERS, scale, minPixels)
-    drawLine(
-        layers.minorRoads,
-        MapStyle.minorRoadOutline,
-        MapStyle.MINOR_ROAD_WIDTH_METERS + MapStyle.OUTLINE_METERS,
-        scale,
-        minPixels,
-    )
-    drawLine(layers.minorRoads, MapStyle.minorRoad, MapStyle.MINOR_ROAD_WIDTH_METERS, scale, minPixels)
-    drawLine(layers.motorways, MapStyle.motorway, MapStyle.MOTORWAY_WIDTH_METERS, scale, minPixels)
-}
-
-/** Simulierte Straßen: erst alle Umrandungen, dann alle Füllungen – so verschmelzen Kreuzungen sauber. */
-private fun DrawScope.drawRoads(
-    layers: MapLayers,
-    scale: Float,
-) {
-    val roadsInOrder =
-        MapStyle.roadClassesInDrawOrder.mapNotNull { roadClass ->
-            layers.roads[roadClass]?.let {
-                roadClass to
-                    it
-            }
-        }
-    val outlineMinPixels = MapStyle.MIN_ROAD_PIXELS + 2 * MapStyle.MIN_LINE_PIXELS
-    for ((roadClass, path) in roadsInOrder) {
-        val outlineWidth = MapStyle.road(roadClass).widthMeters + 2 * MapStyle.OUTLINE_METERS
-        drawLine(path, MapStyle.roadOutline, outlineWidth, scale, outlineMinPixels)
-    }
-    for ((roadClass, path) in roadsInOrder) {
-        val style = MapStyle.road(roadClass)
-        drawLine(path, style.fill, style.widthMeters, scale, MapStyle.MIN_ROAD_PIXELS)
-    }
-}
-
-/** Zeichnet eine Linie mit Breite in Metern, aber nie dünner als [minPixels]. */
-private fun DrawScope.drawLine(
-    path: Path,
-    color: Color,
-    widthMeters: Float,
-    scale: Float,
-    minPixels: Float,
-) {
-    drawPath(
-        path = path,
-        color = color,
-        style = Stroke(width = max(widthMeters, minPixels / scale), cap = StrokeCap.Round, join = StrokeJoin.Round),
-    )
 }

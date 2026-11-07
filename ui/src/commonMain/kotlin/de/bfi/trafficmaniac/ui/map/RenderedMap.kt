@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 
@@ -45,6 +46,7 @@ internal class RenderedMap(
             height: Int,
             density: Density,
             showStaticSignals: Boolean,
+            textMeasurer: TextMeasurer? = null,
         ): RenderedMap {
             val image = ImageBitmap(width, height)
             CanvasDrawScope().draw(
@@ -54,7 +56,7 @@ internal class RenderedMap(
                 Size(width.toFloat(), height.toFloat()),
             ) {
                 drawRect(MapStyle.land)
-                drawStaticMap(layers, camera, showStaticSignals)
+                drawStaticMap(layers, camera, showStaticSignals, textMeasurer)
             }
             return RenderedMap(image, camera)
         }
