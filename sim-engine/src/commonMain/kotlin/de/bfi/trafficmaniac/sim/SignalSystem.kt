@@ -10,6 +10,9 @@ enum class SignalState {
     YELLOW,
     RED,
 
+    /** Deutsche Rot-Gelb-Phase: gleich wird es grün – noch stehen bleiben. */
+    RED_YELLOW,
+
     /** Ausgefallen oder abgeschaltet: blinkt gelb, es gilt die Vorfahrt – im Zweifel rechts vor links. */
     FLASHING,
 }
@@ -98,11 +101,28 @@ class SignalSystem(
         val t = (time + groupOffset[group]) % groupCycle[group]
         val activePhase = (t / PHASE_SECONDS).toInt()
         val inPhase = t - activePhase * PHASE_SECONDS
+        // Rot-Gelb in der letzten Sekunde vor der eigenen Grünphase (fällt in die Allrot-Zeit der Querrichtung)
+        val untilGreen = (linkPhase[link] * PHASE_SECONDS - t + groupCycle[group]) % groupCycle[group]
         return when {
-            activePhase != linkPhase[link] -> SignalState.RED
-            inPhase < GREEN_SECONDS -> SignalState.GREEN
-            inPhase < GREEN_SECONDS + YELLOW_SECONDS -> SignalState.YELLOW
-            else -> SignalState.RED
+            activePhase != linkPhase[link] && untilGreen in 0.0..RED_YELLOW_SECONDS && untilGreen > 0 -> {
+                SignalState.RED_YELLOW
+            }
+
+            activePhase != linkPhase[link] -> {
+                SignalState.RED
+            }
+
+            inPhase < GREEN_SECONDS -> {
+                SignalState.GREEN
+            }
+
+            inPhase < GREEN_SECONDS + YELLOW_SECONDS -> {
+                SignalState.YELLOW
+            }
+
+            else -> {
+                SignalState.RED
+            }
         }
     }
 
@@ -175,6 +195,9 @@ class SignalSystem(
         const val GREEN_SECONDS = 25.0
         const val YELLOW_SECONDS = 3.0
         const val ALL_RED_SECONDS = 2.0
+
+        /** Rot-Gelb vor Grün (kürzer als die Allrot-Zeit, damit die Querrichtung schon Rot hat). */
+        const val RED_YELLOW_SECONDS = 1.0
         const val PHASE_SECONDS = GREEN_SECONDS + YELLOW_SECONDS + ALL_RED_SECONDS
         const val CYCLE_SECONDS = 2 * PHASE_SECONDS
 

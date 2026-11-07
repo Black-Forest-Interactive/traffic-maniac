@@ -240,10 +240,20 @@ private const val GRAMS_PER_KG = 1_000f
 internal fun DrawScope.drawIncidents(
     incidents: List<IncidentMarker>,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
     val size = max(INCIDENT_SIZE_METERS, INCIDENT_MIN_PIXELS / scale)
     for (incident in incidents) {
         val c = Offset(incident.x, incident.y)
+        val name =
+            when (incident.kind) {
+                IncidentKind.OIL_SPILL -> "oil_spill"
+                IncidentKind.ACCIDENT -> "accident"
+                IncidentKind.TRUCK_STUCK -> "truck_stuck"
+                else -> "breakdown"
+            }
+        val wide = if (incident.kind == IncidentKind.TRUCK_STUCK) 2 else 1
+        if (drawSprite(sprites, name, c, size * SPRITE_INCIDENT * wide, size * SPRITE_INCIDENT, scale)) continue
         when (incident.kind) {
             IncidentKind.OIL_SPILL -> {
                 drawCircle(MapStyle.oil, size * OIL_SCALE, c)
@@ -290,12 +300,15 @@ internal fun DrawScope.drawIncidents(
 internal fun DrawScope.drawChargingStations(
     stations: List<ChargingStationState>,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
     val size = max(STATION_SIZE_METERS, STATION_MIN_PIXELS / scale)
     for (station in stations) {
         val topLeft = Offset(station.x - size / 2, station.y - size / 2)
+        // Grafik für die Säule; der rote Rand für die Warteschlange kommt wie bisher darüber
+        val drawn = drawSprite(sprites, "charging_station", Offset(station.x, station.y), size, size, scale)
         val fill = if (station.charging >= station.capacity) MapStyle.chargingFull else MapStyle.chargingFree
-        drawRect(fill, topLeft, Size(size, size))
+        if (!drawn) drawRect(fill, topLeft, Size(size, size))
         if (station.waiting >
             0
         ) {
@@ -307,5 +320,6 @@ internal fun DrawScope.drawChargingStations(
 private const val INCIDENT_SIZE_METERS = 6f
 private const val INCIDENT_MIN_PIXELS = 7f
 private const val OIL_SCALE = 1.6f
+private const val SPRITE_INCIDENT = 2.4f
 private const val STATION_SIZE_METERS = 7f
 private const val STATION_MIN_PIXELS = 6f

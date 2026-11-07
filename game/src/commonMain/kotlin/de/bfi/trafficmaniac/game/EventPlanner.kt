@@ -73,6 +73,9 @@ internal class EventPlanner(
     private val messenger: Messenger,
 ) {
     private val random = Random(RANDOM_SEED)
+
+    /** Erster Spieltag (Tage seit dem Montag der ersten Woche). */
+    private val firstDay = simulation.gameTime.day
     private val places = EventPlaces(city, simulation, random)
     private val calendar = ArrayList<CalendarEntry>()
     private val running = HashMap<Int, String>()
@@ -90,22 +93,26 @@ internal class EventPlanner(
         planCalendar()
     }
 
+    /** Kalender über die Tage der Amtszeit – ab dem Starttag des Szenarios, nicht unbedingt ab Montag. */
     private fun planCalendar() {
         if (places.mainRoads.isEmpty()) return
         val market = places.marketStreet()
-        for (day in 0 until rules.termDays) {
-            val weekday = Weekday.entries[day % Weekday.entries.size]
-            if (weekday == Weekday.WEDNESDAY || weekday == Weekday.SATURDAY) {
+        val days = firstDay until firstDay + rules.termDays
+
+        fun weekday(day: Int) = Weekday.entries[day % Weekday.entries.size]
+        for (day in days) {
+            if (weekday(day) == Weekday.WEDNESDAY || weekday(day) == Weekday.SATURDAY) {
                 market?.let { calendar += entry(day, MARKET_HOURS, EventKind.MARKET, it) }
             }
         }
-        val firstSunday = Weekday.entries.indexOf(Weekday.SUNDAY)
-        if (firstSunday < rules.termDays) {
-            calendar += entry(firstSunday, MARATHON_HOURS, EventKind.MARATHON, places.longestMainStreet())
+        days.firstOrNull { weekday(it) == Weekday.SUNDAY }?.let {
+            calendar += entry(it, MARATHON_HOURS, EventKind.MARATHON, places.longestMainStreet())
         }
-        val secondSaturday = Weekday.entries.indexOf(Weekday.SATURDAY) + Weekday.entries.size
-        val festivalDay = if (secondSaturday < rules.termDays) secondSaturday else secondSaturday - Weekday.entries.size
-        calendar += entry(festivalDay, FESTIVAL_HOURS, EventKind.CITY_FESTIVAL, places.centralStreets())
+        // Stadtfest am zweiten Samstag der Amtszeit, gibt es nur einen, dann an diesem
+        val saturdays = days.filter { weekday(it) == Weekday.SATURDAY }
+        (saturdays.getOrNull(1) ?: saturdays.firstOrNull())?.let {
+            calendar += entry(it, FESTIVAL_HOURS, EventKind.CITY_FESTIVAL, places.centralStreets())
+        }
         calendar.sortWith(compareBy({ it.day }, { it.startHour }))
     }
 

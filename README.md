@@ -24,7 +24,8 @@ Voraussetzung: JDK 25 (Gradle lädt sich selbst über den Wrapper).
 
 ```bash
 ./gradlew build                  # kompilieren, Tests, ktlint, detekt
-./gradlew :desktop-app:run       # Spiel starten
+./gradlew :desktop-app:run       # Spiel starten (Startmenü mit Szenarien)
+./gradlew :desktop-app:run --args="--scenario berufsverkehr"   # direkt in ein Szenario
 ./gradlew :desktop-app:run --args="--warmup 60"   # mit einer Stunde Vorlauf (volle Straßen)
 ./gradlew :desktop-app:benchmark --args="5000 60" # Simulation ohne Oberfläche messen (Spitzen-Fahrten/h, Minuten)
 ./gradlew :desktop-app:headless --args="7"        # Strategien ohne Oberfläche durchspielen (Balancing)

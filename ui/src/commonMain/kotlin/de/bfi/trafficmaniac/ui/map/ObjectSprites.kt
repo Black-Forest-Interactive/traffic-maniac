@@ -23,6 +23,7 @@ internal fun DrawScope.drawSignals(
     scale: Float,
     blink: Boolean,
     viewport: Rect,
+    sprites: SpriteSource = NoSprites,
 ) {
     val radius = max(MapStyle.SIGNAL_RADIUS_METERS, MapStyle.MIN_SIGNAL_PIXELS / scale)
     val heads = radius * scale >= HEAD_MIN_PIXELS
@@ -32,7 +33,11 @@ internal fun DrawScope.drawSignals(
         val c = Offset(markers.x[i], markers.y[i])
         if (!visible.contains(c)) continue
         if (heads) {
-            drawSignalHead(curbside(markers, i, radius), radius, states[i], blink, ink)
+            val at = curbside(markers, i, radius)
+            val name = signalSpriteName(states[i], blink)
+            if (!drawSprite(sprites, name, at, radius * HEAD_WIDTH, radius * HEAD_HEIGHT, scale)) {
+                drawSignalHead(at, radius, states[i], blink, ink)
+            }
         } else {
             drawSignalDot(c, radius, states[i], blink, ink)
         }
@@ -56,6 +61,18 @@ private fun curbside(
     return Offset(markers.centerX[i] + dy * side - dx * back, markers.centerY[i] - dx * side - dy * back)
 }
 
+private fun signalSpriteName(
+    state: SignalState,
+    blink: Boolean,
+): String =
+    when (state) {
+        SignalState.RED -> "signal_red"
+        SignalState.RED_YELLOW -> "signal_red_yellow"
+        SignalState.YELLOW -> "signal_yellow"
+        SignalState.GREEN -> "signal_green"
+        else -> if (blink) "signal_yellow" else "signal_off"
+    }
+
 /** Aus der Ferne: farbiger Punkt; ausgefallene Ampeln blinken gelb. */
 private fun DrawScope.drawSignalDot(
     c: Offset,
@@ -68,7 +85,7 @@ private fun DrawScope.drawSignalDot(
     val color =
         when (state) {
             SignalState.GREEN -> MapStyle.signalGreen
-            SignalState.RED -> MapStyle.trafficSignal
+            SignalState.RED, SignalState.RED_YELLOW -> MapStyle.trafficSignal
             else -> MapStyle.signalYellow
         }
     drawCircle(color, radius, c)
@@ -90,19 +107,21 @@ private fun DrawScope.drawSignalHead(
     drawRoundRect(Color.White, topLeft, Size(width, height), CornerRadius(width * HEAD_CORNER), style = ink)
     val lamp = r * LAMP_RADIUS
     val spacing = r * LAMP_SPACING
+    // Leuchten von oben: Rot, Gelb, Grün
     val lit =
         when (state) {
-            SignalState.RED -> 0
-            SignalState.YELLOW -> 1
-            SignalState.GREEN -> 2
-            SignalState.FLASHING -> if (blink) 1 else -1
-            else -> -1
+            SignalState.RED -> setOf(0)
+            SignalState.RED_YELLOW -> setOf(0, 1)
+            SignalState.YELLOW -> setOf(1)
+            SignalState.GREEN -> setOf(2)
+            SignalState.FLASHING -> if (blink) setOf(1) else emptySet()
+            else -> emptySet()
         }
     for (k in 0..2) {
-        val color = if (k == lit) LAMP_ON[k] else LAMP_OFF[k]
+        val on = k in lit
         val center = Offset(c.x, c.y + spacing * (1 - k))
-        if (k == lit) drawCircle(LAMP_ON[k].copy(alpha = GLOW_ALPHA), lamp * GLOW, center)
-        drawCircle(color, lamp, center)
+        if (on) drawCircle(LAMP_ON[k].copy(alpha = GLOW_ALPHA), lamp * GLOW, center)
+        drawCircle(if (on) LAMP_ON[k] else LAMP_OFF[k], lamp, center)
     }
 }
 
@@ -113,11 +132,14 @@ private fun DrawScope.drawSignalHead(
 internal fun DrawScope.drawCameras(
     cameras: List<SpeedCamera>,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
     val size = max(CAMERA_SIZE_METERS, CAMERA_MIN_PIXELS / scale)
     val ink = Stroke(max(INK_METERS, 1.5f / scale))
     for (camera in cameras) {
         val c = Offset(camera.x, camera.y)
+        val name = if (camera.mobile) "camera_laser" else "camera_fixed"
+        if (drawSprite(sprites, name, c, size * SPRITE_CAMERA_WIDTH, size, scale)) continue
         if (camera.mobile) {
             // Stativ
             for (dx in TRIPOD_LEGS) {
@@ -144,10 +166,12 @@ internal fun DrawScope.drawCameras(
 internal fun DrawScope.drawExcavators(
     points: List<Pair<Float, Float>>,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
     val size = max(EXCAVATOR_METERS, EXCAVATOR_MIN_PIXELS / scale)
     val ink = Stroke(max(INK_METERS, 1f / scale))
     for ((x, y) in points) {
+        if (drawSprite(sprites, "excavator", Offset(x, y), size, size, scale)) continue
         val base = Offset(x - size / 2, y - size / 2)
         // Ketten, Aufbau, Kabine, Arm und Schaufel
         drawRoundRect(MapStyle.ink, base, Size(size, size * TRACK_H), CornerRadius(size * TRACK_H / 2))
@@ -167,6 +191,7 @@ internal fun DrawScope.drawExcavators(
 }
 
 private const val HEAD_MIN_PIXELS = 7f
+private const val SPRITE_CAMERA_WIDTH = 1.25f
 private const val CURB_GAP_METERS = 1.5f
 private const val SETBACK_METERS = 2f
 private const val INK_METERS = 0.4f

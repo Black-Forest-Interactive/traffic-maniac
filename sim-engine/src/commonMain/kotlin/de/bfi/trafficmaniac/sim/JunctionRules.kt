@@ -30,7 +30,7 @@ internal class JunctionRules(
         time: Double,
     ): Boolean =
         when (signals.state(link, time)) {
-            SignalState.RED -> true
+            SignalState.RED, SignalState.RED_YELLOW -> true
 
             // Bei Gelb hält, wer noch bequem zum Stehen kommt
             SignalState.YELLOW -> remaining > vehicle.speed * vehicle.speed / (2 * vehicle.comfortableDeceleration)

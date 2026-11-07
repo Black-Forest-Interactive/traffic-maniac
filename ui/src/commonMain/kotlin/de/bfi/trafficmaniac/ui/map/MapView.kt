@@ -88,12 +88,15 @@ fun MapView(
     initialCamera: Camera? = null,
     /** "Zeig mir das": Die Karte fliegt zu diesem Ort und markiert ihn kurz. */
     focus: MapFocus? = null,
+    /** Fertige Grafiken (z. B. aus `assets/sprites/`); fehlende werden gezeichnet. */
+    sprites: SpriteSource = NoSprites,
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
     val segmentPaths = remember(city) { SegmentPaths(city) }
     val environmentCache = remember(city) { EnvironmentCache() }
-    val effects = remember(city) { TrafficEffects(FlashTracker(), FlowLayer(segmentPaths), AngerClouds()) }
+    val effects =
+        remember(city, sprites) { TrafficEffects(FlashTracker(), FlowLayer(segmentPaths), AngerClouds(), sprites) }
     val textMeasurer = rememberTextMeasurer()
     val clickHandler by rememberUpdatedState(onMapClick)
     val frameTick = rememberFrameTick(onFps)
@@ -310,6 +313,7 @@ internal class TrafficEffects(
     val flashes: FlashTracker,
     val flow: FlowLayer,
     val clouds: AngerClouds,
+    val sprites: SpriteSource,
 )
 
 /** Was unter dem Verkehr eingeblendet wird: Umwelt-Ebene, Zufriedenheit, Straßenzustand. */
@@ -347,7 +351,7 @@ private fun DrawScope.drawTraffic(
     effects: TrafficEffects,
 ) = inWorld(camera) {
     effects.flow.draw(this, traffic.current.segmentFlow, camera.scale)
-    drawIncidents(traffic.current.incidents, camera.scale)
+    drawIncidents(traffic.current.incidents, camera.scale, effects.sprites)
     drawDamage(traffic.game.maintenance.reports, picker, camera.scale)
     drawExcavators(
         traffic.current.infrastructure.worksSegments
@@ -355,17 +359,24 @@ private fun DrawScope.drawTraffic(
         camera.scale,
     )
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
-        drawChargingStations(traffic.current.chargingStations, camera.scale)
-        drawParkingLots(traffic.current.parkingLots, camera.scale)
+        drawChargingStations(traffic.current.chargingStations, camera.scale, effects.sprites)
+        drawParkingLots(traffic.current.parkingLots, camera.scale, effects.sprites)
     }
-    drawVehicles(traffic, camera.scale, viewport, seconds)
+    drawVehicles(traffic, camera.scale, viewport, seconds, effects.sprites)
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
         val blink = (traffic.current.time * SIGNAL_BLINKS_PER_SECOND).toInt() % 2 == 0
-        drawSignals(traffic.current.signalMarkers, traffic.current.signalStates, camera.scale, blink, viewport)
+        drawSignals(
+            traffic.current.signalMarkers,
+            traffic.current.signalStates,
+            camera.scale,
+            blink,
+            viewport,
+            effects.sprites,
+        )
     }
-    drawCameras(traffic.current.cameras, camera.scale)
+    drawCameras(traffic.current.cameras, camera.scale, effects.sprites)
     drawCameraFlashes(traffic.current.cameras, effects.flashes, camera.scale, seconds)
-    effects.clouds.draw(this, traffic.current, camera.scale, seconds)
+    effects.clouds.draw(this, traffic.current, camera.scale, seconds, effects.sprites)
     val signs = speedSigns(traffic.game.speedLimits, traffic.game.nightLimits, picker, camera.scale)
     drawSpeedSigns(signs, camera.scale, textMeasurer)
     val priority = traffic.game.priorityRoads.map { picker.midpoint(it) }

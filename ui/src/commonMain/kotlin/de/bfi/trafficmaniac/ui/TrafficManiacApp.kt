@@ -35,6 +35,8 @@ import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
 import de.bfi.trafficmaniac.ui.map.MapFocus
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.MapView
+import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.hypot
@@ -63,6 +65,10 @@ fun TrafficManiacApp(
     onCommand: (GameCommand) -> Unit = {},
     onContinueDay: () -> Unit = {},
     sound: SoundBoard = NoSound,
+    /** Fertige Grafiken für Karte und Fahrzeuge; fehlende werden gezeichnet. */
+    sprites: SpriteSource = NoSprites,
+    /** Zurück ins Startmenü (Knopf oben rechts und nach der Wertung); `null` = kein Menü. */
+    onMenu: (() -> Unit)? = null,
 ) {
     if (city == null) {
         MissingCity(missingCityMessage)
@@ -84,6 +90,7 @@ fun TrafficManiacApp(
     Box(Modifier.fillMaxSize()) {
         MapView(
             focus = focus,
+            sprites = sprites,
             city = city,
             traffic = traffic?.let { flow -> { flow.value } },
             onFps = { fps = it },
@@ -110,12 +117,13 @@ fun TrafficManiacApp(
                 onCommand = command,
                 picker = picker,
                 onShow = show,
+                onMenu = onMenu,
                 modifier = Modifier.align(Alignment.TopEnd),
             )
             Messages(frame.game.messages, show, Modifier.align(Alignment.BottomStart).padding(bottom = 24.dp))
         }
         if (traffic != null) ToolBar(selection, rules, { selection = it }, Modifier.align(Alignment.BottomCenter))
-        hudFrame?.let { EndOfDayOverlays(it, onContinueDay) }
+        hudFrame?.let { EndOfDayOverlays(it, onContinueDay, onMenu) }
     }
 }
 
@@ -145,12 +153,25 @@ private fun rememberHudFrame(
 private fun EndOfDayOverlays(
     frame: TrafficFrame,
     onContinueDay: () -> Unit,
+    onMenu: (() -> Unit)?,
 ) {
     val edition = frame.game.latestEdition
     val report = frame.pendingReport
     when {
-        frame.game.isGameOver || frame.game.isTermOver -> ResultOverlay(frame.game)
-        report != null -> DayReportOverlay(report, edition?.takeIf { it.day == report.day }, onContinueDay)
+        frame.game.isGameOver || frame.game.isTermOver -> {
+            ResultOverlay(frame.game, onMenu = onMenu)
+        }
+
+        report != null -> {
+            DayReportOverlay(
+                report,
+                edition?.takeIf {
+                    it.day == report.day
+                },
+                onContinueDay,
+                firstDay = frame.game.firstDay,
+            )
+        }
     }
 }
 

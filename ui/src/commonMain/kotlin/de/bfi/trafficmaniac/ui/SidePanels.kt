@@ -67,10 +67,12 @@ internal fun SidePanels(
     picker: MapPicker,
     /** Klick auf eine Meldung, ein Ereignis oder einen Einsatz: die Karte zeigt die Stelle. */
     onShow: (MapPlace) -> Unit,
+    onMenu: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, horizontalAlignment = Alignment.End) {
         Row {
+            onMenu?.let { SmallButton("Menü", it) }
             val layer = toggles.environmentLayer
             SmallButton(if (layer == EnvironmentLayer.NONE) "Umwelt" else "Umwelt: ${layer.label}") {
                 toggles.nextEnvironmentLayer()
@@ -144,7 +146,11 @@ private fun PanelContent(
         }
 
         SidePanel.EVENTS -> {
-            EventsPanel(game.events, frame.current.gameTime.day) { picker.place(it)?.let(onShow) }
+            EventsPanel(
+                game.events,
+                frame.current.gameTime.day,
+                firstDay = game.firstDay,
+            ) { picker.place(it)?.let(onShow) }
         }
 
         SidePanel.EMERGENCIES -> {
@@ -152,7 +158,7 @@ private fun PanelContent(
         }
 
         SidePanel.ACHIEVEMENTS -> {
-            AchievementsPanel(game.achievementList)
+            AchievementsPanel(game.achievementList, firstDay = game.firstDay)
         }
 
         SidePanel.HELP -> {
