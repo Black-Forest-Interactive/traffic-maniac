@@ -46,21 +46,30 @@ class MapPicker(
             ?.first
 
     /** Mittelpunkt (entlang der Strecke) eines Abschnitts, z. B. für Schilder. */
-    fun midpoint(segment: Int): Pair<Float, Float> {
+    fun midpoint(segment: Int): Pair<Float, Float> = pointAt(segment, HALF)
+
+    /** Punkt bei [fraction] (0 = Anfang, 1 = Ende) der Länge entlang des Abschnitts. */
+    fun pointAt(
+        segment: Int,
+        fraction: Float,
+    ): Pair<Float, Float> {
         val line = city.roads.segments[segment].geometry
-        val half = length(line) / 2
+        val target = length(line) * fraction.coerceIn(0f, 1f)
         var walked = 0f
         for (i in 1 until line.pointCount) {
             val step = hypot(line.x(i) - line.x(i - 1), line.y(i) - line.y(i - 1))
-            if (walked + step >= half && step > 0f) {
-                val t = (half - walked) / step
+            if (walked + step >= target && step > 0f) {
+                val t = (target - walked) / step
                 return line.x(i - 1) + (line.x(i) - line.x(i - 1)) * t to
                     line.y(i - 1) + (line.y(i) - line.y(i - 1)) * t
             }
             walked += step
         }
-        return line.x(0) to line.y(0)
+        return line.x(line.pointCount - 1) to line.y(line.pointCount - 1)
     }
+
+    /** Länge des Abschnitts in Metern. */
+    fun lengthOf(segment: Int): Float = length(city.roads.segments[segment].geometry)
 
     private fun length(line: Polyline): Float =
         (1 until line.pointCount)
@@ -93,5 +102,9 @@ class MapPicker(
         val lengthSquared = dx * dx + dy * dy
         val t = if (lengthSquared == 0f) 0f else (((px - ax) * dx + (py - ay) * dy) / lengthSquared).coerceIn(0f, 1f)
         return hypot(px - (ax + t * dx), py - (ay + t * dy))
+    }
+
+    private companion object {
+        const val HALF = 0.5f
     }
 }

@@ -37,7 +37,7 @@ internal fun DrawScope.drawSpeedSigns(
     scale: Float,
     textMeasurer: TextMeasurer,
 ) {
-    val radius = max(SIGN_RADIUS_METERS, SIGN_MIN_PIXELS / scale)
+    val radius = signRadius(scale)
     for (sign in signs) {
         val center = Offset(sign.x, sign.y)
         drawCircle(Color.White, radius, center)
@@ -67,6 +67,16 @@ internal fun DrawScope.drawSpeedSigns(
         }) {
             drawText(label, topLeft = Offset(-label.size.width / 2f, -label.size.height / 2f))
         }
+        // Nachtlimit: kleine Mondsichel oben rechts am Schild
+        if (sign.night) {
+            val moon = center + Offset(radius * MOON_OFFSET, radius * MOON_OFFSET)
+            drawCircle(MapStyle.nightSign, radius * MOON_SIZE, moon)
+            drawCircle(
+                Color.White,
+                radius * MOON_SIZE * MOON_CUT,
+                moon + Offset(radius * MOON_SHIFT, radius * MOON_SHIFT),
+            )
+        }
     }
 }
 
@@ -78,8 +88,10 @@ class SpeedSign(
     val night: Boolean = false,
 )
 
-private const val SIGN_RADIUS_METERS = 6f
-private const val SIGN_MIN_PIXELS = 9f
+private const val MOON_OFFSET = 0.72f
+private const val MOON_SIZE = 0.38f
+private const val MOON_CUT = 0.8f
+private const val MOON_SHIFT = 0.12f
 private const val SIGN_RING = 0.3f
 private const val SIGN_FONT_SIZE = 12f
 private const val SIGN_TEXT_FACTOR = 0.9f

@@ -52,6 +52,8 @@ object MapStyle {
     val conditionFair = Color(0xFFFFC300)
     val conditionBad = Color(0xFFD00000)
     val detour = Color(0xFFFF7B00)
+    val limitZone = Color(0x40E63946)
+    val nightZone = Color(0xB33A3D9E)
     val eventClosure = Color(0xFFD81B9C)
     val corso = Color(0xFF2DC653)
     val heavyTransport = Color(0xFFFFD60A)
