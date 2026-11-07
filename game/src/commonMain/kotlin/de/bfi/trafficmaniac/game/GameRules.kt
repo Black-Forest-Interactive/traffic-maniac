@@ -141,8 +141,12 @@ data class GameRules(
     /** ... plus bis zu diesem Wert, wenn [corsoBannedReference] Bürger ihren Führerschein los sind. */
     val corsoChanceBanned: Double = 0.1,
     val corsoBannedReference: Int = 100,
-    /** Ein Tag gilt als Dauerstau-Tag, wenn mindestens dieser Anteil der Pendler zu spät kam. */
+    /**
+     * Ein Tag gilt als Dauerstau-Tag, wenn mindestens dieser Anteil der Pendler zu spät kam – und zugleich
+     * [jamExtraLateShare] mehr als am ersten Spieltag (so viele kommen in der Stadt ohnehin zu spät).
+     */
     val jamLateShare: Double = 0.2,
+    val jamExtraLateShare: Double = 0.1,
     val maxCorsosPerDay: Int = 2,
     /** Spontandemos (9–20 Uhr) erst ab diesem Zorn; die Chance je Stunde wächst bis [demoChancePerHour]. */
     val demoMinAnger: Double = 20.0,

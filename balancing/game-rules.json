@@ -112,6 +112,7 @@
     "corsoChanceBanned": 0.1,
     "corsoBannedReference": 100,
     "jamLateShare": 0.2,
+    "jamExtraLateShare": 0.1,
     "maxCorsosPerDay": 2,
     "demoMinAnger": 20.0,
     "demoChancePerHour": 0.25,

@@ -78,6 +78,9 @@ internal class EventPlanner(
     private var corsosToday = 0
     private var demosToday = 0
     private var jamStreak = 0
+
+    /** Anteil der Zuspätkommer am ersten Spieltag – das Normalmaß der Stadt. */
+    private var normalLateShare = Double.NaN
     var today = EventNews()
         private set
 
@@ -254,7 +257,9 @@ internal class EventPlanner(
 
     /** Mitternacht: Dauerstau-Serie fortschreiben, Tageszähler zurücksetzen. */
     fun dayEnded(commute: CommuteStats): EventNews {
-        jamStreak = if (commute.trips > 0 && commute.lateShare >= rules.jamLateShare) jamStreak + 1 else 0
+        if (normalLateShare.isNaN() && commute.trips > 0) normalLateShare = commute.lateShare
+        val threshold = maxOf(rules.jamLateShare, normalLateShare + rules.jamExtraLateShare)
+        jamStreak = if (commute.trips > 0 && commute.lateShare >= threshold) jamStreak + 1 else 0
         corsosToday = 0
         demosToday = 0
         return today.also { today = EventNews() }

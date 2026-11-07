@@ -93,12 +93,14 @@ class EventsAndPressTest {
         assertEquals(0.0, weekday, "Normaler Werktag ohne Stau: kein Korso")
         assertTrue(planner.corsoChance(Weekday.SATURDAY, 0) > weekday)
         assertTrue(planner.corsoChance(Weekday.TUESDAY, 200) > weekday)
+        planner.dayEnded(CommuteStats(trips = 100, late = 15))
+        assertEquals(0, planner.state().jamStreak, "Der erste Tag ist das Normalmaß der Stadt")
         val jam = CommuteStats(trips = 100, late = 40)
         repeat(3) { planner.dayEnded(jam) }
         assertEquals(3, planner.state().jamStreak)
         assertTrue(planner.corsoChance(Weekday.TUESDAY, 0) > 0.1, "Nach drei Dauerstau-Tagen")
-        planner.dayEnded(CommuteStats(trips = 100, late = 1))
-        assertEquals(0, planner.state().jamStreak, "Ein flüssiger Tag beendet die Serie")
+        planner.dayEnded(CommuteStats(trips = 100, late = 22))
+        assertEquals(0, planner.state().jamStreak, "Kaum mehr Verspätung als sonst beendet die Serie")
     }
 
     @Test
