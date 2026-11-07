@@ -137,8 +137,8 @@ class SignalSystem(
         group: Int,
         nodes: List<Int>,
     ): List<Int> {
-        val nodeSet = nodes.toSet()
-        val approaches = nodes.flatMap { node -> graph.inLinks[node].filter { graph.linkFrom[it] !in nodeSet } }
+        val nodeSet = junctionNodes(nodes)
+        val approaches = nodeSet.flatMap { node -> graph.inLinks[node].filter { graph.linkFrom[it] !in nodeSet } }
         if (approaches.isEmpty()) return emptyList()
         val referenceAxis = axis(graph.endHeading(approaches.first()))
         for (link in approaches) {
@@ -148,6 +148,21 @@ class SignalSystem(
             linkPhase[link] = if (sameAxis) 0 else 1
         }
         return approaches
+    }
+
+    /**
+     * Alle Knoten der Kreuzung: die Ampelknoten und jeder Knoten ohne Ampel, der innerhalb des Kreises um ihren
+     * Mittelpunkt liegt, der alle Ampeln umschließt. In OSM steht die Ampel oft nur an einigen Kreuzungsknoten;
+     * ohne diese Erweiterung würde die Verbindung von einem ampellosen Kreuzungsknoten zum nächsten Ampelknoten als
+     * Zufahrt gelten – mit einer roten Ampel mitten in der Kreuzung, auf der sich der Verkehr staut.
+     */
+    private fun junctionNodes(signalNodes: List<Int>): Set<Int> {
+        if (signalNodes.size < 2) return signalNodes.toSet()
+        val cx = signalNodes.sumOf { graph.nodeX[it].toDouble() } / signalNodes.size
+        val cy = signalNodes.sumOf { graph.nodeY[it].toDouble() } / signalNodes.size
+        val radius = signalNodes.maxOf { hypot(graph.nodeX[it] - cx, graph.nodeY[it] - cy) } + JUNCTION_MARGIN
+        return signalNodes.toSet() +
+            (0 until graph.nodeCount).filter { hypot(graph.nodeX[it] - cx, graph.nodeY[it] - cy) <= radius }
     }
 
     /** Pseudozufälliger, aber fester Anteil 0..1 je Knoten (Fibonacci-Hashing). */
@@ -166,6 +181,9 @@ class SignalSystem(
         /** Fußgängerphase an Ampeln ohne Querverkehr. */
         const val PEDESTRIAN_SECONDS = 12.0
         const val CLUSTER_RADIUS = 35f
+
+        /** So weit über die äußersten Ampeln hinaus gehören Knoten noch zur Kreuzung (Meter). */
+        private const val JUNCTION_MARGIN = 5.0
         private const val NO_GROUP = -1
         private const val GOLDEN_RATIO_FRACTION = 0.6180339887
     }
