@@ -35,11 +35,12 @@ class SpeedControl internal constructor(
     fun placeCamera(
         segment: Int,
         mobile: Boolean = false,
+        trailer: Boolean = false,
     ): SpeedCamera {
         val links = graph.segmentLinks[segment]
         val point = FloatArray(LOCATE_SIZE)
         graph.locate(links.first(), graph.linkLength[links.first()] / 2, 0, point)
-        val camera = SpeedCamera(nextCameraId++, segment, point[LOCATE_X], point[LOCATE_Y], mobile)
+        val camera = SpeedCamera(nextCameraId++, segment, point[LOCATE_X], point[LOCATE_Y], mobile || trailer, trailer)
         cameraList += camera
         for (link in links) sites[link] += CameraSite(camera, graph.linkLength[link] / 2.0)
         return camera

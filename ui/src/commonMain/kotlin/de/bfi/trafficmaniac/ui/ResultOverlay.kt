@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -42,6 +44,8 @@ private const val SEAL_POINTS = 16
 private const val SEAL_INNER = 0.82f
 private const val SEAL_CENTER = 0.45f
 private const val SEAL_INK = 2f
+private const val SEAL_SIZE = 64
+private const val STAMP_WIDTH = 330
 
 /** Spielende: abgewählt oder Amtszeit vorbei – im zweiten Fall mit Abschiedsrede, Wertung und (vielleicht) Urkunde. */
 @Composable
@@ -49,6 +53,7 @@ fun ResultOverlay(
     state: GameState,
     modifier: Modifier = Modifier,
     onMenu: (() -> Unit)? = null,
+    sprites: SpriteSource = NoSprites,
 ) {
     val recalled = state.isGameOver
     val text = TextStyle(color = ComicTheme.ink, fontSize = 14.sp)
@@ -96,7 +101,11 @@ fun ResultOverlay(
                         style = text.copy(fontSize = 24.sp, fontWeight = FontWeight.Black),
                     )
                 }
-                Certificate(honorary = !recalled && state.reputation >= HONORARY_CITIZEN, recalled = recalled)
+                Certificate(
+                    honorary = !recalled && state.reputation >= HONORARY_CITIZEN,
+                    recalled = recalled,
+                    sprites = sprites,
+                )
             }
             onMenu?.let { BackToMenu(it, Modifier.align(Alignment.End)) }
         }
@@ -125,39 +134,57 @@ private fun BackToMenu(
 private fun Certificate(
     honorary: Boolean,
     recalled: Boolean,
+    sprites: SpriteSource,
 ) {
     if (honorary) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Canvas(Modifier.size(56.dp)) {
-                val c = Offset(size.width / 2, size.height / 2)
-                val r = size.minDimension / 2
-                val seal = Path()
-                for (k in 0 until SEAL_POINTS * 2) {
-                    val radius = if (k % 2 == 0) r else r * SEAL_INNER
-                    val angle = k * PI / SEAL_POINTS
-                    val p = c + Offset((cos(angle) * radius).toFloat(), (sin(angle) * radius).toFloat())
-                    if (k == 0) seal.moveTo(p.x, p.y) else seal.lineTo(p.x, p.y)
-                }
-                seal.close()
-                drawPath(seal, Gold)
-                drawPath(seal, ComicTheme.ink, style = Stroke(SEAL_INK))
-                drawCircle(ComicTheme.red, r * SEAL_CENTER, c)
-            }
+            SpriteIcon(sprites, "seal_honorary", SEAL_SIZE.dp) { DrawnSeal() }
             BasicText(
                 "Ehrenbürgerschaft verliehen!",
                 style = TextStyle(color = ComicTheme.ink, fontSize = 18.sp, fontWeight = FontWeight.Black),
             )
         }
+        return
+    }
+    val text = if (recalled) "ABGEWÄHLT" else "EHRENBÜRGERSCHAFT ABGELEHNT"
+    val style = TextStyle(color = ComicTheme.red, fontSize = 18.sp, fontWeight = FontWeight.Black)
+    if (sprites.has("stamp_rejected")) {
+        // Stempelrahmen als Grafik, der Text kommt vom Spiel
+        Box(Modifier.rotate(STAMP_DEGREES), contentAlignment = Alignment.Center) {
+            SpriteIcon(sprites, "stamp_rejected", STAMP_WIDTH.dp)
+            BasicText(text, style = style)
+        }
     } else {
         BasicText(
-            if (recalled) "ABGEWÄHLT" else "EHRENBÜRGERSCHAFT ABGELEHNT",
-            style = TextStyle(color = ComicTheme.red, fontSize = 18.sp, fontWeight = FontWeight.Black),
+            text,
+            style = style,
             modifier =
                 Modifier
-                    .rotate(STAMP_DEGREES)
-                    .comicButton(active = false)
+                    .rotate(
+                        STAMP_DEGREES,
+                    ).comicButton(active = false)
                     .padding(horizontal = 10.dp, vertical = 4.dp),
         )
+    }
+}
+
+/** Gezeichnetes goldenes Siegel (wenn es keine Grafik gibt). */
+@Composable
+private fun DrawnSeal() {
+    Canvas(Modifier.size(SEAL_SIZE.dp)) {
+        val c = Offset(size.width / 2, size.height / 2)
+        val r = size.minDimension / 2
+        val seal = Path()
+        for (k in 0 until SEAL_POINTS * 2) {
+            val radius = if (k % 2 == 0) r else r * SEAL_INNER
+            val angle = k * PI / SEAL_POINTS
+            val p = c + Offset((cos(angle) * radius).toFloat(), (sin(angle) * radius).toFloat())
+            if (k == 0) seal.moveTo(p.x, p.y) else seal.lineTo(p.x, p.y)
+        }
+        seal.close()
+        drawPath(seal, Gold)
+        drawPath(seal, ComicTheme.ink, style = Stroke(SEAL_INK))
+        drawCircle(ComicTheme.red, r * SEAL_CENTER, c)
     }
 }
 

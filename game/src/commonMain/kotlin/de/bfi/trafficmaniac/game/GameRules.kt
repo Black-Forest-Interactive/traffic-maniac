@@ -79,6 +79,9 @@ data class GameRules(
     /** So sehr ärgert ein Fahrverbot das Wohngebiet (in "Euro Bußgeld"). */
     val licenseLossPain: Double = 400.0,
     val laserDailyCost: Long = 1_500,
+    /** Blitzeranhänger: einmal kaufen, danach gegen eine kleine Gebühr beliebig umsetzen. */
+    val trailerCost: Long = 45_000,
+    val trailerMoveCost: Long = 500,
     val priorityRoadCost: Long = 3_000,
     val bikeCrossingCost: Long = 8_000,
     /** Frist, innerhalb der auf eine Schadensmeldung reagiert werden muss. */

@@ -11,6 +11,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.random.Random
@@ -42,7 +46,9 @@ private class Coin(
 fun MoneyRain(
     income: Long,
     modifier: Modifier = Modifier,
+    sprites: SpriteSource = NoSprites,
 ) {
+    val coinImage = remember(sprites) { sprites.image("coin", COIN_PIXELS) }
     val coins = remember { ArrayList<Coin>() }
     val lastIncome = remember { longArrayOf(-1) }
     val now = remember { mutableStateOf(0L) }
@@ -76,6 +82,16 @@ fun MoneyRain(
             // Drehende Münze: mal von vorn, mal hochkant
             val squash = abs(sin(t * SWAY_SPEED + coin.phase))
             val center = Offset(x, y)
+            if (coinImage != null) {
+                val width = (2 * COIN_RADIUS * squash).toInt().coerceAtLeast(1)
+                drawImage(
+                    coinImage,
+                    dstOffset = IntOffset((x - width / 2f).toInt(), (y - COIN_RADIUS).toInt()),
+                    dstSize = IntSize(width, (2 * COIN_RADIUS).toInt()),
+                    alpha = alpha,
+                )
+                continue
+            }
             drawOval(
                 Gold.copy(alpha = alpha),
                 topLeft = center - Offset(COIN_RADIUS * squash, COIN_RADIUS),
@@ -92,3 +108,4 @@ fun MoneyRain(
 }
 
 private const val STAGGER_NANOS = 60_000_000L
+private const val COIN_PIXELS = 32

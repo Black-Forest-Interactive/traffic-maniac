@@ -211,6 +211,30 @@ class CityGameTest {
     }
 
     @Test
+    fun trailersAreBoughtOnceAndThenOnlyMoved() {
+        val game = CityGame(straightRoad(), config)
+        val rules = game.rules
+        game.submit(GameCommand.PlaceTrailer(segment = 0))
+        game.step()
+        assertEquals(rules.trailerCost, game.state().expenses)
+        assertEquals(1, game.state().trailers)
+        val trailer = game.state().cameras.single()
+        assertTrue(trailer.trailer && trailer.mobile, "Anhänger: mobil, Ortskundige kennen ihn nicht")
+
+        game.submit(GameCommand.RemoveCamera(trailer.cameraId))
+        game.step()
+        assertEquals(1, game.state().idleTrailers, "Abgebaut steht er im Depot")
+        assertTrue(game.state().cameras.isEmpty())
+
+        game.submit(GameCommand.PlaceTrailer(segment = 1))
+        game.step()
+        assertEquals(rules.trailerCost + rules.trailerMoveCost, game.state().expenses, "Umsetzen statt neu kaufen")
+        assertEquals(0, game.state().idleTrailers)
+        assertEquals(1, game.state().trailers)
+        assertEquals(1, game.state().cameras.single().segment)
+    }
+
+    @Test
     fun formatsEuro() {
         assertEquals("1.234.567 €", formatEuro(1_234_567))
         assertEquals("-500 €", formatEuro(-500))

@@ -109,6 +109,34 @@ internal class PublicWorks(
         }
     }
 
+    /** Blitzeranhänger, die gerade im Depot stehen bzw. insgesamt gekauft wurden. */
+    var idleTrailers = 0
+        private set
+    var trailers = 0
+        private set
+
+    /**
+     * Blitzeranhänger an [segment] aufstellen: Steht einer im Depot, kostet nur das Umsetzen, sonst wird ein neuer
+     * gekauft. Ortskundige kennen ihn nicht – er erwischt mehr als ein fester Blitzer.
+     */
+    fun placeTrailer(segment: Int) {
+        if (cameraCounters.values.any { it.segment == segment }) return message("Hier blitzt es schon")
+        val fromDepot = idleTrailers > 0
+        val paid =
+            if (fromDepot) {
+                treasury.pay(rules.trailerMoveCost, "Blitzeranhänger umsetzen")
+            } else {
+                treasury.pay(rules.trailerCost, "Blitzeranhänger")
+            }
+        if (!paid) return
+        if (fromDepot) idleTrailers-- else trailers++
+        val camera = simulation.speedControl.placeCamera(segment, mobile = true, trailer = true)
+        cameraCounters[camera.id] =
+            CameraCounter(camera.id, segment, streetName(segment), mobile = true, trailer = true)
+        message("Blitzeranhänger aufgestellt: ${streetName(segment)}")
+        checkSignForest(segment)
+    }
+
     fun setPriorityRoad(
         segment: Int,
         priority: Boolean,
@@ -180,12 +208,18 @@ internal class PublicWorks(
     }
 
     /** Anzahl aktiver Lasermessungen (kosten jeden Tag Personal). */
-    val laserCount: Int get() = cameraCounters.values.count { it.mobile }
+    val laserCount: Int get() = cameraCounters.values.count { it.mobile && !it.trailer }
 
     fun removeCamera(cameraId: Int) {
         val counter = cameraCounters.remove(cameraId) ?: return
         simulation.speedControl.removeCamera(cameraId)
-        message("Blitzer abgebaut: ${counter.streetName}")
+        if (counter.trailer) {
+            // Der Anhänger gehört weiter der Stadt und wartet im Depot auf den nächsten Einsatz
+            idleTrailers++
+            message("Blitzeranhänger ins Depot: ${counter.streetName}")
+        } else {
+            message("Blitzer abgebaut: ${counter.streetName}")
+        }
     }
 
     private fun signalNodesOf(): Set<Int> =

@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.SpriteSource
 
 /** Werkzeuge der Werkzeugleiste. */
 enum class Tool(
@@ -28,6 +30,7 @@ enum class Tool(
     SIGNAL("Ampel"),
     CAMERA("Blitzer"),
     LASER("Laser"),
+    TRAILER("Anhänger"),
     PRIORITY("Vorfahrt"),
     BIKE_CROSSING("Radweg-Querung"),
     DETOUR("Umleitung"),
@@ -59,6 +62,9 @@ fun ToolBar(
     rules: GameRules,
     onSelect: (ToolSelection) -> Unit,
     modifier: Modifier = Modifier,
+    sprites: SpriteSource = NoSprites,
+    /** Blitzeranhänger im Depot (für den Kostenhinweis). */
+    idleTrailers: Int = 0,
 ) {
     Column(
         modifier
@@ -85,46 +91,92 @@ fun ToolBar(
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (tool in Tool.entries) {
                 ToolButton(
-                    "${tool.label}${costHint(tool, rules)}",
+                    "${tool.label}${costHint(tool, rules, idleTrailers)}",
                     selection.tool == tool,
+                    sprites,
+                    toolIcon(tool, sprites),
                 ) { onSelect(selection.copy(tool = tool)) }
             }
         }
     }
 }
 
+/** Icon des Werkzeugs; für den Anhänger notfalls das Blitzer-Icon. */
+private fun toolIcon(
+    tool: Tool,
+    sprites: SpriteSource,
+): String {
+    val name = "tool_" + tool.name.lowercase()
+    return if (tool == Tool.TRAILER && !sprites.has(name)) "tool_camera" else name
+}
+
 private fun costHint(
     tool: Tool,
     rules: GameRules,
+    idleTrailers: Int,
 ): String =
     when (tool) {
-        Tool.SPEED_LIMIT -> " (${formatEuro(rules.speedLimitSignCost)})"
-        Tool.SIGNAL -> " (${formatEuro(rules.signalCost)})"
-        Tool.CAMERA -> " (${formatEuro(rules.cameraCost)})"
-        Tool.LASER -> " (${formatEuro(rules.laserDailyCost)}/Tag)"
-        Tool.PRIORITY -> " (${formatEuro(rules.priorityRoadCost)})"
-        Tool.BIKE_CROSSING -> " (${formatEuro(rules.bikeCrossingCost)})"
-        else -> ""
+        Tool.TRAILER -> {
+            if (idleTrailers > 0) {
+                " (umsetzen ${formatEuro(rules.trailerMoveCost)}, $idleTrailers frei)"
+            } else {
+                " (${formatEuro(rules.trailerCost)})"
+            }
+        }
+
+        Tool.SPEED_LIMIT -> {
+            " (${formatEuro(rules.speedLimitSignCost)})"
+        }
+
+        Tool.SIGNAL -> {
+            " (${formatEuro(rules.signalCost)})"
+        }
+
+        Tool.CAMERA -> {
+            " (${formatEuro(rules.cameraCost)})"
+        }
+
+        Tool.LASER -> {
+            " (${formatEuro(rules.laserDailyCost)}/Tag)"
+        }
+
+        Tool.PRIORITY -> {
+            " (${formatEuro(rules.priorityRoadCost)})"
+        }
+
+        Tool.BIKE_CROSSING -> {
+            " (${formatEuro(rules.bikeCrossingCost)})"
+        }
+
+        else -> {
+            ""
+        }
     }
 
 @Composable
 private fun ToolButton(
     label: String,
     active: Boolean,
+    sprites: SpriteSource = NoSprites,
+    icon: String? = null,
     onClick: () -> Unit,
 ) {
-    BasicText(
-        label,
-        style =
-            TextStyle(
-                color = TextColor,
-                fontSize = 13.sp,
-                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-            ),
-        modifier =
-            Modifier
-                .comicButton(active)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-    )
+    Row(
+        Modifier.comicButton(active).clickable(onClick = onClick).padding(horizontal = 7.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        icon?.let { SpriteIcon(sprites, it, TOOL_ICON.dp) }
+        BasicText(
+            label,
+            style =
+                TextStyle(
+                    color = TextColor,
+                    fontSize = 13.sp,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                ),
+        )
+    }
 }
+
+private const val TOOL_ICON = 20

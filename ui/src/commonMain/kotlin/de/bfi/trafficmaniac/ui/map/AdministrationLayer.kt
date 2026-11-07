@@ -73,10 +73,11 @@ internal fun DrawScope.drawDamage(
     reports: List<DamageReport>,
     picker: MapPicker,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
     val size = max(DAMAGE_SIZE_METERS, DAMAGE_MIN_PIXELS / scale)
     for (report in reports) {
-        for (segment in report.segments) drawDamageAt(report, picker.midpoint(segment), size)
+        for (segment in report.segments) drawDamageAt(report, picker.midpoint(segment), size, sprites, scale)
     }
 }
 
@@ -84,11 +85,17 @@ internal fun DrawScope.drawDamageAt(
     report: DamageReport,
     point: Pair<Float, Float>,
     size: Float,
+    sprites: SpriteSource = NoSprites,
+    scale: Float = 1f,
 ) {
     run {
         val (x, y) = point
-        val holes = if (report.conditionPercent < CRATER_PERCENT) CRATER_HOLES else POTHOLE_HOLES
-        for (i in 0 until holes) {
+        val crater = report.conditionPercent < CRATER_PERCENT
+        val holes = if (crater) CRATER_HOLES else POTHOLE_HOLES
+        val hole = Offset(x, y - size * HOLE_OFFSET)
+        val icon = size * DAMAGE_SPRITE
+        val drawn = drawSprite(sprites, if (crater) "crater" else "potholes", hole, icon, icon, scale)
+        for (i in 0 until if (drawn) 0 else holes) {
             val dx = (i - holes / 2f) * size * HOLE_SPACING
             drawCircle(MapStyle.pothole, size * HOLE_SIZE, Offset(x + dx, y - size * HOLE_OFFSET))
         }
@@ -96,14 +103,19 @@ internal fun DrawScope.drawDamageAt(
             DamageStatus.SIGNED -> {
                 // Das Schild steht gern jahrelang: schief und verblasst
                 val tilt = ((report.id * SIGN_TILT_STEP) % (2 * SIGN_MAX_TILT)) - SIGN_MAX_TILT
-                rotate(tilt, pivot = Offset(x - size * SIGN_OFFSET, y + size * SIGN_OFFSET)) {
-                    drawWarningTriangle(x - size * SIGN_OFFSET, y + size * SIGN_OFFSET, size)
+                val at = Offset(x - size * SIGN_OFFSET, y + size * SIGN_OFFSET)
+                rotate(tilt, pivot = at) {
+                    if (!drawSprite(sprites, "sign_warning_damage", at, icon, icon * SIGN_SPRITE_HEIGHT, scale)) {
+                        drawWarningTriangle(at.x, at.y, size)
+                    }
                 }
             }
 
             DamageStatus.PLANNING -> {
                 val topLeft = Offset(x + size, y + size)
-                drawRect(MapStyle.planning, topLeft, Size(size * 2, size * 2))
+                if (!drawSprite(sprites, "planning", topLeft + Offset(size, size), icon, icon, scale)) {
+                    drawRect(MapStyle.planning, topLeft, Size(size * 2, size * 2))
+                }
             }
 
             DamageStatus.OPEN -> {
@@ -138,6 +150,27 @@ private fun DrawScope.drawWarningTriangle(
     drawPath(triangle, Color.White.copy(alpha = FADED))
     drawPath(triangle, MapStyle.trafficSignal.copy(alpha = FADED), style = Stroke(size * TRIANGLE_RING))
     drawLine(MapStyle.ink, Offset(x, y - size * TRIANGLE_BASE), Offset(x, y - size * POLE), size * POLE_WIDTH)
+}
+
+/** Symbole für eingestürzte Brücken und Umleitungen – nur mit Grafiken, sonst reichen die Linien. */
+internal fun DrawScope.drawInfrastructureIcons(
+    infrastructure: InfrastructureSnapshot,
+    picker: MapPicker,
+    scale: Float,
+    sprites: SpriteSource,
+) {
+    if (scale < MapStyle.FLOW_MAX_SCALE) return
+    val size = max(INFRA_ICON_METERS, INFRA_ICON_PIXELS / scale)
+    for (segment in infrastructure.collapsedSegments) {
+        val (x, y) = picker.midpoint(segment)
+        drawSprite(sprites, "bridge_collapsed", Offset(x, y), size * 2, size, scale)
+    }
+    // Umleitungsschild nur an längeren Abschnitten, sonst stehen sie dicht an dicht
+    for (segment in infrastructure.detourSegments) {
+        if (picker.lengthOf(segment) < DETOUR_ICON_MIN_METERS) continue
+        val (x, y) = picker.midpoint(segment)
+        drawSprite(sprites, "detour", Offset(x, y), size, size, scale)
+    }
 }
 
 /** Parkplätze: blaues Quadrat, rot umrandet, wenn voll; grau, wenn abgeschafft. */
@@ -181,6 +214,11 @@ private const val HOLE_OFFSET = 0.5f
 private const val SIGN_OFFSET = 1.8f
 private const val TRIANGLE_BASE = 0.7f
 private const val TRIANGLE_RING = 0.25f
+private const val DAMAGE_SPRITE = 2.6f
+private const val INFRA_ICON_METERS = 14f
+private const val INFRA_ICON_PIXELS = 22f
+private const val DETOUR_ICON_MIN_METERS = 60f
+private const val SIGN_SPRITE_HEIGHT = 1.25f
 private const val SIGN_TILT_STEP = 7f
 private const val SIGN_MAX_TILT = 14f
 private const val FADED = 0.7f

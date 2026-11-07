@@ -36,21 +36,22 @@ internal fun DrawScope.drawSpeedSigns(
     signs: List<SpeedSign>,
     scale: Float,
     textMeasurer: TextMeasurer,
+    sprites: SpriteSource = NoSprites,
 ) {
     val radius = signRadius(scale)
     for (sign in signs) {
         val center = Offset(sign.x, sign.y)
-        drawCircle(Color.White, radius, center)
-        drawCircle(
-            if (sign.night) MapStyle.nightSign else MapStyle.trafficSignal,
-            radius,
-            center,
-            style =
-                Stroke(
-                    width =
-                        radius * SIGN_RING,
-                ),
-        )
+        val walking = sign.label == "S"
+        val name =
+            when {
+                sign.night -> "sign_speed_night"
+                walking -> "sign_walking"
+                else -> "sign_speed"
+            }
+        val sprite = drawSprite(sprites, name, center, radius * SIGN_SPRITE, radius * SIGN_SPRITE, scale)
+        // Schrittgeschwindigkeit hat ein eigenes Bildzeichen ohne Zahl
+        if (sprite && walking) continue
+        if (!sprite) drawSignFace(center, radius, sign.night)
         val label =
             textMeasurer.measure(
                 sign.label,
@@ -67,8 +68,8 @@ internal fun DrawScope.drawSpeedSigns(
         }) {
             drawText(label, topLeft = Offset(-label.size.width / 2f, -label.size.height / 2f))
         }
-        // Nachtlimit: kleine Mondsichel oben rechts am Schild
-        if (sign.night) {
+        // Nachtlimit: kleine Mondsichel oben rechts am Schild (die Grafik hat ihre eigene)
+        if (sign.night && !sprite) {
             val moon = center + Offset(radius * MOON_OFFSET, radius * MOON_OFFSET)
             drawCircle(MapStyle.nightSign, radius * MOON_SIZE, moon)
             drawCircle(
@@ -80,6 +81,21 @@ internal fun DrawScope.drawSpeedSigns(
     }
 }
 
+/** Gezeichnetes Schild: weiß mit rotem (nachts blauem) Rand. */
+private fun DrawScope.drawSignFace(
+    center: Offset,
+    radius: Float,
+    night: Boolean,
+) {
+    drawCircle(Color.White, radius, center)
+    drawCircle(
+        if (night) MapStyle.nightSign else MapStyle.trafficSignal,
+        radius,
+        center,
+        style = Stroke(width = radius * SIGN_RING),
+    )
+}
+
 /** Ein Schild an einem Abschnitt in Weltkoordinaten. */
 class SpeedSign(
     val x: Float,
@@ -89,6 +105,12 @@ class SpeedSign(
 )
 
 private const val MOON_OFFSET = 0.72f
+private const val SIGN_SPRITE = 2.3f
+private const val MARKER_SPRITE = 2.6f
+private const val MOOD_SPRITE_METERS = 40f
+private const val MOOD_SPRITE_PIXELS = 26f
+private const val UNHAPPY = 0.45
+private const val CONTENT = 0.7
 private const val MOON_SIZE = 0.38f
 private const val MOON_CUT = 0.8f
 private const val MOON_SHIFT = 0.12f
@@ -100,11 +122,20 @@ private const val SIGN_TEXT_FACTOR = 0.9f
 internal fun DrawScope.drawMoods(
     moods: List<ZoneMood>,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
+    val face = max(MOOD_SPRITE_METERS, MOOD_SPRITE_PIXELS / scale)
     for (mood in moods) {
         val radius = max(sqrt(mood.area / PI.toFloat()), MOOD_MIN_PIXELS / scale)
         val color = lerp(MapStyle.moodBad, MapStyle.moodGood, mood.satisfaction.toFloat().coerceIn(0f, 1f))
         drawCircle(color.copy(alpha = MOOD_ALPHA), radius, Offset(mood.x, mood.y))
+        val name =
+            when {
+                mood.satisfaction < UNHAPPY -> "mood_angry"
+                mood.satisfaction < CONTENT -> "mood_neutral"
+                else -> "mood_happy"
+            }
+        drawSprite(sprites, name, Offset(mood.x, mood.y), face, face, scale)
     }
 }
 
@@ -116,9 +147,12 @@ internal fun DrawScope.drawRoadMarkers(
     priority: List<Pair<Float, Float>>,
     crossings: List<Pair<Float, Float>>,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
     val size = max(MARKER_SIZE_METERS, MARKER_MIN_PIXELS / scale)
     for ((x, y) in priority) {
+        val at = Offset(x - MARKER_OFFSET * size, y)
+        if (drawSprite(sprites, "sign_priority", at, size * MARKER_SPRITE, size * MARKER_SPRITE, scale)) continue
         val diamond =
             Path().apply {
                 moveTo(x - MARKER_OFFSET * size, y + size)
@@ -131,6 +165,17 @@ internal fun DrawScope.drawRoadMarkers(
         drawPath(diamond, Color.White, style = Stroke(width = size * MARKER_RING))
     }
     for ((x, y) in crossings) {
+        if (drawSprite(
+                sprites,
+                "sign_bike_crossing",
+                Offset(x, y),
+                size * MARKER_SPRITE,
+                size * MARKER_SPRITE,
+                scale,
+            )
+        ) {
+            continue
+        }
         for (i in -1..1) {
             val offset = i * size * MARKER_STRIPE_GAP
             drawLine(
