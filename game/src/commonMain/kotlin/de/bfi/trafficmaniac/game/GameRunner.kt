@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -64,6 +66,9 @@ class GameRunner(
     val speed: StateFlow<Int> = speedFlow.asStateFlow()
 
     private var lastSpeed = 1
+
+    /** Hält die Simulation zwischen zwei Schritten an, solange jemand das Spiel ansieht (z. B. zum Speichern). */
+    private val lock = Mutex()
     private var acknowledgedReports = simulation.dayReports.size
 
     fun setSpeed(value: Int) {
@@ -74,6 +79,9 @@ class GameRunner(
     fun togglePause() {
         speedFlow.value = if (speedFlow.value == 0) lastSpeed else 0
     }
+
+    /** Führt [block] aus, während die Simulation steht – zwischen zwei Schritten, nie mittendrin. */
+    suspend fun <T> paused(block: (CityGame) -> T): T = lock.withLock { block(game) }
 
     /** Bestätigt den Tagesabschluss; danach läuft der nächste Tag. */
     fun acknowledgeReport() {
@@ -102,10 +110,12 @@ class GameRunner(
 
                 var steps = 0
                 val stepStart = TimeSource.Monotonic.markNow()
-                while (tickDebt >= 1 && pendingReport == null) {
-                    game.step()
-                    tickDebt--
-                    steps++
+                lock.withLock {
+                    while (tickDebt >= 1 && pendingReport == null) {
+                        game.step()
+                        tickDebt--
+                        steps++
+                    }
                 }
                 if (pendingReport != null) tickDebt = 0.0
                 if (steps > 0) {

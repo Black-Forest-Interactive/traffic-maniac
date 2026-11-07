@@ -231,7 +231,14 @@ class CityGameTest {
         assertEquals(rules.trailerCost + rules.trailerMoveCost, game.state().expenses, "Umsetzen statt neu kaufen")
         assertEquals(0, game.state().idleTrailers)
         assertEquals(1, game.state().trailers)
-        assertEquals(1, game.state().cameras.single().segment)
+        assertEquals(
+            1,
+            game
+                .state()
+                .cameras
+                .single()
+                .segment,
+        )
     }
 
     @Test

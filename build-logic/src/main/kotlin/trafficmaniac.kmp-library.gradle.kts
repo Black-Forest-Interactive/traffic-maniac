@@ -9,7 +9,12 @@ val libs = versionCatalogs.named("libs")
 
 kotlin {
     jvmToolchain(libs.findVersion("jvm-toolchain").get().requiredVersion.toInt())
-    jvm()
+    jvm {
+        compilerOptions {
+            // Lambdas und Funktionsreferenzen als Klassen erzeugen: so sind sie serialisierbar (Spielstände)
+            freeCompilerArgs.addAll("-Xlambdas=class", "-Xsam-conversions=class")
+        }
+    }
 
     sourceSets {
         commonTest.dependencies {

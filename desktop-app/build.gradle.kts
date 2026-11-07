@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":ui"))
     implementation(compose.desktop.currentOs)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kryo)
 }
 
 compose.desktop {

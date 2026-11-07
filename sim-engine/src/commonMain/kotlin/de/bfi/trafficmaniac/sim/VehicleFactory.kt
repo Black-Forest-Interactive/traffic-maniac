@@ -75,8 +75,8 @@ internal class VehicleFactory(
     private val driverTable =
         config.driverMix.entries
             .filter { it.value > 0 }
-            .toList()
-    private val driverTotal = driverTable.sumOf { it.value }
+            .map { it.key to it.value }
+    private val driverTotal = driverTable.sumOf { it.second }
 
     private fun pickDriver(): DriverProfile {
         var roll = random.nextDouble() * driverTotal
@@ -84,7 +84,7 @@ internal class VehicleFactory(
             roll -= share
             if (roll <= 0) return driver
         }
-        return driverTable.lastOrNull()?.key ?: DriverProfile.NORMALO
+        return driverTable.lastOrNull()?.first ?: DriverProfile.NORMALO
     }
 
     /** Einsatzfahrzeug von einer Wache zum Einsatz. */

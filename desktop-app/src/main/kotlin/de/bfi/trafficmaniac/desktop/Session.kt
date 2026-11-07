@@ -6,10 +6,13 @@ import de.bfi.trafficmaniac.game.Difficulty
 import de.bfi.trafficmaniac.game.GameRunner
 import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.HighscoreEntry
+import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
 
 /** Eine laufende Partie: Szenario, Schwierigkeitsgrad, Spiel und der Takt, der es antreibt. */
@@ -41,9 +44,48 @@ internal class Session(
         )
     }
 
+    /** Speichert die Partie unter [id] – zwischen zwei Simulationsschritten, das Spiel läuft danach weiter. */
+    suspend fun save(
+        saves: SaveGames,
+        id: String,
+    ): SaveInfo =
+        runner.paused { game ->
+            val state = game.state()
+            val time = game.simulation.gameTime
+            val info =
+                SaveInfo(
+                    id = id,
+                    scenarioId = scenario.id,
+                    scenarioTitle = scenario.title,
+                    difficulty = difficulty,
+                    savedAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).toString(),
+                    gameTime =
+                        "${time.weekday.germanName}, Tag ${state.termDay(time.day)}/${state.termDays}, " +
+                            "${time.clockText} Uhr",
+                    balance = state.balance,
+                    reputation = state.reputation.roundToInt(),
+                )
+            saves.save(game, info)
+            game.announce(if (id == SaveInfo.QUICK_SAVE) "Schnell gespeichert" else "Spiel gespeichert")
+            info
+        }
+
     companion object {
         private const val HONORARY_CITIZEN = 70.0
         private const val SECONDS_PER_MINUTE = 60
+
+        /** Setzt einen Spielstand fort; das Spiel steht zunächst, bis der Spieler weiterlaufen lässt. */
+        fun resume(
+            saves: SaveGames,
+            info: SaveInfo,
+            scenario: Scenario,
+        ): Session {
+            val game = saves.load(info)
+            val runner = GameRunner(game)
+            runner.setSpeed(0)
+            game.announce("Spielstand geladen – Leertaste setzt fort")
+            return Session(scenario, info.difficulty, game, runner)
+        }
 
         /** Bereitet [scenario] vor (Regeln, Schwierigkeitsgrad, Vorlauf); läuft im Hintergrund, kann etwas dauern. */
         fun start(

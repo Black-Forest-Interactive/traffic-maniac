@@ -23,7 +23,7 @@ private val CONTROLS =
         "Mausrad: zoomen · Ziehen: Karte verschieben",
         "Werkzeug unten wählen, dann auf Straße bzw. Kreuzung klicken",
         "Leertaste: Pause · 1–4: Tempo 1×/2×/4×/8× · Enter: Tagesabschluss schließen",
-        "M: Ton aus/an · N: Musik aus/an",
+        "M: Ton aus/an · N: Musik aus/an · F5: schnell speichern (Laden im Startmenü)",
         "Meldungen mit ▸, Schäden im Bauamt und Ereignisse im Kalender anklicken: die Karte zeigt die Stelle",
     )
 

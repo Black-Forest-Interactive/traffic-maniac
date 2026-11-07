@@ -21,19 +21,28 @@ import androidx.compose.ui.window.rememberWindowState
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.game.GameInfo
+import de.bfi.trafficmaniac.game.HighscoreEntry
+import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.ui.MainMenu
 import de.bfi.trafficmaniac.ui.NoSound
+import de.bfi.trafficmaniac.ui.SaveSlots
 import de.bfi.trafficmaniac.ui.SoundBoard
 import de.bfi.trafficmaniac.ui.TrafficManiacApp
 import de.bfi.trafficmaniac.ui.map.NoSprites
 import de.bfi.trafficmaniac.ui.map.SpriteSource
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 private const val DEFAULT_CITY_FILE = "data/cities/pforzheim.city"
+private const val NOTICE_MILLIS = 2_500L
+private val SAVE_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
 
 /** Tasten 1–4 → Zeitraffer 1x, 2x, 4x, 8x. */
 private val speedKeys = mapOf(Key.One to 1, Key.Two to 2, Key.Three to 4, Key.Four to 8)
@@ -56,19 +65,25 @@ fun main(args: Array<String>) {
     val sprites = loadSprites()
     val scenarios = Balancing.scenarios()
     val userData = UserData()
+    val saves = city?.let { SaveGames(it) }
     application {
         // Die laufende Partie: Das Fenster leitet Tasten an sie weiter
         val session = remember { mutableStateOf<Session?>(null) }
+        val scope = rememberCoroutineScope()
         Window(
             onCloseRequest = ::exitApplication,
             title = city?.let { "${GameInfo.TITLE} – ${it.name}" } ?: GameInfo.TITLE,
             state = rememberWindowState(size = DpSize(1280.dp, 800.dp)),
-            onKeyEvent = { event -> session.value?.let { handleKey(event, it, sound) } ?: false },
+            onKeyEvent = { event ->
+                session.value?.let { current ->
+                    handleKey(event, current, sound) { saves?.let { scope.save(current, it, SaveInfo.QUICK_SAVE) } }
+                } ?: false
+            },
         ) {
             if (city == null) {
                 TrafficManiacApp(city = null, missingCityMessage = missingMessage)
             } else {
-                Game(city, scenarios, options, userData, sound, sprites, session, ::exitApplication)
+                Game(city, scenarios, options, userData, sound, sprites, session, saves!!, ::exitApplication)
             }
         }
     }
@@ -84,6 +99,7 @@ private fun Game(
     sound: SoundBoard,
     sprites: SpriteSource,
     sessionState: MutableState<Session?>,
+    saves: SaveGames,
     onQuit: () -> Unit,
 ) {
     var settings by remember { mutableStateOf(userData.settings()) }
@@ -105,7 +121,21 @@ private fun Game(
         }
     }
     LaunchedEffect(Unit) { options.scenario?.let { id -> scenarios.firstOrNull { it.id == id }?.let(start) } }
+    val load: (SaveInfo) -> Unit = { info ->
+        loading = "Spielstand wird geladen …"
+        scope.launch {
+            val loaded = resume(saves, info, scenarios)
+            loading = if (loaded == null) "Dieser Spielstand passt nicht mehr zum Spiel." else null
+            session = loaded
+            if (loaded == null) {
+                delay(NOTICE_MILLIS)
+                loading = null
+            }
+        }
+    }
     val current = session
+    var saveList by remember { mutableStateOf(saves.list()) }
+    LaunchedEffect(current == null) { saveList = saves.list() }
     if (current == null) {
         MainMenu(
             scenarios = scenarios,
@@ -116,16 +146,34 @@ private fun Game(
             onQuit = onQuit,
             attribution = city.attribution,
             loading = loading,
+            saves =
+                SaveSlots(saveList, load) {
+                    saves.delete(it)
+                    saveList = saves.list()
+                },
         )
         return
     }
-    LaunchedEffect(current) { current.runner.run() }
-    LaunchedEffect(current) {
-        current.result()?.let { entry ->
-            highscores = highscores.add(entry)
-            userData.save(highscores)
-        }
+    Playing(current, city, sound, if (settings.sprites) sprites else NoSprites, saves, { session = null }) { entry ->
+        highscores = highscores.add(entry)
+        userData.save(highscores)
     }
+}
+
+/** Die laufende Partie: Takt, Bestenliste am Ende und die Spieloberfläche. */
+@Composable
+private fun Playing(
+    current: Session,
+    city: CityMap,
+    sound: SoundBoard,
+    sprites: SpriteSource,
+    saves: SaveGames,
+    onMenu: () -> Unit,
+    onHighscore: (HighscoreEntry) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(current) { current.runner.run() }
+    LaunchedEffect(current) { current.result()?.let(onHighscore) }
     TrafficManiacApp(
         city = city,
         traffic = current.runner.frames,
@@ -133,9 +181,38 @@ private fun Game(
         onCommand = { current.game.submit(it) },
         onContinueDay = { current.runner.acknowledgeReport() },
         sound = sound,
-        sprites = if (settings.sprites) sprites else NoSprites,
-        onMenu = { session = null },
+        sprites = sprites,
+        onMenu = onMenu,
+        onSave = { scope.save(current, saves, "spiel-" + LocalDateTime.now().format(SAVE_ID_FORMAT)) },
     )
+}
+
+/** Lädt [info] im Hintergrund; `null`, wenn der Spielstand nicht (mehr) passt. */
+private suspend fun resume(
+    saves: SaveGames,
+    info: SaveInfo,
+    scenarios: List<Scenario>,
+): Session? {
+    val scenario = scenarios.firstOrNull { it.id == info.scenarioId } ?: return null
+    return withContext(Dispatchers.IO) {
+        runCatching { Session.resume(saves, info, scenario) }
+            .onFailure { println("Spielstand ${info.id} nicht ladbar: $it") }
+            .getOrNull()
+    }
+}
+
+/** Speichert im Hintergrund; schlägt es fehl, erscheint eine Meldung im Spiel. */
+private fun CoroutineScope.save(
+    session: Session,
+    saves: SaveGames,
+    id: String,
+) {
+    launch(Dispatchers.IO) {
+        runCatching { session.save(saves, id) }.onFailure {
+            println("Speichern fehlgeschlagen: $it")
+            session.runner.paused { game -> game.announce("Speichern fehlgeschlagen: ${it.message}") }
+        }
+    }
 }
 
 /** Grafiken aus `assets/sprites/`; fehlende zeichnet das Spiel selbst. */
@@ -171,11 +248,12 @@ private fun parseOptions(args: Array<String>): Options {
     )
 }
 
-/** Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo, M Ton, N Musik. */
+/** Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo, M Ton, N Musik, F5 Schnellspeichern. */
 private fun handleKey(
     event: KeyEvent,
     session: Session,
     sound: SoundBoard,
+    onQuickSave: () -> Unit,
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val runner = session.runner
@@ -186,6 +264,7 @@ private fun handleKey(
         speed != null -> runner.setSpeed(speed)
         event.key == Key.M -> sound.muted = !sound.muted
         event.key == Key.N -> sound.music = !sound.music
+        event.key == Key.F5 -> onQuickSave()
         else -> return false
     }
     return true
