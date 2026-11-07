@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.ui.map
 
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.Polyline
+import de.bfi.trafficmaniac.city.StreetStretches
 import de.bfi.trafficmaniac.game.MapPlace
 import kotlin.math.hypot
 
@@ -77,6 +78,12 @@ class MapPicker(
 
     /** Kartenort eines Knotens (z. B. einer Ampel). */
     fun placeOfNode(node: Int): MapPlace = MapPlace(city.roads.nodes[node].x, city.roads.nodes[node].y)
+
+    /** Strecken von Kreuzung zu Kreuzung (für Tempolimit-Schilder). */
+    val stretches = StreetStretches(city.roads)
+
+    /** Anfangs- und Endknoten eines Abschnitts. */
+    fun endsOf(segment: Int): Pair<Int, Int> = city.roads.segments[segment].let { it.from to it.to }
 
     /** Länge des Abschnitts in Metern. */
     fun lengthOf(segment: Int): Float = length(city.roads.segments[segment].geometry)

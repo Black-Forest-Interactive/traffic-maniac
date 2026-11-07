@@ -83,7 +83,8 @@ class CityGameTest {
         // Parkgebühren und Knöllchen kommen noch dazu
         val parking = state.parkingOffice.feeIncome + state.parkingOffice.ticketIncome
         assertEquals(game.rules.startBudget - state.expenses + state.fineIncome + parking, state.balance)
-        assertEquals(mapOf(0 to 20), state.speedLimits)
+        // Die Teststraße hat keine Kreuzung in der Mitte: Das Limit gilt für die ganze Strecke, bezahlt wird ein Schild
+        assertEquals(mapOf(0 to 20, 1 to 20), state.speedLimits)
     }
 
     @Test

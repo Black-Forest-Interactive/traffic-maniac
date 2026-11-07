@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.city.CityMap
+import de.bfi.trafficmaniac.city.StreetStretches
 import de.bfi.trafficmaniac.sim.Simulation
 
 /** Das Tiefbauamt: stellt Schilder, Ampeln und Blitzer auf – gegen Bezahlung. */
@@ -11,6 +12,7 @@ internal class PublicWorks(
     private val treasury: Treasury,
     private val message: (String) -> Unit,
 ) {
+    private val stretches = StreetStretches(city.roads)
     val speedLimits = LinkedHashMap<Int, Int>()
     val nightLimits = LinkedHashMap<Int, Int>()
     val priorityRoads = LinkedHashSet<Int>()
@@ -20,22 +22,31 @@ internal class PublicWorks(
     var signalNodes: Set<Int> = signalNodesOf()
         private set
 
+    /**
+     * Tempolimit für die ganze Strecke von Kreuzung zu Kreuzung, zu der [segment] gehört – ein Schild am Anfang,
+     * eins am Ende, bezahlt wird einmal. `null` hebt es für die Strecke auf.
+     */
     fun setSpeedLimit(
         segment: Int,
         kmh: Int?,
         nightOnly: Boolean,
     ) {
         val limits = if (nightOnly) nightLimits else speedLimits
-        if (limits[segment] == kmh) return
+        val stretch = stretches.stretchOf(segment)
+        if (stretch.all { limits[it] == kmh }) return
         val street = streetName(segment)
         val suffix = if (nightOnly) " nur nachts" else ""
         if (kmh == null) {
-            simulation.graph.setSegmentSpeedLimit(segment, null, nightOnly)
-            limits.remove(segment)
+            for (s in stretch) {
+                simulation.graph.setSegmentSpeedLimit(s, null, nightOnly)
+                limits.remove(s)
+            }
             message("Tempolimit$suffix aufgehoben: $street")
         } else if (treasury.pay(rules.speedLimitSignCost, "Tempo-$kmh-Schild")) {
-            simulation.graph.setSegmentSpeedLimit(segment, kmh, nightOnly)
-            limits[segment] = kmh
+            for (s in stretch) {
+                simulation.graph.setSegmentSpeedLimit(s, kmh, nightOnly)
+                limits[s] = kmh
+            }
             message("Tempo $kmh$suffix: $street")
             checkSignForest(segment)
         }
