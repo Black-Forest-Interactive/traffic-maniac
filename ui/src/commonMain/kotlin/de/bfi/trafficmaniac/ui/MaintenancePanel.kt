@@ -28,13 +28,13 @@ import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.sim.DamageKind
 import kotlin.math.roundToInt
 
-private val PanelBackground = Color(0xF21D1F2E)
-private val PanelText = Color(0xFFF1F1F1)
-private val Muted = Color(0xFFB0B3C6)
-private val Warning = Color(0xFFFFB703)
-private val Danger = Color(0xFFFF6B6B)
-private val Active = Color(0xFFE63946)
-private val Idle = Color(0xFF3A3D52)
+private val PanelBackground = ComicTheme.paper
+private val PanelText = ComicTheme.ink
+private val Muted = ComicTheme.muted
+private val Warning = ComicTheme.orange
+private val Danger = ComicTheme.red
+private val Active = ComicTheme.red
+private val Idle = ComicTheme.button
 private const val MAX_REPORTS = 6
 private val SIGN_LIMITS = listOf(30, 10)
 
@@ -56,7 +56,7 @@ fun MaintenancePanel(
         modifier
             .width(460.dp)
             .padding(12.dp)
-            .background(PanelBackground, RoundedCornerShape(10.dp))
+            .comicPanel()
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -207,7 +207,7 @@ private fun Choice(
             ),
         modifier =
             Modifier
-                .background(if (active) Active else Idle, RoundedCornerShape(6.dp))
+                .comicButton(active)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 8.dp, vertical = 5.dp),
     )

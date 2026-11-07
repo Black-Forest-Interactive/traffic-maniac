@@ -17,10 +17,10 @@ import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.AchievementStatus
 import de.bfi.trafficmaniac.game.EventsState
 
-private val PanelBackground = Color(0xF21D1F2E)
-private val PanelText = Color(0xFFF1F1F1)
-private val Muted = Color(0xFFB0B3C6)
-private val Highlight = Color(0xFFFFD166)
+private val PanelBackground = ComicTheme.paper
+private val PanelText = ComicTheme.ink
+private val Muted = ComicTheme.muted
+private val Highlight = ComicTheme.orange
 private const val CALENDAR_ROWS = 8
 
 /** Spielkalender: was gerade los ist und was ansteht. */
@@ -38,7 +38,7 @@ fun EventsPanel(
         modifier
             .width(380.dp)
             .padding(12.dp)
-            .background(PanelBackground, RoundedCornerShape(10.dp))
+            .comicPanel()
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
@@ -89,7 +89,7 @@ fun AchievementsPanel(
         modifier
             .width(380.dp)
             .padding(12.dp)
-            .background(PanelBackground, RoundedCornerShape(10.dp))
+            .comicPanel()
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {

@@ -46,10 +46,10 @@ data class ToolSelection(
     }
 }
 
-private val BarBackground = Color(0xE61D1F2E)
-private val ButtonIdle = Color(0xFF3A3D52)
-private val ButtonActive = Color(0xFFE63946)
-private val TextColor = Color(0xFFF1F1F1)
+private val BarBackground = ComicTheme.paper
+private val ButtonIdle = ComicTheme.button
+private val ButtonActive = ComicTheme.red
+private val TextColor = ComicTheme.ink
 private const val WALKING_SPEED = 7
 
 /** Werkzeugleiste am unteren Rand: Werkzeug wählen, beim Tempolimit zusätzlich den Wert. */
@@ -63,7 +63,7 @@ fun ToolBar(
     Column(
         modifier
             .padding(12.dp)
-            .background(BarBackground, RoundedCornerShape(10.dp))
+            .comicPanel()
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -123,7 +123,7 @@ private fun ToolButton(
             ),
         modifier =
             Modifier
-                .background(if (active) ButtonActive else ButtonIdle, RoundedCornerShape(6.dp))
+                .comicButton(active)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 6.dp),
     )

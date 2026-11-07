@@ -78,25 +78,56 @@ internal fun DrawScope.drawVehicles(
     }
 }
 
-/** Gesamtansicht: Straßen mit zähem Verkehr gelb, mit Stau rot – freie Straßen bleiben, wie sie sind. */
-internal fun DrawScope.drawFlow(
-    paths: SegmentPaths,
-    flow: FloatArray,
-    scale: Float,
+/**
+ * Gesamtansicht: Straßen mit zähem Verkehr gelb, mit Stau rot – freie Straßen bleiben, wie sie sind.
+ * Je Snapshot werden die Abschnitte einmal in wenige Farbstufen gebündelt; gezeichnet wird dann ein Pfad je Stufe.
+ */
+internal class FlowLayer(
+    private val paths: SegmentPaths,
 ) {
-    if (scale >= MapStyle.FLOW_MAX_SCALE || flow.isEmpty()) return
-    val width = max(FLOW_WIDTH_METERS, FLOW_MIN_PIXELS / scale)
-    for (segment in paths.mainSegments) {
-        val f = flow.getOrElse(segment) { 1f }
-        if (f >= FLOW_SHOWN_BELOW) continue
-        val color =
-            if (f > FLOW_SLOW) {
-                lerp(MapStyle.flowSlow, MapStyle.flowFree, (f - FLOW_SLOW) / (FLOW_SHOWN_BELOW - FLOW_SLOW))
-            } else {
-                lerp(MapStyle.flowJam, MapStyle.flowSlow, f / FLOW_SLOW)
+    private var source: FloatArray? = null
+    private val bins = Array(FLOW_BINS) { Path() }
+    private val filled = BooleanArray(FLOW_BINS)
+
+    fun draw(
+        scope: DrawScope,
+        flow: FloatArray,
+        scale: Float,
+    ) {
+        if (scale >= MapStyle.FLOW_MAX_SCALE || flow.isEmpty()) return
+        if (flow !== source) rebuild(flow)
+        // Nur in der Gesamtansicht: bei wenigen Pixeln Breite reichen einfache Linienenden (deutlich billiger)
+        val stroke = Stroke(max(FLOW_WIDTH_METERS, FLOW_MIN_PIXELS / scale), join = StrokeJoin.Bevel)
+        for (bin in bins.indices) {
+            if (filled[bin]) {
+                scope.drawPath(
+                    bins[bin],
+                    flowColor((bin + HALF_BIN) / FLOW_BINS * FLOW_SHOWN_BELOW),
+                    style = stroke,
+                )
             }
-        drawPath(paths[segment], color, style = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
     }
+
+    private fun rebuild(flow: FloatArray) {
+        source = flow
+        bins.forEach { it.reset() }
+        filled.fill(false)
+        for (segment in paths.mainSegments) {
+            val f = flow.getOrElse(segment) { 1f }
+            if (f >= FLOW_SHOWN_BELOW) continue
+            val bin = (f / FLOW_SHOWN_BELOW * FLOW_BINS).toInt().coerceIn(0, FLOW_BINS - 1)
+            bins[bin].addPath(paths[segment])
+            filled[bin] = true
+        }
+    }
+
+    private fun flowColor(f: Float) =
+        if (f > FLOW_SLOW) {
+            lerp(MapStyle.flowSlow, MapStyle.flowFree, (f - FLOW_SLOW) / (FLOW_SHOWN_BELOW - FLOW_SLOW))
+        } else {
+            lerp(MapStyle.flowJam, MapStyle.flowSlow, f / FLOW_SLOW)
+        }
 }
 
 /** Ein Fahrzeug, fertig interpoliert. [x], [y] ist die Front, [dirX], [dirY] die Fahrtrichtung. */
@@ -399,6 +430,8 @@ private const val FLOW_WIDTH_METERS = 14f
 private const val FLOW_MIN_PIXELS = 3f
 private const val FLOW_SHOWN_BELOW = 0.85f
 private const val FLOW_SLOW = 0.5f
+private const val FLOW_BINS = 6
+private const val HALF_BIN = 0.5f
 private const val OUTLINE_METERS = 0.3f
 private const val MIN_OUTLINE_PIXELS = 1f
 

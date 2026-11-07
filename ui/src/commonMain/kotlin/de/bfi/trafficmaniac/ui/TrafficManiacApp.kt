@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -37,14 +38,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 
 private val BackgroundColor = Color(0xFF2B2D42)
 private val HUD_REFRESH = 250.milliseconds
-private val MessageBackground = Color(0xCC1D1F2E)
-private val MessageText = Color(0xFFF1F1F1)
+private val MessageBackground = ComicTheme.paper
+private val MessageText = ComicTheme.ink
 private const val PICK_RADIUS_PIXELS = 14f
 private const val MIN_PICK_RADIUS_METERS = 6f
 private const val VISIBLE_MESSAGES = 3
+private const val MILLIS_PER_SECOND = 1_000.0
 private const val MONEY_RAIN_WIDTH = 360
 private const val MONEY_RAIN_HEIGHT = 260
 
@@ -57,6 +60,7 @@ fun TrafficManiacApp(
     rules: GameRules = GameRules(),
     onCommand: (GameCommand) -> Unit = {},
     onContinueDay: () -> Unit = {},
+    sound: SoundBoard = NoSound,
 ) {
     if (city == null) {
         MissingCity(missingCityMessage)
@@ -69,13 +73,12 @@ fun TrafficManiacApp(
     var showCondition by remember { mutableStateOf(false) }
     var environmentLayer by remember { mutableStateOf(EnvironmentLayer.NONE) }
     val picker = remember(city) { MapPicker(city) }
-    // Die Kennzahlen reichen viermal pro Sekunde – die Karte liest den Verkehr selbst in jedem Frame
-    val hudFrame by produceState<TrafficFrame?>(null, traffic) {
-        while (traffic != null) {
-            value = traffic.value
-            delay(HUD_REFRESH)
-        }
+    val zoom = remember { floatArrayOf(1f) }
+    val command: (GameCommand) -> Unit = {
+        sound.play(SoundEffect.CLICK)
+        onCommand(it)
     }
+    val hudFrame by rememberHudFrame(traffic, sound, zoom)
     Box(Modifier.fillMaxSize()) {
         MapView(
             city = city,
@@ -84,9 +87,10 @@ fun TrafficManiacApp(
             showMoods = showMoods,
             environmentLayer = environmentLayer,
             showCondition = showCondition || selection.tool == Tool.DETOUR,
+            onZoom = { zoom[0] = it },
             onMapClick = { x, y, metersPerPixel ->
                 val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
-                commandFor(selection, picker, traffic?.value, x, y, radius)?.let(onCommand)
+                commandFor(selection, picker, traffic?.value, x, y, radius)?.let(command)
             },
         )
         hudFrame?.let { frame ->
@@ -108,13 +112,34 @@ fun TrafficManiacApp(
                     environmentLayer =
                         EnvironmentLayer.entries[(environmentLayer.ordinal + 1) % EnvironmentLayer.entries.size]
                 },
-                onCommand = onCommand,
+                onCommand = command,
                 modifier = Modifier.align(Alignment.TopEnd),
             )
             Messages(frame.game.messages, Modifier.align(Alignment.BottomStart).padding(bottom = 24.dp))
         }
         if (traffic != null) ToolBar(selection, rules, { selection = it }, Modifier.align(Alignment.BottomCenter))
         hudFrame?.let { EndOfDayOverlays(it, onContinueDay) }
+    }
+}
+
+/**
+ * Die Kennzahlen (und der Ton) reichen viermal pro Sekunde – die Karte liest den Verkehr selbst in jedem Frame.
+ * [zoom] hält die aktuelle Zoomstufe der Karte für die Lautstärke der Geräuschkulisse.
+ */
+@Composable
+private fun rememberHudFrame(
+    traffic: StateFlow<TrafficFrame?>?,
+    sound: SoundBoard,
+    zoom: FloatArray,
+): State<TrafficFrame?> {
+    val director = remember(sound) { SoundDirector(sound) }
+    return produceState<TrafficFrame?>(null, traffic) {
+        val started = TimeSource.Monotonic.markNow()
+        while (traffic != null) {
+            value = traffic.value
+            value?.let { director.update(it, zoom[0], started.elapsedNow().inWholeMilliseconds / MILLIS_PER_SECOND) }
+            delay(HUD_REFRESH)
+        }
     }
 }
 
@@ -354,8 +379,8 @@ private fun Messages(
                 style = TextStyle(color = MessageText, fontSize = 13.sp),
                 modifier =
                     Modifier
-                        .background(MessageBackground, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .comicPanel(shadow = 3.dp)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
             )
         }
     }
@@ -372,7 +397,7 @@ private fun SmallButton(
         modifier =
             Modifier
                 .padding(top = 12.dp, end = 12.dp)
-                .background(MessageBackground, RoundedCornerShape(6.dp))
+                .comicButton(active = false)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 6.dp),
     )

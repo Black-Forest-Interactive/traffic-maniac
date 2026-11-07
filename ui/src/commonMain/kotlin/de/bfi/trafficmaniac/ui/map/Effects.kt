@@ -17,39 +17,64 @@ import kotlin.math.sin
 
 /**
  * Wutwolken: Wo viele Autos lange stehen (Raster aus 200-m-Zellen), schwebt eine dunkle Wolke mit rotem Blitz.
- * Je mehr Wartende, desto größer die Wolke; sie wabert leicht.
+ * Je mehr Wartende, desto größer die Wolke; sie wabert leicht. Die Wolken werden je Snapshot einmal gesucht.
  */
-internal fun DrawScope.drawAngerClouds(
-    snapshot: SimulationSnapshot,
-    scale: Float,
-    seconds: Double,
-) {
-    val cells = HashMap<Long, IntArray>()
-    for (i in 0 until snapshot.vehicleCount) {
-        if (snapshot.flags[i].toInt() and FLAG_JAMMED == 0) continue
-        val cx = floor(snapshot.x[i] / CELL_METERS).toLong()
-        val cy = floor(snapshot.y[i] / CELL_METERS).toLong()
-        cells.getOrPut((cx shl CELL_SHIFT) xor (cy and CELL_MASK)) { intArrayOf(0, 0, 0) }.apply {
-            this[0]++
-            this[1] += snapshot.x[i].toInt()
-            this[2] += snapshot.y[i].toInt()
+internal class AngerClouds {
+    private var source: SimulationSnapshot? = null
+    private var sourceCell = 0f
+    private var clouds: List<Cloud> = emptyList()
+    private val path = Path()
+
+    /** Mittelpunkt der Wartenden einer Zelle, ihre Zahl und ein Startwert fürs Wabern. */
+    private class Cloud(
+        val x: Float,
+        val y: Float,
+        val count: Int,
+        val seed: Long,
+    )
+
+    fun draw(
+        scope: DrawScope,
+        snapshot: SimulationSnapshot,
+        scale: Float,
+        seconds: Double,
+    ) = with(scope) {
+        // Herausgezoomt werden die Zellen größer: weniger, dafür größere Wolken
+        var cell = CELL_METERS
+        while (cell * scale < CELL_MIN_PIXELS) cell *= 2
+        if (snapshot !== source || cell != sourceCell) find(snapshot, cell)
+        for (c in clouds) {
+            val center = Offset(c.x, c.y + max(CLOUD_LIFT_METERS, CLOUD_LIFT_PIXELS / scale))
+            val growth = (1 + (c.count - CLOUD_MIN_VEHICLES) * CLOUD_GROWTH).coerceAtMost(CLOUD_MAX)
+            // Nah dran nicht größer als ein paar Autos, damit der Stau darunter sichtbar bleibt
+            val size = (max(CLOUD_METERS, CLOUD_MIN_PIXELS / scale) * growth).coerceAtMost(CLOUD_MAX_PIXELS / scale)
+            val wobble = sin(seconds * WOBBLE_SPEED + c.seed % WOBBLE_SEEDS).toFloat() * size * WOBBLE
+            cloud(center + Offset(wobble, 0f), size, scale)
+            lightning(path, center + Offset(wobble, -size * BOLT_DROP), size)
         }
     }
-    val path = Path()
-    for ((key, cell) in cells) {
-        val count = cell[0]
-        if (count < CLOUD_MIN_VEHICLES) continue
-        val center =
-            Offset(
-                cell[1].toFloat() / count,
-                cell[2].toFloat() / count + max(CLOUD_LIFT_METERS, CLOUD_LIFT_PIXELS / scale),
-            )
-        val size =
-            max(CLOUD_METERS, CLOUD_MIN_PIXELS / scale) *
-                (1 + (count - CLOUD_MIN_VEHICLES) * CLOUD_GROWTH).coerceAtMost(CLOUD_MAX)
-        val wobble = sin(seconds * WOBBLE_SPEED + key % WOBBLE_SEEDS).toFloat() * size * WOBBLE
-        cloud(center + Offset(wobble, 0f), size, scale)
-        lightning(path, center + Offset(wobble, -size * BOLT_DROP), size)
+
+    private fun find(
+        snapshot: SimulationSnapshot,
+        cellMeters: Float,
+    ) {
+        source = snapshot
+        sourceCell = cellMeters
+        val cells = HashMap<Long, IntArray>()
+        for (i in 0 until snapshot.vehicleCount) {
+            if (snapshot.flags[i].toInt() and FLAG_JAMMED == 0) continue
+            val cx = floor(snapshot.x[i] / cellMeters).toLong()
+            val cy = floor(snapshot.y[i] / cellMeters).toLong()
+            cells.getOrPut((cx shl CELL_SHIFT) xor (cy and CELL_MASK)) { intArrayOf(0, 0, 0) }.apply {
+                this[0]++
+                this[1] += snapshot.x[i].toInt()
+                this[2] += snapshot.y[i].toInt()
+            }
+        }
+        clouds =
+            cells
+                .filter { it.value[0] >= CLOUD_MIN_VEHICLES }
+                .map { (key, cell) -> Cloud(cell[1].toFloat() / cell[0], cell[2].toFloat() / cell[0], cell[0], key) }
     }
 }
 
@@ -144,11 +169,13 @@ internal fun DrawScope.drawCameraFlashes(
 }
 
 private const val CELL_METERS = 200f
+private const val CELL_MIN_PIXELS = 70f
 private const val CELL_SHIFT = 32
 private const val CELL_MASK = 0xFFFFFFFFL
 private const val CLOUD_MIN_VEHICLES = 6
 private const val CLOUD_METERS = 22f
 private const val CLOUD_MIN_PIXELS = 18f
+private const val CLOUD_MAX_PIXELS = 90f
 private const val CLOUD_LIFT_METERS = 25f
 private const val CLOUD_LIFT_PIXELS = 22f
 private const val CLOUD_GROWTH = 0.04f

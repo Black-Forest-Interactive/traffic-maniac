@@ -29,17 +29,13 @@ import de.bfi.trafficmaniac.game.NewspaperEdition
 import de.bfi.trafficmaniac.sim.DayReport
 import de.bfi.trafficmaniac.sim.GameTime
 
-private val Scrim = Color(0x99000000)
-private val Panel = Color(0xFFFFF8E7)
-private val Ink = Color(0xFF1D1F2E)
-private val Bar = Color(0xFFE63946)
-private val BarBackground = Color(0xFFEDE3CC)
-private val ButtonColor = Color(0xFF2A9D8F)
-private val NewsPaper = Color(0xFFEDE6D6)
+private val Ink = ComicTheme.ink
+private val Bar = ComicTheme.red
+private val BarBackground = ComicTheme.track
 private const val CHART_GAP_FRACTION = 0.2f
 private const val AXIS_STEP_HOURS = 6
 
-/** Platzhalter für den Tagesabschluss: Kennzahlen des Tags und die Nachfragekurve als Balkendiagramm. */
+/** Tagesabschluss: Kennzahlen des Tags, die Nachfragekurve als Balkendiagramm und die Zeitung vom nächsten Morgen. */
 @Composable
 fun DayReportOverlay(
     report: DayReport,
@@ -47,11 +43,11 @@ fun DayReportOverlay(
     onContinue: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.fillMaxSize().background(Scrim), contentAlignment = Alignment.Center) {
+    Box(modifier.fillMaxSize().background(ComicTheme.scrim), contentAlignment = Alignment.Center) {
         Column(
             Modifier
-                .width(560.dp)
-                .background(Panel, RoundedCornerShape(12.dp))
+                .width(600.dp)
+                .comicPanel(shadow = 8.dp)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -80,49 +76,18 @@ fun DayReportOverlay(
                     )
                 }
             }
-            edition?.let { Newspaper(it) }
+            edition?.let { ComicNewspaper(it, Modifier.padding(top = 8.dp)) }
             BasicText(
                 "Weiter zum nächsten Tag (Enter)",
-                style = TextStyle(color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                style = TextStyle(color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold),
                 modifier =
                     Modifier
                         .align(Alignment.End)
                         .padding(top = 8.dp)
-                        .background(ButtonColor, RoundedCornerShape(8.dp))
+                        .comicButton(active = true)
                         .clickable(onClick = onContinue)
                         .padding(horizontal = 16.dp, vertical = 8.dp),
             )
-        }
-    }
-}
-
-/** Die Lokalzeitung vom nächsten Morgen. */
-@Composable
-private fun Newspaper(edition: NewspaperEdition) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp)
-            .background(NewsPaper, RoundedCornerShape(4.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        BasicText(
-            "PFORZHEIMER MORGENPOST" + if (edition.tone.isNotEmpty()) "  ·  Tonlage: ${edition.tone}" else "",
-            style = TextStyle(color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Black),
-        )
-        for (headline in edition.headlines) {
-            BasicText("• $headline", style = TextStyle(color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold))
-        }
-        if (edition.letters.isNotEmpty()) {
-            BasicText(
-                "LESERBRIEFE",
-                style = TextStyle(color = Ink, fontSize = 11.sp, fontWeight = FontWeight.Black),
-                modifier = Modifier.padding(top = 6.dp),
-            )
-            for (letter in edition.letters) {
-                BasicText(letter, style = TextStyle(color = Ink, fontSize = 12.sp, fontStyle = FontStyle.Italic))
-            }
         }
     }
 }

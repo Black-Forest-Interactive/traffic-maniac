@@ -8,14 +8,14 @@ Erste Stadt: **Pforzheim** (Straßennetz aus OpenStreetMap).
 
 ## Status
 
-Version 0.1 ist spielbar (Meilensteine M0–M6), 0.2 (Fahrer & Überwachung) ist fertig, 0.3 (Bürger & Umwelt), 0.4 (Fahrzeugvielfalt & Chaos), 0.5 (Stadtverwaltung: Verfall, Reparaturen, Parken, Umleitungen) und 0.6 (Ereignisse & Presse: Rad-Korsos, Demos, Spielkalender, Pressemodell, Achievements) sind größtenteils umgesetzt: Pforzheim mit rund 2.000 gleichzeitig fahrenden Autos, Tagesgang mit Berufsverkehr, Werkzeuge (Tempolimit, Ampel, Blitzer), Bußgelder, Bürgerzorn, Abwahlindex, PR, Lokalzeitung und Wertung nach 14 Spieltagen. Grafik ist noch Platzhalter.
+Version 0.1 ist spielbar (Meilensteine M0–M6), 0.2 (Fahrer & Überwachung) ist fertig, 0.3 (Bürger & Umwelt), 0.4 (Fahrzeugvielfalt & Chaos), 0.5 (Stadtverwaltung: Verfall, Reparaturen, Parken, Umleitungen), 0.6 (Ereignisse & Presse: Rad-Korsos, Demos, Spielkalender, Pressemodell, Achievements) und 0.7 (Cartoon-Look & Sound) sind größtenteils umgesetzt: Pforzheim mit rund 2.000 gleichzeitig fahrenden Autos, Tagesgang mit Berufsverkehr, Werkzeuge (Tempolimit, Ampel, Blitzer), Bußgelder, Bürgerzorn, Abwahlindex, PR, Lokalzeitung und Wertung nach 14 Spieltagen. Die Grafik ist im Comic-Stil selbst gezeichnet, Musik und Geräusche kommen aus einem eingebauten Synthesizer.
 
 ## Spielen
 
 - Mausrad zoomt, Ziehen verschiebt die Karte.
 - Unten die Werkzeugleiste: Tempolimit (mit Wert, auch "nur nachts"), Ampel, Blitzer, Laser, Vorfahrt, Radweg-Querung, Umleitung (auch über Nebenstraßen), Abbauen – dann auf eine Straße bzw. Kreuzung klicken.
 - Rechts oben: Umwelt-Ebenen (Lärm, Luft, CO₂), Zufriedenheit der Wohngebiete, Straßenzustand, Blitzer-Statistik, Haushalt & PR, Ordnungsamt, Bauamt (Schadensmeldungen, Reparaturen, Erhaltungsbudget), Parken (Gebühren, Stellplätze, Politessen), Bürger, Kalender (Demos, Korsos, Markt, Marathon, Stadtfest), Achievements. Im Fenster Haushalt & PR gibt es einmal am Tag einen Spatenstich für die Presse.
-- Leertaste pausiert, 1–4 wählen Tempo 1x/2x/4x/8x (nachts automatisch 8× schneller), Enter schließt den Tagesabschluss.
+- Leertaste pausiert, 1–4 wählen Tempo 1x/2x/4x/8x (nachts automatisch 8× schneller), Enter schließt den Tagesabschluss, M schaltet den Ton stumm, N die Musik.
 - Ziel: nach 14 Tagen möglichst viel Geld in der Kasse und eine gute Reputation. Wird der Bürgerzorn zu groß, ist man vorher abgewählt.
 
 ## Entwickeln

@@ -75,17 +75,20 @@ fun MapView(
     environmentLayer: EnvironmentLayer = EnvironmentLayer.NONE,
     /** Straßenzustand einfärben (grün/gelb/rot). */
     showCondition: Boolean = false,
+    /** Meldet die Zoomstufe (Pixel pro Meter), z. B. für die Lautstärke der Geräuschkulisse. */
+    onZoom: (Float) -> Unit = {},
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
     val segmentPaths = remember(city) { SegmentPaths(city) }
     val environmentCache = remember(city) { EnvironmentCache() }
-    val flashes = remember(city) { FlashTracker() }
+    val effects = remember(city) { TrafficEffects(FlashTracker(), FlowLayer(segmentPaths), AngerClouds()) }
     val textMeasurer = rememberTextMeasurer()
     val clickHandler by rememberUpdatedState(onMapClick)
     val frameTick = rememberFrameTick(onFps)
     val view = remember(city) { ViewState() }
     val camera = view.camera
+    LaunchedEffect(camera?.scale) { camera?.let { onZoom(it.scale) } }
 
     Box(
         modifier
@@ -108,21 +111,12 @@ fun MapView(
                 val nanos = frameTick.value
                 val frame = traffic()
                 if (currentCamera != null && frame != null) {
-                    val layer = environmentLayer
-                    if (layer != EnvironmentLayer.NONE) {
-                        inWorld(currentCamera) { environmentCache.draw(this, frame.current.environment, layer) }
-                    }
-                    if (showMoods) inWorld(currentCamera) { drawMoods(frame.game.zoneMoods, currentCamera.scale) }
-                    val infrastructure = frame.current.infrastructure
-                    inWorld(currentCamera) {
-                        if (showCondition) drawCondition(segmentPaths, infrastructure, currentCamera.scale)
-                        drawWorksAndDetours(segmentPaths, infrastructure, currentCamera.scale)
-                        drawEvents(segmentPaths, frame.current.events, currentCamera.scale)
-                    }
+                    val overlays = Overlays(environmentLayer, environmentCache, showMoods, showCondition)
+                    drawOverlays(currentCamera, frame, segmentPaths, overlays)
                     val viewport = currentCamera.viewport(size.width, size.height)
                     val seconds = nanos / NANOS_PER_SECOND.toDouble()
-                    flashes.update(frame.game.cameras, seconds)
-                    drawTraffic(currentCamera, frame, picker, textMeasurer, segmentPaths, viewport, seconds, flashes)
+                    effects.flashes.update(frame.game.cameras, seconds)
+                    drawTraffic(currentCamera, frame, picker, textMeasurer, viewport, seconds, effects)
                 }
             }
         }
@@ -245,17 +239,47 @@ internal inline fun DrawScope.inWorld(
     }, block)
 }
 
+/** Zwischenspeicher der Effekte: Blitzer-Blitze, Staufarben und Wutwolken (je Snapshot berechnet). */
+internal class TrafficEffects(
+    val flashes: FlashTracker,
+    val flow: FlowLayer,
+    val clouds: AngerClouds,
+)
+
+/** Was unter dem Verkehr eingeblendet wird: Umwelt-Ebene, Zufriedenheit, Straßenzustand. */
+private class Overlays(
+    val environmentLayer: EnvironmentLayer,
+    val environmentCache: EnvironmentCache,
+    val showMoods: Boolean,
+    val showCondition: Boolean,
+)
+
+/** Ebenen unter dem Verkehr: Umwelt, Zufriedenheit, Zustand, Baustellen, Umleitungen und Ereignisse. */
+private fun DrawScope.drawOverlays(
+    camera: Camera,
+    frame: TrafficFrame,
+    segmentPaths: SegmentPaths,
+    overlays: Overlays,
+) = inWorld(camera) {
+    val layer = overlays.environmentLayer
+    if (layer != EnvironmentLayer.NONE) overlays.environmentCache.draw(this, frame.current.environment, layer)
+    if (overlays.showMoods) drawMoods(frame.game.zoneMoods, camera.scale)
+    val infrastructure = frame.current.infrastructure
+    if (overlays.showCondition) drawCondition(segmentPaths, infrastructure, camera.scale)
+    drawWorksAndDetours(segmentPaths, infrastructure, camera.scale)
+    drawEvents(segmentPaths, frame.current.events, camera.scale)
+}
+
 private fun DrawScope.drawTraffic(
     camera: Camera,
     traffic: TrafficFrame,
     picker: MapPicker,
     textMeasurer: TextMeasurer,
-    segmentPaths: SegmentPaths,
     viewport: Rect,
     seconds: Double,
-    flashes: FlashTracker,
+    effects: TrafficEffects,
 ) = inWorld(camera) {
-    drawFlow(segmentPaths, traffic.current.segmentFlow, camera.scale)
+    effects.flow.draw(this, traffic.current.segmentFlow, camera.scale)
     drawIncidents(traffic.current.incidents, camera.scale)
     drawDamage(traffic.game.maintenance.reports, picker, camera.scale)
     drawExcavators(
@@ -273,8 +297,8 @@ private fun DrawScope.drawTraffic(
         drawSignals(traffic.current.signalMarkers, traffic.current.signalStates, camera.scale, blink, viewport)
     }
     drawCameras(traffic.current.cameras, camera.scale)
-    drawCameraFlashes(traffic.current.cameras, flashes, camera.scale, seconds)
-    drawAngerClouds(traffic.current, camera.scale, seconds)
+    drawCameraFlashes(traffic.current.cameras, effects.flashes, camera.scale, seconds)
+    effects.clouds.draw(this, traffic.current, camera.scale, seconds)
     val signs =
         traffic.game.speedLimits.map { (segment, kmh) ->
             val (x, y) = picker.midpoint(segment)

@@ -99,6 +99,8 @@ class CartoonRenderTest {
         val density = Density(1f)
         val measurer = TextMeasurer(createFontFamilyResolver(), density, LayoutDirection.Ltr)
         val flashes = FlashTracker()
+        val flow = FlowLayer(paths)
+        val clouds = AngerClouds()
         // Gesamtansicht (Staufarben), mittlerer Zoom (Striche), nah dran (Sprites, Gesichter, Namen)
         for (scale in listOf(0.2f, 0.8f, 6f)) {
             val camera = Camera(0f, 0f, scale)
@@ -112,7 +114,7 @@ class CartoonRenderTest {
                 val viewport = camera.viewport(size.width, size.height)
                 flashes.update(frame.game.cameras, 1.0)
                 inWorld(camera) {
-                    drawFlow(paths, snapshot.segmentFlow, scale)
+                    flow.draw(this, snapshot.segmentFlow, scale)
                     drawWorksAndDetours(paths, snapshot.infrastructure, scale)
                     drawEvents(paths, snapshot.events, scale)
                     drawExcavators(snapshot.infrastructure.worksSegments.map { picker.midpoint(it) }, scale)
@@ -121,7 +123,7 @@ class CartoonRenderTest {
                     drawSignals(snapshot.signalMarkers, snapshot.signalStates, scale, true, viewport)
                     drawCameras(snapshot.cameras, scale)
                     drawCameraFlashes(snapshot.cameras, flashes, scale, 1.2)
-                    drawAngerClouds(snapshot, scale, 1.0)
+                    clouds.draw(this, snapshot, scale, 1.0)
                 }
             }
             val pixels = map.image.toPixelMap()

@@ -19,8 +19,8 @@ import de.bfi.trafficmaniac.sim.Pollutant
 import de.bfi.trafficmaniac.sim.SimulationSnapshot
 import kotlin.math.roundToInt
 
-private val HudBackground = Color(0xCC1D1F2E)
-private val HudText = Color(0xFFF1F1F1)
+private val HudBackground = ComicTheme.paper
+private val HudText = ComicTheme.ink
 
 /** Debug-Anzeige für M2: Uhr, Tempo, Fahrzeuge, Kennzahlen, Rechenzeit und Bildrate. */
 @Composable
@@ -58,7 +58,7 @@ fun TrafficHud(
     Column(
         modifier
             .padding(12.dp)
-            .background(HudBackground, RoundedCornerShape(8.dp))
+            .comicPanel()
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         for (line in lines) BasicText(line, style = TextStyle(color = HudText, fontSize = 13.sp))
