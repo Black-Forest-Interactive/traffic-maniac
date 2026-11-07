@@ -80,7 +80,7 @@ internal fun DrawScope.drawDamage(
     }
 }
 
-private fun DrawScope.drawDamageAt(
+internal fun DrawScope.drawDamageAt(
     report: DamageReport,
     point: Pair<Float, Float>,
     size: Float,

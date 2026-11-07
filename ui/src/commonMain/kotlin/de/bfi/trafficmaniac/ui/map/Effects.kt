@@ -78,6 +78,16 @@ internal class AngerClouds {
     }
 }
 
+/** Eine einzelne Wutwolke mit Blitz (z. B. für die Legende). */
+internal fun DrawScope.drawAngerCloud(
+    center: Offset,
+    size: Float,
+    scale: Float,
+) {
+    cloud(center, size, scale)
+    lightning(Path(), center + Offset(0f, -size * BOLT_DROP), size)
+}
+
 private fun DrawScope.cloud(
     c: Offset,
     size: Float,

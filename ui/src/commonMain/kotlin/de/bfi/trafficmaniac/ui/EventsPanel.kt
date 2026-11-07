@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -29,6 +30,8 @@ fun EventsPanel(
     events: EventsState,
     today: Int,
     modifier: Modifier = Modifier,
+    /** Klick auf ein Ereignis: die Karte zeigt die Strecke. */
+    onShow: (Set<Int>) -> Unit = {},
 ) {
     val title = TextStyle(color = PanelText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     val heading = TextStyle(color = PanelText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -47,9 +50,10 @@ fun EventsPanel(
         if (events.active.isEmpty()) BasicText("Alles ruhig.", style = muted)
         for (event in events.active) {
             BasicText(
-                "${event.kind.label}: ${event.place} (" +
+                "▸ ${event.kind.label}: ${event.place} (" +
                     (if (event.since.isNotEmpty()) "seit ${event.since}, " else "") + "${event.until})",
                 style = text.copy(color = Highlight),
+                modifier = Modifier.clickable { onShow(event.segments) },
             )
         }
         BasicText("Geplant", style = heading)
@@ -59,6 +63,7 @@ fun EventsPanel(
             BasicText(
                 "$day ${entry.startHour}–${entry.endHour} Uhr · ${entry.kind.label}: ${entry.place}",
                 style = text,
+                modifier = Modifier.clickable { onShow(entry.segments) },
             )
         }
         BasicText(

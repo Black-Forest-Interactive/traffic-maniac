@@ -51,6 +51,10 @@ private const val FATAL = 3
 internal class DamagePlaces(
     private val city: CityMap,
 ) {
+    /** Ort einer Meldung auf der Karte: die Ampel bzw. die Mitte der betroffenen Abschnitte. */
+    fun locate(case: DamageCase): MapPlace? =
+        if (case.node >= 0) city.placeOfNode(case.node) else city.placeOfSegments(case.segments)
+
     /** Straßenschäden je Straßenname, Brücken je Abschnitt, Ampeln je Knoten. */
     fun keyOf(
         segment: Int,

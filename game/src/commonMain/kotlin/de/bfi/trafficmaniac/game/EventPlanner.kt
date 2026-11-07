@@ -32,6 +32,8 @@ data class ActiveEvent(
     val since: String,
     /** Geplantes Ende ("bis 13:00") oder Fortschritt der Kolonne. */
     val until: String,
+    /** Gesperrte Abschnitte bzw. Route – wohin ein Klick die Karte führt. */
+    val segments: Set<Int> = emptySet(),
 )
 
 data class EventsState(
@@ -68,7 +70,7 @@ internal class EventPlanner(
     private val city: CityMap,
     private val simulation: Simulation,
     private val rules: GameRules,
-    private val message: (String) -> Unit,
+    private val messenger: Messenger,
 ) {
     private val random = Random(RANDOM_SEED)
     private val places = EventPlaces(city, simulation, random)
@@ -132,7 +134,7 @@ internal class EventPlanner(
                     } else {
                         "unterwegs"
                     }
-                ActiveEvent(event.kind, event.place, running[event.id] ?: "", until)
+                ActiveEvent(event.kind, event.place, running[event.id] ?: "", until, event.segments)
             }
         return EventsState(
             calendar = calendar.filter { it.day > now.day || (it.day == now.day && it.endHour > now.hour) },
@@ -154,7 +156,10 @@ internal class EventPlanner(
             val until = simulation.time + (entry.endHour - entry.startHour) * SECONDS_PER_HOUR
             start(simulation.events.startClosure(entry.kind, entry.segments, entry.place, simulation.time, until))
             today.planned += entry.kind to entry.place
-            message("${entry.kind.label} – ${entry.place} ist bis ${entry.endHour}:00 Uhr gesperrt")
+            messenger.say(
+                "${entry.kind.label} – ${entry.place} ist bis ${entry.endHour}:00 Uhr gesperrt",
+                city.placeOfSegments(entry.segments),
+            )
         }
         if (now.hour in CORSO_HOURS) maybeCorso(now, bannedDrivers)
         if (now.hour in DEMO_HOURS) maybeDemo(anger, moods)
@@ -180,7 +185,10 @@ internal class EventPlanner(
             start(event)
             corsosToday++
             today.corsos += place
-            message("Rad-Korso startet an der $place – Radwege werden grundsätzlich ignoriert")
+            messenger.say(
+                "Rad-Korso startet an der $place – Radwege werden grundsätzlich ignoriert",
+                city.placeOfNode(from),
+            )
         }
     }
 
@@ -217,7 +225,10 @@ internal class EventPlanner(
         start(event)
         demosToday++
         today.demos += place to size
-        message("Spontandemo auf der $place – ${segments.size} Abschnitte gesperrt (etwa ${hours.roundToInt()} Std.)")
+        messenger.say(
+            "Spontandemo auf der $place – ${segments.size} Abschnitte gesperrt (etwa ${hours.roundToInt()} Std.)",
+            city.placeOfSegments(segments),
+        )
     }
 
     /** Unter [GameRules.demoMinAnger] keine Demos, darüber überproportional mehr. */
@@ -238,7 +249,7 @@ internal class EventPlanner(
                 ?: return
         start(event)
         today.heavyTransports++
-        message("Schwertransport mit Polizeibegleitung unterwegs $place")
+        messenger.say("Schwertransport mit Polizeibegleitung unterwegs $place", city.placeOfNode(from.node))
     }
 
     private fun start(event: CityEvent) {
@@ -251,7 +262,7 @@ internal class EventPlanner(
     private fun collectFinished() {
         for (event in simulation.events.drainFinished()) {
             running.remove(event.id)
-            if (event.kind == EventKind.DEMO) message("Demo auf der ${event.place} löst sich auf")
+            if (event.kind == EventKind.DEMO) messenger.say("Demo auf der ${event.place} löst sich auf")
         }
     }
 

@@ -124,6 +124,8 @@ internal class Incidents(
         val incident = open(kind, vehicle.link, vehicle.position, time)
         incident.vehicles += vehicle
         dispatch(incident, VehicleRole.TOW_TRUCK)
+        // Eingeklemmter LKW: Die Feuerwehr hilft bei der Bergung
+        if (kind == IncidentKind.TRUCK_STUCK) dispatch(incident, VehicleRole.FIRE_BRIGADE)
         statistics.incident(kind)
     }
 
@@ -157,7 +159,9 @@ internal class Incidents(
         }
         // Gaffer auf der Gegenfahrbahn
         graph.linkReverse[link].takeIf { it >= 0 }?.let { graph.linkSlowdown[it] = GAPER_SLOWDOWN }
-        listOf(VehicleRole.AMBULANCE, VehicleRole.POLICE, VehicleRole.TOW_TRUCK).forEach { dispatch(incident, it) }
+        // Rettungsdienst, Polizei und Feuerwehr (technische Hilfe), danach wird abgeschleppt
+        listOf(VehicleRole.AMBULANCE, VehicleRole.POLICE, VehicleRole.FIRE_BRIGADE, VehicleRole.TOW_TRUCK)
+            .forEach { dispatch(incident, it) }
         statistics.incident(IncidentKind.ACCIDENT)
     }
 

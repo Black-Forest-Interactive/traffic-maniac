@@ -52,6 +52,15 @@ private const val ZOOM_PER_SCROLL_STEP = 1.2f
 private const val NANOS_PER_SECOND = 1_000_000_000L
 private const val SIGNAL_BLINKS_PER_SECOND = 1.0
 private val RERENDER_DELAY = 150.milliseconds
+private const val FOCUS_SCALE = 3f
+private const val FLIGHT_SECONDS = 0.5
+private const val EASE_POWER = 3f
+private const val PING_SECONDS = 2.5
+private const val PING_RINGS = 3
+private const val PING_SPEED = 1.2
+private const val PING_MIN_RADIUS = 8f
+private const val PING_GROWTH = 50f
+private const val PING_STROKE = 4f
 
 /**
  * 2D-Draufsicht der Stadt mit Zoom (Mausrad) und Verschieben (Ziehen).
@@ -77,6 +86,8 @@ fun MapView(
     onZoom: (Float) -> Unit = {},
     /** Ausschnitt beim Start; ohne Angabe die ganze Stadt. */
     initialCamera: Camera? = null,
+    /** "Zeig mir das": Die Karte fliegt zu diesem Ort und markiert ihn kurz. */
+    focus: MapFocus? = null,
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
@@ -89,6 +100,8 @@ fun MapView(
     val view = remember(city) { ViewState() }
     val camera = view.camera
     LaunchedEffect(camera?.scale) { camera?.let { onZoom(it.scale) } }
+    val ping = remember { longArrayOf(0L) }
+    LaunchedEffect(focus) { focus?.let { flyTo(view, it, ping) } }
 
     Box(
         modifier
@@ -119,6 +132,7 @@ fun MapView(
                     val seconds = nanos / NANOS_PER_SECOND.toDouble()
                     effects.flashes.update(frame.game.cameras, seconds)
                     drawTraffic(currentCamera, frame, picker, textMeasurer, viewport, seconds, effects)
+                    focus?.let { drawPing(currentCamera, it, (nanos - ping[0]) / NANOS_PER_SECOND.toDouble()) }
                 }
             }
         }
@@ -130,6 +144,56 @@ fun MapView(
                     .align(Alignment.BottomEnd)
                     .background(MapStyle.attributionBackground)
                     .padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/** Ziel für "zeig mir das" in Weltkoordinaten. Jede neue Instanz löst einen neuen Flug aus. */
+class MapFocus(
+    val x: Float,
+    val y: Float,
+)
+
+/** Fliegt in einer halben Sekunde zum Ziel, zoomt mindestens auf Straßenebene und merkt sich die Ankunftszeit. */
+private suspend fun flyTo(
+    view: ViewState,
+    focus: MapFocus,
+    ping: LongArray,
+) {
+    val from = view.camera ?: return
+    val toScale = max(from.scale, FOCUS_SCALE)
+    val start = withFrameNanos { it }
+    while (true) {
+        val now = withFrameNanos { it }
+        val progress = ((now - start) / (FLIGHT_SECONDS * NANOS_PER_SECOND)).toFloat().coerceIn(0f, 1f)
+        val t = 1 - (1 - progress).pow(EASE_POWER)
+        view.camera =
+            Camera(
+                from.centerX + (focus.x - from.centerX) * t,
+                from.centerY + (focus.y - from.centerY) * t,
+                from.scale * (toScale / from.scale).pow(t),
+            )
+        if (progress >= 1f) break
+    }
+    ping[0] = withFrameNanos { it }
+}
+
+/** Pulsierende Ringe an der Zielstelle, zweieinhalb Sekunden lang. */
+private fun DrawScope.drawPing(
+    camera: Camera,
+    focus: MapFocus,
+    age: Double,
+) {
+    if (age !in 0.0..PING_SECONDS) return
+    val center = Offset(camera.worldToScreenX(focus.x, size.width), camera.worldToScreenY(focus.y, size.height))
+    for (ring in 0 until PING_RINGS) {
+        val phase = ((age * PING_SPEED + ring.toDouble() / PING_RINGS) % 1.0).toFloat()
+        val alpha = (1 - phase) * (1 - (age / PING_SECONDS).toFloat())
+        drawCircle(
+            MapStyle.trafficSignal.copy(alpha = alpha),
+            PING_MIN_RADIUS + phase * PING_GROWTH,
+            center,
+            style = Stroke(PING_STROKE),
         )
     }
 }

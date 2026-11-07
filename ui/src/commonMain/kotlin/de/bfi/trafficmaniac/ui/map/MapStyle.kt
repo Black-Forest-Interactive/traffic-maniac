@@ -28,6 +28,7 @@ object MapStyle {
     val signalGreen = Color(0xFF2DC653)
     val signalYellow = Color(0xFFFFC300)
     val signalOff = Color(0xFF6C6F7D)
+    val signalHousing = Color(0xFF22252B)
     val lens = Color(0xFF14213D)
     val excavator = Color(0xFFFFB703)
     val angerCloud = Color(0xFF5A5560)

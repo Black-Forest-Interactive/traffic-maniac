@@ -211,11 +211,12 @@ enum class VehicleRole(
     TOW_TRUCK("Abschleppdienst"),
     STREET_SERVICE("Straßenmeisterei"),
     BIKE_CORSO("Rad-Korso"),
+    FIRE_BRIGADE("Feuerwehr"),
     HEAVY_TRANSPORT("Schwertransport"),
     ;
 
     /** Blaulicht: darf über Rot und bekommt eine Rettungsgasse. */
-    val isEmergency: Boolean get() = this == AMBULANCE || this == POLICE
+    val isEmergency: Boolean get() = this == AMBULANCE || this == POLICE || this == FIRE_BRIGADE
 
     /** Fährt im Rahmen eines Ereignisses ([CityEvent]) und gehört zu keinem Einsatz. */
     val isEvent: Boolean get() = this == BIKE_CORSO || this == HEAVY_TRANSPORT

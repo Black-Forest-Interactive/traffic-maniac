@@ -6,6 +6,8 @@ import de.bfi.trafficmaniac.sim.GameTime
 data class GameMessage(
     val time: GameTime,
     val text: String,
+    /** Wohin ein Klick auf die Meldung führt; `null`, wenn sie keinen Ort hat. */
+    val place: MapPlace? = null,
 )
 
 /** Unveränderlicher Spielstand für die Oberfläche. */

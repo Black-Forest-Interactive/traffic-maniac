@@ -14,8 +14,8 @@ import de.bfi.trafficmaniac.sim.SpeedCamera
 import kotlin.math.max
 
 /**
- * Ampeln mit Gesicht: grün lächelt, gelb staunt, rot schaut grimmig, eine ausgefallene Ampel ist benommen.
- * Das Gesicht gibt es erst nah dran; weiter weg bleibt ein farbiger Punkt mit Umriss.
+ * Ampeln im deutschen Stil: schwarzes Gehäuse, oben Rot, in der Mitte Gelb, unten Grün; nur die aktive Leuchte strahlt.
+ * Ausgefallene Ampeln blinken gelb. Weiter weg bleibt ein farbiger Punkt mit Umriss.
  */
 internal fun DrawScope.drawSignals(
     markers: SignalMarkers,
@@ -25,83 +25,63 @@ internal fun DrawScope.drawSignals(
     viewport: Rect,
 ) {
     val radius = max(MapStyle.SIGNAL_RADIUS_METERS, MapStyle.MIN_SIGNAL_PIXELS / scale)
-    val faces = radius * scale >= FACE_MIN_PIXELS
+    val heads = radius * scale >= HEAD_MIN_PIXELS
     val ink = Stroke(max(INK_METERS, 1f / scale))
-    val visible = viewport.inflate(radius)
+    val visible = viewport.inflate(radius * HEAD_HEIGHT)
     for (i in states.indices) {
         val c = Offset(markers.x[i], markers.y[i])
         if (!visible.contains(c)) continue
-        val state = states[i]
-        // Ausgefallene Ampeln blinken gelb
-        if (state == SignalState.FLASHING && !blink && !faces) continue
-        val color =
-            when (state) {
-                SignalState.GREEN -> MapStyle.signalGreen
-                SignalState.RED -> MapStyle.trafficSignal
-                SignalState.FLASHING -> if (blink) MapStyle.signalYellow else MapStyle.signalOff
-                else -> MapStyle.signalYellow
-            }
-        drawCircle(color, radius, c)
-        drawCircle(MapStyle.ink, radius, c, style = ink)
-        if (faces) drawFace(c, radius, state, ink)
+        if (heads) drawSignalHead(c, radius, states[i], blink, ink) else drawSignalDot(c, radius, states[i], blink, ink)
     }
 }
 
-/** Augen und Mund. Weltkoordinaten: y zeigt nach oben, Winkel 90° ist "oben" auf dem Bildschirm. */
-private fun DrawScope.drawFace(
+/** Aus der Ferne: farbiger Punkt; ausgefallene Ampeln blinken gelb. */
+private fun DrawScope.drawSignalDot(
+    c: Offset,
+    radius: Float,
+    state: SignalState,
+    blink: Boolean,
+    ink: Stroke,
+) {
+    if (state == SignalState.FLASHING && !blink) return
+    val color =
+        when (state) {
+            SignalState.GREEN -> MapStyle.signalGreen
+            SignalState.RED -> MapStyle.trafficSignal
+            else -> MapStyle.signalYellow
+        }
+    drawCircle(color, radius, c)
+    drawCircle(MapStyle.ink, radius, c, style = ink)
+}
+
+/** Signalgeber: drei Leuchten übereinander (Weltkoordinaten: y nach oben, Rot also oben). */
+private fun DrawScope.drawSignalHead(
     c: Offset,
     r: Float,
     state: SignalState,
+    blink: Boolean,
     ink: Stroke,
 ) {
-    val eye = r * EYE_SIZE
-    val eyeY = c.y + r * EYE_HEIGHT
-    if (state == SignalState.FLASHING) {
-        // Benommen: Kreuzchen statt Augen
-        for (side in listOf(-1f, 1f)) {
-            val ex = c.x + side * r * EYE_SPACING
-            drawLine(MapStyle.ink, Offset(ex - eye, eyeY - eye), Offset(ex + eye, eyeY + eye), ink.width)
-            drawLine(MapStyle.ink, Offset(ex - eye, eyeY + eye), Offset(ex + eye, eyeY - eye), ink.width)
+    val width = r * HEAD_WIDTH
+    val height = r * HEAD_HEIGHT
+    val topLeft = Offset(c.x - width / 2, c.y - height / 2)
+    drawRoundRect(MapStyle.signalHousing, topLeft, Size(width, height), CornerRadius(width * HEAD_CORNER))
+    drawRoundRect(Color.White, topLeft, Size(width, height), CornerRadius(width * HEAD_CORNER), style = ink)
+    val lamp = r * LAMP_RADIUS
+    val spacing = r * LAMP_SPACING
+    val lit =
+        when (state) {
+            SignalState.RED -> 0
+            SignalState.YELLOW -> 1
+            SignalState.GREEN -> 2
+            SignalState.FLASHING -> if (blink) 1 else -1
+            else -> -1
         }
-    } else {
-        drawCircle(MapStyle.ink, eye, Offset(c.x - r * EYE_SPACING, eyeY))
-        drawCircle(MapStyle.ink, eye, Offset(c.x + r * EYE_SPACING, eyeY))
-    }
-    val mouth = r * MOUTH_SIZE
-    val mouthStyle = Stroke(ink.width * MOUTH_STROKE, cap = StrokeCap.Round)
-    when (state) {
-        SignalState.GREEN -> {
-            // Lächeln: untere Hälfte eines Kreises
-            drawArc(
-                MapStyle.ink,
-                HALF_TURN,
-                HALF_TURN,
-                false,
-                Offset(c.x - mouth, c.y - mouth * SMILE_DROP),
-                Size(2 * mouth, 2 * mouth),
-                style = mouthStyle,
-            )
-        }
-
-        SignalState.RED -> {
-            // Grimmig: obere Hälfte, tief im Gesicht
-            drawArc(
-                MapStyle.ink,
-                0f,
-                HALF_TURN,
-                false,
-                Offset(c.x - mouth, c.y - mouth * FROWN_DROP),
-                Size(
-                    2 * mouth,
-                    2 * mouth,
-                ),
-                style = mouthStyle,
-            )
-        }
-
-        else -> {
-            drawCircle(MapStyle.ink, mouth * O_MOUTH, Offset(c.x, c.y - r * O_MOUTH_DROP), style = mouthStyle)
-        }
+    for (k in 0..2) {
+        val color = if (k == lit) LAMP_ON[k] else LAMP_OFF[k]
+        val center = Offset(c.x, c.y + spacing * (1 - k))
+        if (k == lit) drawCircle(LAMP_ON[k].copy(alpha = GLOW_ALPHA), lamp * GLOW, center)
+        drawCircle(color, lamp, center)
     }
 }
 
@@ -165,18 +145,17 @@ internal fun DrawScope.drawExcavators(
     }
 }
 
-private const val FACE_MIN_PIXELS = 7f
+private const val HEAD_MIN_PIXELS = 7f
 private const val INK_METERS = 0.4f
-private const val EYE_SIZE = 0.13f
-private const val EYE_HEIGHT = 0.25f
-private const val EYE_SPACING = 0.35f
-private const val MOUTH_SIZE = 0.4f
-private const val MOUTH_STROKE = 1.2f
-private const val SMILE_DROP = 1.3f
-private const val FROWN_DROP = 2.1f
-private const val O_MOUTH = 0.35f
-private const val O_MOUTH_DROP = 0.35f
-private const val HALF_TURN = 180f
+private const val HEAD_WIDTH = 1.25f
+private const val HEAD_HEIGHT = 3.3f
+private const val HEAD_CORNER = 0.3f
+private const val LAMP_RADIUS = 0.42f
+private const val LAMP_SPACING = 1.0f
+private const val GLOW = 1.5f
+private const val GLOW_ALPHA = 0.35f
+private val LAMP_ON = listOf(Color(0xFFFF2D2D), Color(0xFFFFC300), Color(0xFF2DE36B))
+private val LAMP_OFF = listOf(Color(0xFF4A1A1A), Color(0xFF4A3A12), Color(0xFF173D25))
 private const val CAMERA_SIZE_METERS = 10f
 private const val CAMERA_MIN_PIXELS = 18f
 private const val BODY_HEIGHT = 0.75f

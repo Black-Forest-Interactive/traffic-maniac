@@ -59,12 +59,31 @@ class SimulationSnapshot(
     val vehicleCount: Int get() = ids.size
 }
 
-/** Ort und Art eines Vorfalls für die Karte. */
+/** Ort und Art eines Vorfalls für Karte und Einsatzliste. */
 class IncidentMarker(
     val kind: IncidentKind,
     val x: Float,
     val y: Float,
+    /** Beginn des Vorfalls in Sekunden Simulationszeit. */
+    val startTime: Double = 0.0,
+    /** Einsatzkräfte, die ausgerückt sind, aber noch nicht vor Ort. */
+    val onTheWay: List<VehicleRole> = emptyList(),
+    /** Einsatzkräfte vor Ort. */
+    val onScene: List<VehicleRole> = emptyList(),
 )
+
+/** Marker für Karte und Einsatzliste: wer schon vor Ort ist und wer noch unterwegs. */
+internal fun Incident.toMarker(): IncidentMarker {
+    val roles = responders.map { it.role }
+    return IncidentMarker(
+        kind,
+        x,
+        y,
+        startTime,
+        onTheWay = roles.filter { it !in arrived },
+        onScene = roles.filter { it in arrived },
+    )
+}
 
 const val FLAG_DISABLED = 1
 const val FLAG_EMERGENCY = 2

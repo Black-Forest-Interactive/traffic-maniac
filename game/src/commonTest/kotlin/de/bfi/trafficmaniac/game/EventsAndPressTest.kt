@@ -67,7 +67,7 @@ class EventsAndPressTest {
 
     private fun planner(rules: GameRules = GameRules()): Pair<EventPlanner, Simulation> {
         val simulation = Simulation(mainStreet(), quiet)
-        return EventPlanner(mainStreet(), simulation, rules) {} to simulation
+        return EventPlanner(mainStreet(), simulation, rules) { _, _ -> } to simulation
     }
 
     private fun moods(rules: GameRules = GameRules()) = Citizens(mainStreet().zones, rules).moods(false)

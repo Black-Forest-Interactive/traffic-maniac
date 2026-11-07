@@ -12,7 +12,8 @@ internal class Construction(
     private val rules: GameRules,
     private val treasury: Treasury,
     private val news: () -> MaintenanceNews,
-    private val message: (String) -> Unit,
+    private val messenger: Messenger,
+    private val locate: (DamageCase) -> MapPlace?,
 ) {
     var turboContracts = 0
         private set
@@ -41,7 +42,7 @@ internal class Construction(
             RepairMethod.TENDER -> {
                 case.status = DamageStatus.TENDER
                 case.phaseUntil = time + rules.tenderDays * SECONDS_PER_DAY
-                message("Ausschreibung läuft: ${case.place}")
+                messenger.say("Ausschreibung läuft: ${case.place}", locate(case))
             }
 
             RepairMethod.TURBO -> {
@@ -51,15 +52,19 @@ internal class Construction(
                 case.status = DamageStatus.TENDER
                 case.phaseUntil = if (night) time else time + secondsUntil(NIGHT_START_HOUR)
                 if (night) start(case, time)
-                message("Turbo-Baukonsortium „Nachtschicht & Söhne“ beauftragt: ${case.place} – gebaut wird nachts")
+                messenger.say(
+                    "Turbo-Baukonsortium „Nachtschicht & Söhne“ beauftragt: ${case.place} – gebaut wird nachts",
+                    locate(case),
+                )
             }
 
             RepairMethod.PLANNING -> {
                 case.status = DamageStatus.PLANNING
                 case.planningYear = rules.planningStartYear
                 news().plannings += case.place to case.planningYear
-                message(
+                messenger.say(
                     "Planfeststellung eröffnet: ${case.place} – Fertigstellung voraussichtlich ${case.planningYear}",
+                    locate(case),
                 )
             }
         }
@@ -98,7 +103,7 @@ internal class Construction(
         // Vollsperrung: Jetzt ist eine Umleitung gefragt
         for (segment in case.segments) simulation.infrastructure.closures.setWorks(segment, true, closed = true)
         if (case.node >= 0) simulation.infrastructure.trafficLights.setOff(case.node, true)
-        message("Baustelle eingerichtet (Vollsperrung): ${case.place}")
+        messenger.say("Baustelle eingerichtet (Vollsperrung): ${case.place}", locate(case))
     }
 
     private fun finish(case: DamageCase) {
@@ -120,9 +125,9 @@ internal class Construction(
             turboContracts++
             news().turboRepairs += case.place
             val fee = formatEuro(rules.turboWeeklyMaintenance)
-            message("Über Nacht repariert: ${case.place} – Wartungsvertrag läuft ($fee/Woche)")
+            messenger.say("Über Nacht repariert: ${case.place} – Wartungsvertrag läuft ($fee/Woche)", locate(case))
         } else {
-            message("Repariert: ${case.place}")
+            messenger.say("Repariert: ${case.place}", locate(case))
         }
         repaired++
         lastRepaired = case.place

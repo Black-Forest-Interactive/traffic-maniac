@@ -405,8 +405,11 @@ class CityGame(
         }
     }
 
-    private fun message(text: String) {
-        messages.addLast(GameMessage(simulation.gameTime, text))
+    private fun message(
+        text: String,
+        place: MapPlace? = null,
+    ) {
+        messages.addLast(GameMessage(simulation.gameTime, text, place))
         while (messages.size > MAX_MESSAGES) messages.removeFirst()
     }
 
