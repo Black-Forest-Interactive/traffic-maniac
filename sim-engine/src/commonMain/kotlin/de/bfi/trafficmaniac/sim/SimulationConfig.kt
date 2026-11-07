@@ -59,6 +59,42 @@ data class SimulationConfig(
     val cameraAwareShare: Double = 0.7,
     /** Obergrenze für Fahrzeuge, die auf die Einfahrt ins Netz warten. */
     val maxPendingVehicles: Int = 2_000,
+    /**
+     * Zustand der Straßen, Ampeln und Brücken zu Spielbeginn zwischen diesem Wert und 100 %: 1 − (1 − min) · u^Schiefe
+     * mit gleichverteiltem u. Je größer die Schiefe, desto mehr Straßen sind anfangs gut in Schuss.
+     */
+    val initialConditionMin: Double = 0.6,
+    val initialConditionSkew: Double = 3.0,
+    /** Alterung je Tag (Anteil des Zustands), ohne Erhaltungsbudget. */
+    val agingPerDay: Double = 0.004,
+    /** Verschleiß je Überfahrt einer 10-t-Achse (Achslast hoch 4: ein PKW zählt 0,00005, ein LKW 0,39). */
+    val wearPerAxleLoad: Double = 0.0001,
+    /** Brücken verfallen so viel schneller. */
+    val bridgeWearFactor: Double = 2.0,
+    val signalAgingPerDay: Double = 0.012,
+    val signalWearPerVehicle: Double = 0.000_002,
+    /** Unfälle durch Schlaglöcher je Fahrstunde und Gefahrenstufe (Krater zählen doppelt so viel wie Schlaglöcher). */
+    val potholeAccidentsPerHour: Double = 0.002,
+    /** Anteil der LKW-Fahrer, die Gewichtslimits ignorieren. */
+    val weightLimitIgnoreShare: Double = 0.15,
+    /** Bergung eines eingeklemmten LKW (Kran) in Minuten. */
+    val truckRecoveryMinutes: Double = 45.0,
+    /** Fläche einer Gewerbe-/Einkaufszone je Straßenrand-Parkplatz. */
+    val curbSquareMetersPerSpace: Double = 700.0,
+    /** So weit läuft man höchstens vom Parkplatz zum Ziel. */
+    val parkingWalkMeters: Double = 500.0,
+    /** In diesem Umkreis kreisen Parkplatzsucher um den Block. */
+    val parkingSearchMeters: Double = 700.0,
+    val maxParkingAttempts: Int = 3,
+    val maxParkingSearchMinutes: Double = 15.0,
+    val workStayHours: Double = 8.0,
+    val shortStayHours: Double = 1.0,
+    /** Höchste Gebühr (Euro je Stunde), die Fahrer zahlen – gleichverteilt zwischen 0 und diesem Wert. */
+    val maxFeeTolerance: Double = 4.0,
+    /** Startgebühr gebührenpflichtiger Parkplätze und Parkhäuser in Euro je Stunde. */
+    val defaultParkingFee: Double = 1.5,
+    /** Startgebühr am Parkscheinautomaten am Straßenrand in Euro je Stunde (0 = kostenlos). */
+    val defaultCurbFee: Double = 0.0,
 ) {
     companion object {
         const val DEFAULT_START_HOUR = 5

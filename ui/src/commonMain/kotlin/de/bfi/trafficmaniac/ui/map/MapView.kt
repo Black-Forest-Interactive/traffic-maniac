@@ -51,6 +51,7 @@ private const val ZOOM_PER_SCROLL_STEP = 1.2f
 private const val NANOS_PER_SECOND = 1_000_000_000L
 private const val WALKING_SPEED_KMH = 7
 private const val NIGHT_SIGN_OFFSET = 14f
+private const val SIGNAL_BLINKS_PER_SECOND = 1.0
 private val RERENDER_DELAY = 150.milliseconds
 
 /**
@@ -71,9 +72,12 @@ fun MapView(
     onMapClick: (x: Float, y: Float, metersPerPixel: Float) -> Unit = { _, _, _ -> },
     showMoods: Boolean = false,
     environmentLayer: EnvironmentLayer = EnvironmentLayer.NONE,
+    /** Straßenzustand einfärben (grün/gelb/rot). */
+    showCondition: Boolean = false,
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
+    val segmentPaths = remember(city) { SegmentPaths(city) }
     val environmentCache = remember(city) { EnvironmentCache() }
     val textMeasurer = rememberTextMeasurer()
     val clickHandler by rememberUpdatedState(onMapClick)
@@ -108,6 +112,11 @@ fun MapView(
                         ) { environmentCache.draw(this, frame.current.environment, environmentLayer) }
                     }
                     if (showMoods) inWorld(currentCamera) { drawMoods(frame.game.zoneMoods, currentCamera.scale) }
+                    val infrastructure = frame.current.infrastructure
+                    inWorld(currentCamera) {
+                        if (showCondition) drawCondition(segmentPaths, infrastructure, currentCamera.scale)
+                        drawWorksAndDetours(segmentPaths, infrastructure, currentCamera.scale)
+                    }
                     drawTraffic(currentCamera, frame, picker, textMeasurer)
                 }
             }
@@ -250,10 +259,15 @@ private fun DrawScope.drawTraffic(
     textMeasurer: TextMeasurer,
 ) = inWorld(camera) {
     drawIncidents(traffic.current.incidents, camera.scale)
-    if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) drawChargingStations(traffic.current.chargingStations, camera.scale)
+    drawDamage(traffic.game.maintenance.reports, picker, camera.scale)
+    if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
+        drawChargingStations(traffic.current.chargingStations, camera.scale)
+        drawParkingLots(traffic.current.parkingLots, camera.scale)
+    }
     drawVehicles(traffic, camera.scale)
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
-        drawSignals(traffic.current.signalMarkers, traffic.current.signalStates, camera.scale)
+        val blink = (traffic.current.time * SIGNAL_BLINKS_PER_SECOND).toInt() % 2 == 0
+        drawSignals(traffic.current.signalMarkers, traffic.current.signalStates, camera.scale, blink)
     }
     drawCameras(traffic.current.cameras, camera.scale)
     val signs =

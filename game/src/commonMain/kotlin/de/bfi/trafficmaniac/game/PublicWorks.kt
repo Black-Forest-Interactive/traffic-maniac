@@ -41,6 +41,31 @@ internal class PublicWorks(
         }
     }
 
+    /** Tempolimit eines Warnschilds (im Preis des Schilds enthalten). */
+    fun warningSignLimit(
+        segment: Int,
+        kmh: Int,
+    ) {
+        simulation.graph.setSegmentSpeedLimit(segment, kmh)
+        speedLimits[segment] = kmh
+        checkSignForest(segment)
+    }
+
+    /** Umleitungsabschnitte; passive Nebenstraßen werden dabei zugeschaltet. */
+    val detourSegments = LinkedHashSet<Int>()
+
+    fun setDetour(
+        segment: Int,
+        enabled: Boolean,
+    ) {
+        if ((segment in detourSegments) == enabled) return
+        simulation.infrastructure.closures.setDetour(segment, enabled)
+        if (enabled) detourSegments += segment else detourSegments -= segment
+        val street = streetName(segment)
+        val side = if (city.roads.segments[segment].passive) " (Nebenstraße zugeschaltet)" else ""
+        message(if (enabled) "Umleitung über $street$side" else "Umleitung aufgehoben: $street")
+    }
+
     fun buildSignal(node: Int) {
         if (simulation.graph.nodeHasSignals[node]) return message("Hier steht schon eine Ampel")
         if (treasury.pay(rules.signalCost, "Ampel")) {

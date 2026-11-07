@@ -79,8 +79,62 @@ data class GameRules(
     val laserDailyCost: Long = 1_500,
     val priorityRoadCost: Long = 3_000,
     val bikeCrossingCost: Long = 8_000,
+    /** Frist, innerhalb der auf eine Schadensmeldung reagiert werden muss. */
+    val damageDeadlineHours: Int = 48,
+    val warningSignCost: Long = 500,
+    /** Gewichtslimit, das ein Warnschild an einer maroden Brücke mitbringt. */
+    val bridgeWeightLimitTons: Float = 7.5f,
+    val bridgeClosureCost: Long = 2_000,
+    val repairCostPotholes: Long = 25_000,
+    val repairCostCrater: Long = 45_000,
+    val repairCostSignal: Long = 15_000,
+    val repairCostBridge: Long = 180_000,
+    /** Jeder weitere beschädigte Abschnitt derselben Straße verteuert die Reparatur um diesen Anteil. */
+    val repairCostPerExtraSegment: Double = 0.25,
+    /** Normale Ausschreibung: so lange dauert die Vergabe, dann so lange die Baustelle (Vollsperrung). */
+    val tenderDays: Double = 2.0,
+    val constructionDays: Double = 2.0,
+    /** Turbo-Baukonsortium: Aufpreis, Zustand nach der "Reparatur", schnellerer Verfall und Wartungsvertrag. */
+    val turboCostFactor: Double = 3.0,
+    val turboCondition: Double = 0.75,
+    val turboWearFactor: Double = 2.5,
+    val turboWeeklyMaintenance: Long = 2_500,
+    val planningCost: Long = 4_000,
+    val planningStartYear: Int = 2066,
+    /** Schadensersatz nach einem Schlagloch-Unfall ohne Warnschild. */
+    val lawsuitMin: Long = 4_000,
+    val lawsuitMax: Long = 18_000,
+    /** Wahrscheinlichkeit je Tag und ignoriertem Krater für eine Reifenschaden-Klage. */
+    val craterClaimsPerDay: Double = 0.4,
+    val tireClaimCost: Long = 1_500,
+    /** Image-Verlust je ignoriertem Krater, über den die Zeitung ohne PR-Vertrag schreibt. */
+    val ignoredDamageReputationLoss: Double = 1.0,
+    val maintenanceBudgetBasic: Long = 20_000,
+    val maintenanceBudgetFull: Long = 45_000,
+    val initialWardens: Int = 2,
+    val wardenWeeklySalary: Long = 2_200,
+    val wardenHireDelayHours: Int = 24,
+    val wardenStartHour: Int = 7,
+    val wardenEndHour: Int = 20,
+    /** Erwischt-Wahrscheinlichkeit: 1 − exp(−Politessen × Minuten / diesem Wert). */
+    val wardenCoverageMinutes: Double = 900.0,
+    /** Mehr Knöllchen schafft eine Politesse pro Stunde nicht. */
+    val ticketsPerWardenHour: Int = 6,
+    val illegalParkingTicket: Int = 35,
+    val secondRowTicket: Int = 55,
+    val ticketPayShare: Double = 0.9,
+    /** Parkgebühren ärgern weniger als Bußgelder. */
+    val parkingFeePainFactor: Double = 0.5,
+    val parkingFeeOptions: List<Double> = DEFAULT_PARKING_FEES,
+    /** Ein Schritt "Parkplätze in Radspuren/Blumenkübel" kostet so viel und nimmt diesen Anteil weg. */
+    val curbConversionCost: Long = 15_000,
+    val curbConversionShare: Double = 0.2,
+    /** Anwohnerparken: Anteil der Straßenrand-Parkplätze, die für Besucher wegfallen, und Einnahmen pro Woche. */
+    val residentParkingCurbShare: Double = 0.4,
+    val residentPermitWeekly: Long = 3_000,
 ) {
     companion object {
         val DEFAULT_SPEED_LIMITS = listOf(7, 10, 20, 30, 40, 50, 70)
+        val DEFAULT_PARKING_FEES = listOf(0.0, 1.0, 1.5, 2.0, 3.0, 5.0)
     }
 }

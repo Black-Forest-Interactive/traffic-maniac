@@ -45,4 +45,14 @@ class RoadTagsTest {
         assertTrue(RoadTags.parse(mapOf("oneway" to "-1"), RoadClass.SECONDARY).reversed)
         assertEquals(0, RoadTags.parse(emptyMap(), RoadClass.MOTORWAY_LINK).lanesBackward)
     }
+
+    @Test
+    fun parsesDimensions() {
+        assertEquals(3.5f, RoadTags.parseDimension("3.5"))
+        assertEquals(7.5f, RoadTags.parseDimension("7,5 t"))
+        assertEquals(2.2f, RoadTags.parseDimension("2.2 m"))
+        assertEquals(null, RoadTags.parseDimension("none"))
+        assertEquals(null, RoadTags.parseDimension("12'6\""))
+        assertEquals(null, RoadTags.parseDimension(null))
+    }
 }

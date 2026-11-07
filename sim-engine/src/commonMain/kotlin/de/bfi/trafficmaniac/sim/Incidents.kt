@@ -12,6 +12,7 @@ enum class IncidentKind(
     EMPTY_BATTERY("Akku leer"),
     OIL_SPILL("Ölspur"),
     ACCIDENT("Unfall"),
+    TRUCK_STUCK("LKW eingeklemmt"),
 }
 
 /** Ein Vorfall auf der Straße und die Einsatzkräfte, die dafür ausrücken. */
@@ -53,6 +54,7 @@ internal class Incidents(
     facilities: List<Facility>,
     private val spawn: (Vehicle) -> Unit,
     private val statistics: DayStatistics,
+    private val infrastructure: Infrastructure,
 ) {
     private val depots = facilities.groupBy { it.kind }
     private val incidents = ArrayList<Incident>()
@@ -70,11 +72,21 @@ internal class Incidents(
     ) {
         if (vehicle.role != VehicleRole.PRIVATE || vehicle.disabled || vehicle.holdAtEnd) return
         if (rollTechnicalProblems(vehicle, link, time)) return
+        val hazard = infrastructure.hazard(link)
         // Unfälle passieren bei Vollbremsungen aus voller Fahrt, nicht beim Rangieren im Stau
         if (vehicle.acceleration < HARD_BRAKING && vehicle.speed > CRASH_SPEED) {
             val inattention = (1 - vehicle.attention) * (1 + vehicle.irritation)
-            val risk = config.accidentRiskPerHardBrakingSecond * config.ticksPerSecondInverse() * inattention
-            if (random.nextDouble() < risk) accident(vehicle, link, time)
+            val risk = config.accidentRiskPerHardBrakingSecond * config.ticksPerSecondInverse() * inattention * hazard
+            if (random.nextDouble() < risk) return accident(vehicle, link, time)
+        }
+        // Schlaglöcher und Krater: Achsbruch, Ausweichmanöver, Auffahrunfall
+        if (hazard > 1 && vehicle.speed > CRASH_SPEED) {
+            val risk = config.potholeAccidentsPerHour * (hazard - 1) * config.ticksPerSecondInverse() / SECONDS_PER_HOUR
+            if (random.nextDouble() < risk) {
+                accident(vehicle, link, time)
+                infrastructure.potholeAccident(link)
+                statistics.potholeAccident()
+            }
         }
     }
 
@@ -93,13 +105,15 @@ internal class Incidents(
             breakdown(vehicle, IncidentKind.SOFTWARE_FAILURE, time)
             return true
         }
-        if (vehicle.generation == Generation.OLD && moving && random.nextDouble() < config.oilLeaksPerHour * hours) {
+        // Schlaglöcher reißen alten Autos die Ölwanne auf
+        val oilRate = config.oilLeaksPerHour * infrastructure.hazard(link)
+        if (vehicle.generation == Generation.OLD && moving && random.nextDouble() < oilRate * hours) {
             oilSpill(vehicle, link, time)
         }
         return false
     }
 
-    /** Fahrzeug bleibt liegen und wartet auf den Abschleppdienst. */
+    /** Fahrzeug bleibt liegen (oder steckt fest) und wartet auf den Abschleppdienst bzw. Kran. */
     fun breakdown(
         vehicle: Vehicle,
         kind: IncidentKind,
@@ -250,6 +264,7 @@ internal class Incidents(
             when (kind) {
                 IncidentKind.OIL_SPILL -> config.oilCleanupMinutes
                 IncidentKind.ACCIDENT -> config.accidentMinutes
+                IncidentKind.TRUCK_STUCK -> config.truckRecoveryMinutes
                 else -> config.towMinutes
             }
 

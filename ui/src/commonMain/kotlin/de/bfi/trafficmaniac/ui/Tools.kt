@@ -30,6 +30,7 @@ enum class Tool(
     LASER("Laser"),
     PRIORITY("Vorfahrt"),
     BIKE_CROSSING("Radweg-Querung"),
+    DETOUR("Umleitung"),
     REMOVE("Abbauen"),
 }
 

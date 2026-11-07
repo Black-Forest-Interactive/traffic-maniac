@@ -25,6 +25,8 @@ class CityGame(
     private val citizens = Citizens(city.zones, rules)
     private val drivers = DriverRegistry(rules, citizens)
     private val office = FineOffice(rules, treasury, citizens, drivers, ::message)
+    private val maintenance = Maintenance(city, simulation, rules, treasury, works, ::message)
+    private val parkingOffice = ParkingOffice(simulation, rules, treasury, citizens, ::message)
     private val politics = Politics(rules)
     private var prContract = PrContract.NONE
     private var argumentsCampaign = false
@@ -102,6 +104,9 @@ class CityGame(
             commuteToday = citizens.commuteToday,
             commuteYesterday = commuteYesterday,
             commuteDamage = (commuteYesterday.lostMinutes * rules.damagePerLostMinute).toLong(),
+            maintenance = maintenance.state(simulation.time),
+            parkingOffice = parkingOffice.state(),
+            detourSegments = works.detourSegments.toSet(),
         )
 
     private fun hourIndex() = (simulation.time / SECONDS_PER_HOUR).toInt()
@@ -123,6 +128,9 @@ class CityGame(
     private fun hourPassed() {
         currentHour = hourIndex()
         office.hourPassed(simulation.time, simulation.gameTime)
+        maintenance.collect(simulation.time)
+        maintenance.hourPassed(simulation.time)
+        parkingOffice.hourPassed(simulation.time, simulation.gameTime, office.strictness)
         citizens.forget(hours = 1.0)
         moods = citizens.moods(argumentsCampaign, simulation.environment.snapshot)
         unhappyShare = citizens.unhappyShare(moods)
@@ -139,6 +147,14 @@ class CityGame(
         val officeToday = office.startNewDay()
         commuteYesterday = citizens.startNewDay()
         val revocationsToday = drivers.startNewDay(simulation.time)
+        maintenance.dayPassed()
+        val maintenanceToday = maintenance.startNewDay()
+        val parkingToday = parkingOffice.startNewDay()
+        // Ohne PR-Vertrag kostet jede Schlagzeile über Krater und Einstürze Image
+        if (prContract == PrContract.NONE) {
+            val stories = maintenanceToday.ignoredCraters.size + maintenanceToday.collapses.size * COLLAPSE_STORY_WEIGHT
+            politics.badPress(stories * rules.ignoredDamageReputationLoss)
+        }
         val previous = reports.getOrNull(reports.size - 2)
         latestEdition =
             Newspaper.edition(
@@ -151,6 +167,8 @@ class CityGame(
                     officeToday,
                     revocationsToday,
                     commuteYesterday,
+                    maintenanceToday,
+                    parkingToday,
                 ),
             )
         finesToday = 0
@@ -169,13 +187,18 @@ class CityGame(
                 rules.weeklyAllowance,
                 prContract.weeklyCost,
                 argumentsCost,
-                office.weeklySalaries(),
+                office.weeklySalaries() + parkingOffice.weeklySalaries(),
+                maintenance.weeklyCost(),
+                parkingOffice.weeklyPermits(),
             )
         treasury.receiveAllowance(round.allowance)
-        treasury.charge(round.prCost + round.argumentsCost + round.salaries)
+        treasury.earn(round.permits)
+        val costs = round.prCost + round.argumentsCost + round.salaries + round.maintenance
+        treasury.charge(costs)
         lastBudgetRound = round
-        val costs = round.prCost + round.argumentsCost + round.salaries
-        message("Haushaltsrunde: +${formatEuro(round.allowance)} Haushalt, −${formatEuro(costs)} PR und Gehälter")
+        message(
+            "Haushaltsrunde: +${formatEuro(round.allowance)} Haushalt, −${formatEuro(costs)} PR, Gehälter und Erhalt",
+        )
     }
 
     private fun score(): Score {
@@ -260,6 +283,60 @@ class CityGame(
             }
 
             else -> {
+                executeAdministrationCommand(command)
+            }
+        }
+    }
+
+    /** Bauamt, Umleitungen und Parken. */
+    private fun executeAdministrationCommand(command: GameCommand) {
+        when (command) {
+            is GameCommand.RespondToDamage -> {
+                maintenance.respond(command.reportId, command.response, simulation.time)
+            }
+
+            is GameCommand.SetMaintenanceBudget -> {
+                maintenance.budget = command.budget
+                message("Erhaltungsbudget: ${command.budget.label}")
+            }
+
+            is GameCommand.SetDetour -> {
+                works.setDetour(command.segment, command.enabled)
+            }
+
+            is GameCommand.SetParkingFee -> {
+                parkingOffice.pricing.setFee(command.lot, command.euros)
+            }
+
+            is GameCommand.SetParkingCapacity -> {
+                parkingOffice.pricing.setCapacity(command.lot, command.capacity)
+            }
+
+            is GameCommand.SetCurbFee -> {
+                parkingOffice.pricing.setCurbFee(command.euros)
+            }
+
+            GameCommand.ConvertCurbParking -> {
+                parkingOffice.convertCurb()
+            }
+
+            is GameCommand.SetBreadButton -> {
+                parkingOffice.pricing.setBreadButton(command.enabled)
+            }
+
+            is GameCommand.SetResidentParking -> {
+                parkingOffice.setResidentParking(command.enabled)
+            }
+
+            is GameCommand.HireWardens -> {
+                parkingOffice.hire(command.count, simulation.time)
+            }
+
+            is GameCommand.FireWardens -> {
+                parkingOffice.fire(command.count)
+            }
+
+            else -> {
                 Unit
             }
         }
@@ -274,5 +351,8 @@ class CityGame(
         const val MAX_MESSAGES = 5
         const val SECONDS_PER_HOUR = 3_600.0
         const val MAX_REPUTATION = 100.0
+
+        /** Ein Brückeneinsturz wiegt in der Presse wie fünf Krater. */
+        const val COLLAPSE_STORY_WEIGHT = 5
     }
 }

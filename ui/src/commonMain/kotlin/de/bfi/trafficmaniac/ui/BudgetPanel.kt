@@ -75,10 +75,19 @@ fun BudgetPanel(
                 "Zorn ${state.anger.roundToInt()} · Abwahlindex ${state.recallIndex.roundToInt()}/100",
             style = text,
         )
+        BasicText(
+            "Einnahmen bisher: Bußgelder ${formatEuro(state.fineIncome)} · Parkgebühren " +
+                "${formatEuro(
+                    state.parkingOffice.feeIncome,
+                )} · Knöllchen ${formatEuro(state.parkingOffice.ticketIncome)}",
+            style = text,
+        )
         state.lastBudgetRound?.let {
             BasicText(
                 "Letzte Haushaltsrunde (${it.time.weekday.germanName}): +${formatEuro(it.allowance)}, " +
-                    "PR −${formatEuro(it.prCost)}, Kampagne −${formatEuro(it.argumentsCost)}",
+                    "PR −${formatEuro(it.prCost)}, Kampagne −${formatEuro(it.argumentsCost)}, " +
+                    "Gehälter −${formatEuro(it.salaries)}, Erhalt −${formatEuro(it.maintenance)}" +
+                    if (it.permits > 0) ", Anwohnerausweise +${formatEuro(it.permits)}" else "",
                 style = muted,
             )
         }

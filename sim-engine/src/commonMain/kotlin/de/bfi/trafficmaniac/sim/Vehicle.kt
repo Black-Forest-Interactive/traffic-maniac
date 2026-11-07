@@ -23,6 +23,8 @@ enum class VehicleType(
     val exhaustPmPerLiter: Double,
     /** Zuschlag auf den Schallleistungspegel in dB. */
     val noiseBonusDb: Double,
+    /** Achsen – zusammen mit der Masse maßgeblich für den Straßenverschleiß. */
+    val axles: Int = 2,
 ) {
     CAR(
         4.5f,
@@ -59,8 +61,15 @@ enum class VehicleType(
         noxPerLiter = 25.0,
         exhaustPmPerLiter = 0.2,
         noiseBonusDb = 9.0,
+        axles = 3,
     ),
+    ;
+
+    /** Gesamtgewicht in Tonnen (für Gewichtslimits). */
+    val tons: Double get() = massKg / KG_PER_TON
 }
+
+private const val KG_PER_TON = 1_000.0
 
 /**
  * Fahrerstereotyp als Parametersatz des Intelligent Driver Model (IDM).
@@ -232,6 +241,34 @@ class Vehicle internal constructor(
 
     /** Einsatz, zu dem ein Einsatzfahrzeug unterwegs ist, oder -1. */
     internal var incidentId = -1
+
+    /** LKW-Fahrer, die Gewichtslimits an Brücken ignorieren ("Schilder? Welche Schilder?"). */
+    internal var ignoresWeightLimits = false
+
+    /** Zielzone, in der geparkt werden muss, oder -1. */
+    internal var parkingZone = -1
+
+    /** Kurzer Aufenthalt (Einkauf) statt Arbeitstag. */
+    internal var shortStay = false
+
+    /** Was der Fahrer höchstens pro Stunde fürs Parken zahlt (Euro). */
+    internal var feeTolerance = 0.0
+
+    /** Parkplatz, der gerade angesteuert wird, oder -1. */
+    internal var parkingLot = -1
+
+    /** Runden um den Block auf der Parkplatzsuche. */
+    internal var parkingAttempts = 0
+
+    /** Beginn der Parkplatzsuche (NaN = sucht nicht). */
+    internal var parkingSearchStart = Double.NaN
+
+    /** Gesamtgewicht, mit dem das Navi plant (0 = Gewichtslimits egal). */
+    internal val routingTons: Double
+        get() = if (type == VehicleType.TRUCK && !ignoresWeightLimits) type.tons else 0.0
+
+    /** Ortsfremde folgen der ausgeschilderten Umleitung, Ortskundige suchen sich eigene Wege. */
+    internal val followsDetour: Boolean get() = !knowsCameras
 
     /** Steht absichtlich (Panne, Einsatz, Warten) und zählt deshalb nicht als "aufgegeben". */
     internal val isParked: Boolean get() = disabled || working || holdAtEnd || deliveringUntil > 0

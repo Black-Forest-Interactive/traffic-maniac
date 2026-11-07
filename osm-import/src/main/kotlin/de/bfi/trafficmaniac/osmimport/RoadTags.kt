@@ -11,6 +11,10 @@ data class RoadAttributes(
     /** `oneway=-1`: Die Einbahnrichtung läuft entgegen der Knotenreihenfolge. */
     val reversed: Boolean,
     val name: String?,
+    val bridge: Boolean = false,
+    val maxWeightTons: Float? = null,
+    val maxWidthMeters: Float? = null,
+    val maxHeightMeters: Float? = null,
 )
 
 object RoadTags {
@@ -57,13 +61,37 @@ object RoadTags {
                 forwardLanes.coerceAtLeast(1) to backwardLanes.coerceAtLeast(1)
             }
 
-        return RoadAttributes(
-            lanesForward = forward,
-            lanesBackward = backward,
-            maxSpeedKmh = parseMaxSpeed(tags["maxspeed"]) ?: defaultSpeed(roadClass),
-            reversed = reversed,
-            name = tags["name"] ?: tags["ref"],
+        return withStructure(
+            RoadAttributes(
+                lanesForward = forward,
+                lanesBackward = backward,
+                maxSpeedKmh = parseMaxSpeed(tags["maxspeed"]) ?: defaultSpeed(roadClass),
+                reversed = reversed,
+                name = tags["name"] ?: tags["ref"],
+            ),
+            tags,
         )
+    }
+
+    /** Brücke und Abmessungen (Gewicht, Breite, Höhe) – wichtig für LKW auf Umleitungen. */
+    private fun withStructure(
+        attributes: RoadAttributes,
+        tags: Map<String, String>,
+    ) = attributes.copy(
+        bridge = tags["bridge"].let { it != null && it != "no" },
+        maxWeightTons = parseDimension(tags["maxweight"]),
+        maxWidthMeters = parseDimension(tags["maxwidth"] ?: tags["maxwidth:physical"]),
+        maxHeightMeters = parseDimension(tags["maxheight"] ?: tags["maxheight:physical"]),
+    )
+
+    /** Liest Abmessungen wie "3.5", "3,5 t" oder "2.2 m". "none", "default" und Fußangaben ergeben `null`. */
+    fun parseDimension(value: String?): Float? {
+        val normalized = value?.trim()?.lowercase()?.replace(',', '.') ?: return null
+        if ('\'' in normalized || '"' in normalized) return null
+        return normalized
+            .takeWhile { it.isDigit() || it == '.' }
+            .toFloatOrNull()
+            ?.takeIf { it > 0f }
     }
 
     /** Liest `maxspeed`-Werte wie "50", "30 mph" oder "DE:urban". Unbekanntes ergibt `null`. */

@@ -37,7 +37,11 @@ class CityExtractorTest {
         extractor.way(100, longArrayOf(1, 2, 3, 4), mapOf("highway" to "primary"))
         extractor.way(101, longArrayOf(5, 3, 6, 7), mapOf("highway" to "secondary", "oneway" to "-1"))
         extractor.way(102, longArrayOf(10, 11, 12, 10), mapOf("building" to "yes"))
-        extractor.way(103, longArrayOf(10, 12), mapOf("highway" to "residential"))
+        extractor.way(
+            103,
+            longArrayOf(10, 12),
+            mapOf("highway" to "residential", "maxwidth" to "2,2", "bridge" to "yes"),
+        )
         extractor.way(104, longArrayOf(10, 11, 12, 10), mapOf("landuse" to "residential"))
         return extractor.build()
     }
@@ -45,10 +49,11 @@ class CityExtractorTest {
     @Test
     fun splitsRoadsAtJunctionsAndSignals() {
         val roads = extract().roads
+        val main = roads.segments.filter { !it.passive }
 
         // Knoten 2 ist weder Kreuzung noch Ampel und verschwindet im Abschnitt 1–3
-        assertEquals(5, roads.nodes.size)
-        assertEquals(4, roads.segments.size)
+        assertEquals(5, main.flatMap { listOf(it.from, it.to) }.toSet().size)
+        assertEquals(4, main.size)
         val signal = roads.nodes.single { it.trafficSignals }
         assertTrue(signal.y < roads.nodes.first().y)
     }
@@ -72,9 +77,15 @@ class CityExtractorTest {
         val map = extract()
         val residential = map.zones.single { it.kind == ZoneKind.RESIDENTIAL }
 
-        // Nächster Netzknoten zum Wohngebiet ist Knoten 4 (Ostende der Hauptstraße)
+        // Nächster Netzknoten zum Wohngebiet ist Knoten 4 (Ostende der Hauptstraße) – nicht die Nebenstraße
+        val mainNodes =
+            map.roads.segments
+                .filter { !it.passive }
+                .flatMap { listOf(it.from, it.to) }
+                .toSet()
         assertEquals(
             map.roads.nodes
+                .filter { it.id in mainNodes }
                 .maxBy { it.x }
                 .id,
             residential.node,
@@ -82,6 +93,18 @@ class CityExtractorTest {
         assertTrue(residential.area > 0f)
         // Westende (Knoten 1) und Nordende (Knoten 5) sind Sackgassen, aber nicht am Rand; Knoten 7 fehlt
         assertTrue(map.zones.none { it.kind == ZoneKind.GATE })
+    }
+
+    @Test
+    fun keepsSideStreetsAsPassiveSegmentsForDetours() {
+        val map = extract()
+        val side = map.roads.segments.single { it.passive }
+
+        assertEquals(RoadClass.RESIDENTIAL, side.roadClass)
+        assertEquals(2.2f, side.maxWidthMeters)
+        assertTrue(side.bridge)
+        // Gezeichnet wird sie weiter als Kulisse
+        assertEquals(1, map.scenery.minorRoads.size)
     }
 
     @Test

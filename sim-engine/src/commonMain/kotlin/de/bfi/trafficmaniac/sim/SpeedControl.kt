@@ -117,7 +117,7 @@ class SpeedControl internal constructor(
         if (vehicle.role.isEmergency) return min(limit * EMERGENCY_SPEED_FACTOR, vehicle.type.maxSpeed)
         val speeding = vehicle.speedingKmh > 0
         var desired = if (speeding) limit + vehicle.speedingKmh / KMH_PER_MS else limit * vehicle.driver.speedFactor
-        desired *= graph.linkSlowdown[link]
+        desired *= graph.speedFactor(link)
         val fixedCameraAhead =
             sites[link].any {
                 !it.camera.mobile &&

@@ -8,6 +8,7 @@ internal class Deliveries(
     private val config: SimulationConfig,
     private val random: Random,
     private val statistics: DayStatistics,
+    private val secondRowStop: (minutes: Double) -> Unit,
 ) {
     /** `true`, solange der Lieferwagen steht. */
     fun update(
@@ -25,9 +26,10 @@ internal class Deliveries(
         val stops = candidate && midLink && vehicle.speed > MOVING
         if (stops && random.nextDouble() < config.vanDeliveryChance / config.ticksPerSecond) {
             vehicle.hasDelivered = true
-            vehicle.deliveringUntil =
-                time + random.nextDouble(config.deliveryMinMinutes, config.deliveryMaxMinutes) * SECONDS_PER_MINUTE
+            val minutes = random.nextDouble(config.deliveryMinMinutes, config.deliveryMaxMinutes)
+            vehicle.deliveringUntil = time + minutes * SECONDS_PER_MINUTE
             statistics.secondRowStop()
+            secondRowStop(minutes)
             return true
         }
         return false

@@ -60,6 +60,27 @@ class RoadGraph(
     val outLinks: Array<IntArray>
     val inLinks: Array<IntArray>
 
+    /** Nebenstraße aus dem Import: wird erst befahren, wenn eine Umleitung sie zuschaltet. */
+    val linkPassive: BooleanArray
+
+    val linkBridge: BooleanArray
+
+    /** Wahrscheinlichkeit, dass ein LKW in der (Neben-)Straße stecken bleibt: enge Kurven, Breite, Höhe, Gewicht. */
+    internal val linkTruckBlockChance: FloatArray
+
+    /** Höchstgewicht in Tonnen (aus OSM oder vom Spieler an maroden Brücken), sonst unbegrenzt. */
+    val linkMaxWeightTons: FloatArray
+
+    /** Für Navi und Einfahrt freigegeben: aktive Straße oder zugeschaltete Nebenstraße. */
+    internal val linkEnabled: BooleanArray
+
+    /**
+     * Links, die in jedem Tick durchlaufen werden: befahrene Straßen und alle Nebenstraßen, die je zugeschaltet
+     * wurden (dort können noch Fahrzeuge unterwegs sein). Die übrigen Tausend Nebenstraßen kosten so nichts.
+     */
+    var simulatedLinks: IntArray
+        internal set
+
     private val geometry: Array<FloatArray>
     private val cumulative: Array<FloatArray>
 
@@ -109,7 +130,30 @@ class RoadGraph(
         linkLength = FloatArray(linkCount) { cumulative[it].last().coerceAtLeast(MIN_LINK_LENGTH) }
         outLinks = groupLinksByNode(linkFrom)
         inLinks = groupLinksByNode(linkTo)
+        linkPassive = BooleanArray(linkCount) { specs[it].segment.passive }
+        linkBridge = BooleanArray(linkCount) { specs[it].segment.bridge }
+        linkTruckBlockChance = FloatArray(linkCount) { truckBlockChance(specs[it].segment) }
+        linkMaxWeightTons = FloatArray(linkCount) { specs[it].segment.maxWeightTons ?: Float.POSITIVE_INFINITY }
+        linkEnabled = BooleanArray(linkCount) { !linkPassive[it] }
+        simulatedLinks = (0 until linkCount).filter { !linkPassive[it] }.toIntArray()
     }
+
+    /** Gesperrt (Vollsperrung, Brücke gesperrt oder eingestürzt). */
+    internal val linkClosed = BooleanArray(linkCount)
+
+    /** Teil einer ausgeschilderten Umleitung. */
+    internal val linkDetour = BooleanArray(linkCount)
+
+    /** Tempo-Faktor durch den Straßenzustand und Baustellen (1 = normal). */
+    internal val linkRoadFactor = FloatArray(linkCount) { 1f }
+
+    /** Gibt es irgendwo ein Gewichtslimit? Nur dann lohnt sich für LKW eine eigene Route. */
+    var hasWeightLimits: Boolean = linkMaxWeightTons.any { it.isFinite() }
+        internal set
+
+    /** Wird gerade irgendwo eine Umleitung ausgeschildert? */
+    var hasDetours: Boolean = false
+        internal set
 
     private fun groupLinksByNode(nodeOfLink: IntArray): Array<IntArray> {
         val lists = Array(nodeCount) { ArrayList<Int>() }
@@ -250,6 +294,29 @@ class RoadGraph(
     private companion object {
         const val MIN_LINK_LENGTH = 1f
         const val HALF = 0.5f
+
+        /** LKW (2,5 m breit, 4 m hoch, 18 t) passen nicht: sicher stecken. Sonst je nach Straßenklasse. */
+        fun truckBlockChance(segment: RoadSegment): Float {
+            val tooNarrow = (segment.maxWidthMeters ?: Float.MAX_VALUE) < TRUCK_MIN_WIDTH
+            val tooLow = (segment.maxHeightMeters ?: Float.MAX_VALUE) < TRUCK_MIN_HEIGHT
+            val tooHeavy = (segment.maxWeightTons ?: Float.MAX_VALUE) < TRUCK_TONS
+            if (tooNarrow || tooLow || tooHeavy) return 1f
+            return when (segment.roadClass) {
+                RoadClass.LIVING_STREET -> LIVING_STREET_BLOCK
+                RoadClass.RESIDENTIAL -> RESIDENTIAL_BLOCK
+                RoadClass.UNCLASSIFIED -> UNCLASSIFIED_BLOCK
+                RoadClass.TERTIARY, RoadClass.TERTIARY_LINK -> TERTIARY_BLOCK
+                else -> 0f
+            }
+        }
+
+        const val TRUCK_MIN_WIDTH = 2.8f
+        const val TRUCK_MIN_HEIGHT = 4.0f
+        const val TRUCK_TONS = 18f
+        const val LIVING_STREET_BLOCK = 0.6f
+        const val RESIDENTIAL_BLOCK = 0.15f
+        const val UNCLASSIFIED_BLOCK = 0.05f
+        const val TERTIARY_BLOCK = 0.02f
 
         fun reversePoints(coordinates: FloatArray): FloatArray {
             val count = coordinates.size / 2

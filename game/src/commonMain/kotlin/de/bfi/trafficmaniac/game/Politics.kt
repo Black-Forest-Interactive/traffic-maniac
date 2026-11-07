@@ -37,6 +37,11 @@ internal class Politics(
 
     val isRecalled: Boolean get() = recallIndex >= MAX_INDEX
 
+    /** Kritische Schlagzeile: kostet Image. */
+    fun badPress(loss: Double) {
+        reputation = (reputation - loss).coerceIn(0.0, MAX_INDEX)
+    }
+
     /** Eine Spielstunde fortschreiben; liefert Meldungen (Warnstufen, Presse). */
     fun hourPassed(
         unhappyShare: Double,
@@ -89,6 +94,10 @@ data class BudgetRound(
     val allowance: Long,
     val prCost: Long,
     val argumentsCost: Long,
-    /** Gehälter der Bußgeldstelle. */
+    /** Gehälter der Bußgeldstelle und der Politessen. */
     val salaries: Long,
+    /** Erhaltungsbudget und Wartungsverträge. */
+    val maintenance: Long = 0,
+    /** Einnahmen aus Anwohnerparkausweisen. */
+    val permits: Long = 0,
 )

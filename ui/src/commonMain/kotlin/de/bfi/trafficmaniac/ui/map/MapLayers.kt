@@ -19,8 +19,11 @@ class MapLayers(
     val buildings: Path = areas(city.scenery.buildings)
     val minorRoads: Path = lines(city.scenery.minorRoads)
     val motorways: Path = lines(city.scenery.motorways)
+
+    /** Nur die befahrenen Straßen – passive Nebenstraßen stecken schon in [minorRoads]. */
     val roads: Map<RoadClass, Path> =
         city.roads.segments
+            .filter { !it.passive }
             .groupBy { it.roadClass }
             .mapValues { (_, segments) -> lines(segments.map { it.geometry }) }
     val trafficSignals: List<Offset> =

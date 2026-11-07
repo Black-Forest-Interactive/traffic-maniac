@@ -15,10 +15,29 @@ internal class Treasury(
     /** Vom Haushalt überwiesenes Geld (zählt nicht als eigener Verdienst). */
     var allowances = 0L
         private set
+    var parkingIncome = 0L
+        private set
+    var ticketIncome = 0L
+        private set
 
     fun earnFine(euros: Int) {
         balance += euros
         fineIncome += euros
+    }
+
+    fun earnParking(euros: Long) {
+        balance += euros
+        parkingIncome += euros
+    }
+
+    fun earnTicket(euros: Int) {
+        balance += euros
+        ticketIncome += euros
+    }
+
+    /** Sonstige Einnahmen, z. B. Anwohnerparkausweise. */
+    fun earn(euros: Long) {
+        balance += euros
     }
 
     fun receiveAllowance(euros: Long) {

@@ -52,6 +52,12 @@ data class GameState(
     val commuteYesterday: CommuteStats,
     /** "Volkswirtschaftlicher Schaden" des Vortags durch Verspätungen in Euro. */
     val commuteDamage: Long,
+    /** Schadensmeldungen, Reparaturen, Erhaltungsbudget. */
+    val maintenance: MaintenanceState = MaintenanceState(),
+    /** Parkgebühren, Politessen, Straßenrand. */
+    val parkingOffice: ParkingOfficeState = ParkingOfficeState(),
+    /** Abschnitte der ausgeschilderten Umleitung. */
+    val detourSegments: Set<Int> = emptySet(),
 )
 
 /**

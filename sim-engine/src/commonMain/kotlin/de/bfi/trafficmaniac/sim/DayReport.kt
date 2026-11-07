@@ -18,6 +18,15 @@ class DayReport(
     val chargingWaitMinutes: List<Double> = emptyList(),
     /** Lieferwagen, die in zweiter Reihe gehalten haben. */
     val secondRowStops: Int = 0,
+    /** Parkplatzsuchen in Minuten (nur wer suchen musste). */
+    val parkingSearchMinutes: List<Double> = emptyList(),
+    val illegalParkers: Int = 0,
+    /** Unfälle durch Schlaglöcher und Krater. */
+    val potholeAccidents: Int = 0,
+    val parkedCurb: Int = 0,
+    val parkedLots: Int = 0,
+    /** Bezahlte Parkgebühren in Euro. */
+    val parkingFees: Double = 0.0,
 ) {
     val tripsStarted: Int get() = tripsStartedPerHour.sum()
 }
@@ -33,6 +42,33 @@ internal class DayStatistics {
     private var incidents = HashMap<IncidentKind, Int>()
     private var ambulance = ArrayList<Double>()
     private var chargingWaits = ArrayList<Double>()
+    private var parkingSearches = ArrayList<Double>()
+    private var illegal = 0
+    private var potholes = 0
+
+    fun parkingSearch(seconds: Double) {
+        parkingSearches += seconds / SECONDS_PER_MINUTE
+    }
+
+    fun illegallyParked() {
+        illegal++
+    }
+
+    fun potholeAccident() {
+        potholes++
+    }
+
+    private var curbParked = 0
+    private var lotParked = 0
+    private var fees = 0.0
+
+    fun parked(curb: Boolean) {
+        if (curb) curbParked++ else lotParked++
+    }
+
+    fun parkingFee(euros: Double) {
+        fees += euros
+    }
 
     fun incident(kind: IncidentKind) {
         incidents[kind] = (incidents[kind] ?: 0) + 1
@@ -93,6 +129,12 @@ internal class DayStatistics {
             ambulanceMinutes = ambulance.toList(),
             chargingWaitMinutes = chargingWaits.toList(),
             secondRowStops = secondRow,
+            parkingSearchMinutes = parkingSearches.toList(),
+            illegalParkers = illegal,
+            potholeAccidents = potholes,
+            parkedCurb = curbParked,
+            parkedLots = lotParked,
+            parkingFees = fees,
         )
 
     /** Schließt den Tag ab und setzt die Zähler für den nächsten zurück. */
@@ -114,6 +156,12 @@ internal class DayStatistics {
                 ambulanceMinutes = ambulance.toList(),
                 chargingWaitMinutes = chargingWaits.toList(),
                 secondRowStops = secondRow,
+                parkingSearchMinutes = parkingSearches.toList(),
+                illegalParkers = illegal,
+                potholeAccidents = potholes,
+                parkedCurb = curbParked,
+                parkedLots = lotParked,
+                parkingFees = fees,
             )
         startedPerHour = IntArray(GameTime.HOURS_PER_DAY)
         completed = 0
@@ -125,6 +173,12 @@ internal class DayStatistics {
         ambulance = ArrayList()
         chargingWaits = ArrayList()
         secondRow = 0
+        parkingSearches = ArrayList()
+        illegal = 0
+        potholes = 0
+        curbParked = 0
+        lotParked = 0
+        fees = 0.0
         return report
     }
 

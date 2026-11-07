@@ -4,8 +4,12 @@ import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.city.RoadClass
 import de.bfi.trafficmaniac.game.CityGame
+import de.bfi.trafficmaniac.game.DamageResponse
+import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.PrContract
+import de.bfi.trafficmaniac.game.RepairMethod
+import de.bfi.trafficmaniac.game.Strictness
 import de.bfi.trafficmaniac.game.formatEuro
 import java.io.File
 import java.util.concurrent.Executors
@@ -29,13 +33,16 @@ private const val OFFICE_HOURS = 8
  * je Spieltag Kasse, Bußgelder, Zorn, Abwahlindex und Reputation aus.
  *
  * Aufruf: `./gradlew :desktop-app:headless --args="[Tage] [Strategie,Strategie,...]"`
- * Strategien: nichts, abkassieren, abkassieren-pr
+ * Strategien: nichts, abkassieren, abkassieren-pr, massvoll-pr, schild-blitzer, reparieren, parken-weg, parken-teuer
  */
 fun main(args: Array<String>) {
     val city = CityMapCodec.decode(File("data/cities/pforzheim.city").readBytes())
     val days = args.getOrNull(0)?.toInt() ?: DEFAULT_DAYS
     val names = args.getOrNull(1)?.split(',') ?: Strategy.entries.map { it.id }
     val strategies = names.map { name -> Strategy.entries.first { it.id == name } }
+    // Fehlende Balancing-Dateien einmal vorab anlegen – nicht gleichzeitig aus mehreren Threads
+    Balancing.gameRules()
+    Balancing.simulationConfig()
     val pool = Executors.newFixedThreadPool(strategies.size)
     val results = strategies.map { strategy -> pool.submit<String> { play(city, strategy, days) } }
     results.forEach { println(it.get()) }
@@ -50,6 +57,10 @@ private enum class Strategy(
     RIP_OFF("abkassieren", "Stündlich alles Geld in Tempo 20 + Blitzer auf zentralen Hauptstraßen, keine PR"),
     RIP_OFF_PR("abkassieren-pr", "Wie abkassieren, dazu Premium-PR und Totschlagargumente"),
     MODERATE_PR("massvoll-pr", "Premium-PR, Totschlagargumente, neue Blitzer nur solange unter 25 % unzufrieden sind"),
+    SIGN_CAMERA("schild-blitzer", "Jeder Schaden bekommt ein Warnschild (Tempo 10) und einen Blitzer dahinter"),
+    REPAIR("reparieren", "Jeden Schaden per Ausschreibung reparieren, wenn das Geld reicht, sonst Planfeststellung"),
+    PARKING("parken-weg", "Parkplätze abschaffen, Straßenrand zu Blumenkübeln, 10 Politessen, gnadenlos"),
+    EXPENSIVE_PARKING("parken-teuer", "Parken überall 3 €/Std., Brötchentaste weg, 6 Politessen"),
 }
 
 private fun play(
@@ -65,22 +76,26 @@ private fun play(
         game.submit(GameCommand.SetPrContract(PrContract.PREMIUM))
         game.submit(GameCommand.SetArgumentsCampaign(true))
     }
+    if (strategy == Strategy.PARKING) abolishParking(game)
+    if (strategy == Strategy.EXPENSIVE_PARKING) expensiveParking(game)
     log.append(
-        "Tag | Kasse        | Bußgelder    | unzufrieden | Zorn | Abwahl | Reputation | Personal | Stapel | verjährt\n",
+        "Tag | Kasse        | Bußgelder    | unzufrieden | Zorn | Abwahl | Reputation | Personal | Stapel | verjährt" +
+            " | Zustand | Schäden (offen/ign.) | Klagen     | Parken     | Knöllchen  | Falschp. | Suche max" +
+            " | geparkt (Rand/Platz)\n",
     )
     for (day in 1..days) {
         repeat(HOURS_PER_DAY) {
-            // Abkassieren: Jede Stunde werden die Einnahmen in die nächste Blitzer-Strecke gesteckt
-            val calm = game.state().unhappyShare < MODERATE_LIMIT
-            // In den letzten Tagen wird gespart: Neue Blitzer zahlen sich nicht mehr aus
-            val investing = day <= days - SAVING_DAYS && (strategy != Strategy.MODERATE_PR || calm)
-            if (strategy != Strategy.NOTHING && investing) investInCameras(game, targets)
-            if (strategy != Strategy.NOTHING) staffFineOffice(game)
+            playHour(game, strategy, targets, saving = day > days - SAVING_DAYS)
             repeat(SECONDS_PER_HOUR * config.ticksPerSecond) { game.step() }
         }
         val state = game.state()
+        val report = game.simulation.dayReports.last()
+        val reports = state.maintenance.reports
         log.append(
-            "%3d | %12s | %12s | %10d%% | %4d | %6d | %10d | %8d | %6d | %8d%s\n".format(
+            (
+                "%3d | %12s | %12s | %10d%% | %4d | %6d | %10d | %8d | %6d | %8d" +
+                    " | %6d%% | %9d / %-8d | %10s | %10s | %10s | %8d | %6.0f min | %6d / %-6d%s\n"
+            ).format(
                 day,
                 formatEuro(state.balance),
                 formatEuro(state.fineIncome),
@@ -91,6 +106,16 @@ private fun play(
                 state.fineOffice.staff,
                 state.fineOffice.backlog,
                 state.fineOffice.expired,
+                state.maintenance.meanConditionPercent,
+                reports.count { it.status == DamageStatus.OPEN },
+                reports.count { it.status == DamageStatus.IGNORED },
+                formatEuro(state.maintenance.lawsuitCosts),
+                formatEuro(state.parkingOffice.feeIncome),
+                formatEuro(state.parkingOffice.ticketIncome),
+                report.illegalParkers,
+                report.parkingSearchMinutes.maxOrNull() ?: 0.0,
+                report.parkedCurb,
+                report.parkedLots,
                 if (state.isGameOver) "  ← ABGEWÄHLT" else "",
             ),
         )
@@ -102,6 +127,81 @@ private fun play(
     )
     return log.toString()
 }
+
+/** Die Entscheidungen einer Stunde. In den letzten Tagen ([saving]) wird gespart: Neue Blitzer lohnen nicht mehr. */
+private fun playHour(
+    game: CityGame,
+    strategy: Strategy,
+    targets: ArrayDeque<Int>,
+    saving: Boolean,
+) {
+    // Abkassieren: Jede Stunde werden die Einnahmen in die nächste Blitzer-Strecke gesteckt
+    val calm = game.state().unhappyShare < MODERATE_LIMIT
+    val investing = !saving && (strategy != Strategy.MODERATE_PR || calm)
+    val camerasEverywhere = strategy in setOf(Strategy.RIP_OFF, Strategy.RIP_OFF_PR, Strategy.MODERATE_PR)
+    if (camerasEverywhere && investing) investInCameras(game, targets)
+    if (strategy != Strategy.NOTHING) staffFineOffice(game)
+    if (strategy == Strategy.SIGN_CAMERA) signAndCamera(game)
+    if (strategy == Strategy.REPAIR) repairEverything(game)
+}
+
+/** Schild + absurdes Tempo + Blitzer an jedem gemeldeten Straßenschaden. */
+private fun signAndCamera(game: CityGame) {
+    val state = game.state()
+    val cameraSegments = state.cameras.map { it.segment }.toSet()
+    var budget = state.balance
+    for (report in state.maintenance.reports) {
+        if (report.status != DamageStatus.OPEN) continue
+        if (!report.canSign) {
+            game.submit(
+                GameCommand.RespondToDamage(
+                    report.id,
+                    if (report.canClose) DamageResponse.Close else DamageResponse.Ignore,
+                ),
+            )
+            continue
+        }
+        game.submit(GameCommand.RespondToDamage(report.id, DamageResponse.WarningSign(SIGN_KMH)))
+        budget -= game.rules.warningSignCost
+        if (report.segment >= 0 && report.segment !in cameraSegments && budget >= game.rules.cameraCost) {
+            game.submit(GameCommand.PlaceCamera(report.segment))
+            budget -= game.rules.cameraCost
+        }
+    }
+}
+
+/** Ordentliche Verwaltung: Ausschreibung, solange Geld da ist, sonst Planfeststellung. */
+private fun repairEverything(game: CityGame) {
+    val state = game.state()
+    var budget = state.balance
+    for (report in state.maintenance.reports) {
+        if (report.status != DamageStatus.OPEN && report.status != DamageStatus.IGNORED) continue
+        val method = if (budget > REPAIR_RESERVE) RepairMethod.TENDER else RepairMethod.PLANNING
+        game.submit(GameCommand.RespondToDamage(report.id, DamageResponse.Repair(method)))
+        if (method == RepairMethod.TENDER) budget -= game.rules.repairCostCrater
+    }
+}
+
+private fun abolishParking(game: CityGame) {
+    repeat(game.simulation.parking.lotCount) { game.submit(GameCommand.SetParkingCapacity(it, 0)) }
+    repeat(CURB_STEPS) { game.submit(GameCommand.ConvertCurbParking) }
+    game.submit(GameCommand.HireWardens(PARKING_WARDENS))
+    game.submit(GameCommand.SetStrictness(Strictness.RUTHLESS))
+}
+
+private fun expensiveParking(game: CityGame) {
+    game.submit(GameCommand.SetParkingFee(null, EXPENSIVE_FEE))
+    game.submit(GameCommand.SetCurbFee(EXPENSIVE_FEE))
+    game.submit(GameCommand.SetBreadButton(false))
+    game.submit(GameCommand.HireWardens(EXPENSIVE_WARDENS))
+}
+
+private const val EXPENSIVE_FEE = 3.0
+private const val EXPENSIVE_WARDENS = 4
+private const val SIGN_KMH = 10
+private const val REPAIR_RESERVE = 60_000L
+private const val CURB_STEPS = 3
+private const val PARKING_WARDENS = 10
 
 /** Stellt Sachbearbeiter ein, wenn der Aktenstapel mehr als zwei Arbeitstage Arbeit enthält. */
 private fun staffFineOffice(game: CityGame) {
