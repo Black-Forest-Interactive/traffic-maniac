@@ -31,8 +31,29 @@ internal fun DrawScope.drawSignals(
     for (i in states.indices) {
         val c = Offset(markers.x[i], markers.y[i])
         if (!visible.contains(c)) continue
-        if (heads) drawSignalHead(c, radius, states[i], blink, ink) else drawSignalDot(c, radius, states[i], blink, ink)
+        if (heads) {
+            drawSignalHead(curbside(markers, i, radius), radius, states[i], blink, ink)
+        } else {
+            drawSignalDot(c, radius, states[i], blink, ink)
+        }
     }
+}
+
+/**
+ * Standort des Signalgebers: in Fahrtrichtung rechts neben der gezeichneten Fahrbahn (deren Breite hängt von der
+ * Straßenklasse ab), ein Stück vor der Kreuzung – wie an einer echten Haltelinie.
+ */
+private fun curbside(
+    markers: SignalMarkers,
+    i: Int,
+    radius: Float,
+): Offset {
+    val dx = markers.dirX[i]
+    val dy = markers.dirY[i]
+    val halfRoad = MapStyle.road(markers.roadClasses[i]).widthMeters / 2 + MapStyle.OUTLINE_METERS
+    val side = halfRoad + CURB_GAP_METERS + radius * HEAD_WIDTH / 2
+    val back = radius * HEAD_HEIGHT / 2 + SETBACK_METERS
+    return Offset(markers.centerX[i] + dy * side - dx * back, markers.centerY[i] - dx * side - dy * back)
 }
 
 /** Aus der Ferne: farbiger Punkt; ausgefallene Ampeln blinken gelb. */
@@ -146,6 +167,8 @@ internal fun DrawScope.drawExcavators(
 }
 
 private const val HEAD_MIN_PIXELS = 7f
+private const val CURB_GAP_METERS = 1.5f
+private const val SETBACK_METERS = 2f
 private const val INK_METERS = 0.4f
 private const val HEAD_WIDTH = 1.25f
 private const val HEAD_HEIGHT = 3.3f

@@ -46,14 +46,14 @@ internal fun speedSigns(
     val radius = signRadius(scale)
     val signs = ArrayList<SpeedSign>()
     for ((segment, kmh) in dayLimits) {
-        for (fraction in signFractions(picker.lengthOf(segment), radius)) {
+        for (fraction in signFractions(segment, dayLimits, picker, radius)) {
             val (x, y) = picker.pointAt(segment, fraction)
             signs += SpeedSign(x, y, if (kmh <= WALKING_SPEED_KMH) "S" else "$kmh")
         }
     }
     for ((segment, kmh) in nightLimits) {
         val shift = if (segment in dayLimits) radius * NIGHT_SHIFT else 0f
-        for (fraction in signFractions(picker.lengthOf(segment), radius)) {
+        for (fraction in signFractions(segment, nightLimits, picker, radius)) {
             val (x, y) = beside(picker, segment, fraction, shift)
             signs += SpeedSign(x, y, "$kmh", night = true)
         }
@@ -62,24 +62,41 @@ internal fun speedSigns(
 }
 
 /**
- * Anfang und Ende der Strecke, dazwischen wie an echten Straßen etwa alle 300 m eine Wiederholung –
- * außer rund um die Mitte, wo ein Blitzer stehen kann.
+ * Wo auf [segment] Schilder stehen: am Anfang bzw. Ende nur, wenn dort die Strecke beginnt oder endet (Kreuzung oder
+ * anderes Limit dahinter), dazwischen wie an echten Straßen etwa alle 300 m eine Wiederholung – außer rund um die
+ * Mitte, wo ein Blitzer stehen kann.
  */
 private fun signFractions(
-    length: Float,
+    segment: Int,
+    limits: Map<Int, Int>,
+    picker: MapPicker,
     radius: Float,
 ): List<Float> {
-    if (length < radius * MIN_LENGTH_FOR_TWO) return listOf(SINGLE_SIGN)
+    val (from, to) = picker.endsOf(segment)
+    val kmh = limits[segment]
+
+    fun boundary(node: Int) = picker.stretches.continuation(segment, node)?.let { limits[it] != kmh } ?: true
+    val atStart = boundary(from)
+    val atEnd = boundary(to)
+    val length = picker.lengthOf(segment)
+    if (length < radius * MIN_LENGTH_FOR_TWO) {
+        return when {
+            atStart -> listOf(SINGLE_SIGN)
+            atEnd -> listOf(1 - SINGLE_SIGN)
+            else -> emptyList()
+        }
+    }
     val inset = (radius * END_INSET / length).coerceIn(MIN_INSET, MAX_INSET)
     val step = max(REPEAT_METERS, radius * MIN_REPEAT_RADII) / length
     val keepClear = radius * CAMERA_CLEARANCE / length
     val fractions = ArrayList<Float>()
-    var f = inset
+    if (atStart) fractions += inset
+    var f = inset + step
     while (f < 1 - inset - step / 2) {
         if (abs(f - CENTER) > keepClear) fractions += f
         f += step
     }
-    fractions += 1 - inset
+    if (atEnd) fractions += 1 - inset
     return fractions
 }
 
