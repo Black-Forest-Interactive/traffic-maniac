@@ -413,6 +413,9 @@ class CityGame(
         }
     }
 
+    /** Meldung von außen, z. B. „Spiel gespeichert“. */
+    fun announce(text: String) = message(text)
+
     private fun message(
         text: String,
         place: MapPlace? = null,

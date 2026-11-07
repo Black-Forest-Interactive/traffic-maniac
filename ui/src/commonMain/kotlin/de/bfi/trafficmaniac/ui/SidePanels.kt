@@ -73,11 +73,13 @@ internal fun SidePanels(
     onMenu: (() -> Unit)?,
     sprites: SpriteSource,
     modifier: Modifier = Modifier,
+    onSave: (() -> Unit)? = null,
 ) {
     Column(modifier, horizontalAlignment = Alignment.End) {
         // Bricht in eine zweite Zeile um, statt das HUD links oben zu überdecken
         FlowRow(Modifier.widthIn(max = BUTTON_ROW_WIDTH.dp), horizontalArrangement = Arrangement.End) {
             onMenu?.let { SmallButton("Menü", it) }
+            onSave?.let { SmallButton("Speichern", it) }
             val layer = toggles.environmentLayer
             SmallButton(if (layer == EnvironmentLayer.NONE) "Umwelt" else "Umwelt: ${layer.label}") {
                 toggles.nextEnvironmentLayer()

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.Difficulty
 import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.Highscores
+import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.ui.map.MapStyle
@@ -36,6 +37,7 @@ private enum class MenuTab(
     val label: String,
 ) {
     PLAY("Spielen"),
+    LOAD("Laden"),
     HIGHSCORES("Highscores"),
     SETTINGS("Einstellungen"),
     CREDITS("Credits"),
@@ -55,6 +57,8 @@ fun MainMenu(
     onQuit: () -> Unit,
     attribution: String,
     loading: String? = null,
+    /** Gespeicherte Partien; ohne Speicherfunktion leer. */
+    saves: SaveSlots = SaveSlots(),
 ) {
     var tab by remember { mutableStateOf(MenuTab.PLAY) }
     var selected by remember { mutableStateOf(scenarios.firstOrNull()) }
@@ -79,6 +83,10 @@ fun MainMenu(
                             PlayTab(scenarios, selected, highscores, settings, { selected = it }, onSettings) {
                                 selected?.let(onStart)
                             }
+                        }
+
+                        MenuTab.LOAD -> {
+                            LoadTab(saves)
                         }
 
                         MenuTab.HIGHSCORES -> {
@@ -156,6 +164,47 @@ private fun ScenarioCard(
         val start = "${scenario.startWeekday.germanName}, ${scenario.startHour.toInt()} Uhr"
         val record = best?.let { " · Bestwert: $it Punkte" } ?: ""
         BasicText("${scenario.termDays} Tage · Start $start$record", style = muted())
+    }
+}
+
+/** Spielstände fürs Menü: Liste, Laden und Löschen. */
+class SaveSlots(
+    val saves: List<SaveInfo> = emptyList(),
+    val onLoad: (SaveInfo) -> Unit = {},
+    val onDelete: (SaveInfo) -> Unit = {},
+)
+
+@Composable
+private fun LoadTab(slots: SaveSlots) {
+    Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        BasicText("Spielstand laden", style = heading())
+        if (slots.saves.isEmpty()) {
+            BasicText(
+                "Noch nichts gespeichert – im Spiel: Knopf „Speichern“ oder F5 (Schnellspeichern).",
+                style = muted(),
+            )
+        }
+        for (save in slots.saves) {
+            Column(
+                Modifier.fillMaxWidth().comicPanel(background = ComicTheme.paperDark, shadow = 3.dp).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                val quick = if (save.id == SaveInfo.QUICK_SAVE) "Schnellspeicher · " else ""
+                BasicText(
+                    "$quick${save.scenarioTitle} · ${save.difficulty.label}",
+                    style = body().copy(fontWeight = FontWeight.Bold),
+                )
+                BasicText(
+                    "${save.gameTime} · Kasse ${formatEuro(save.balance)} · Reputation ${save.reputation}",
+                    style = body(),
+                )
+                BasicText("gespeichert ${save.savedAt.replace('T', ' ')}", style = muted())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MenuChip("Laden", true) { slots.onLoad(save) }
+                    MenuChip("Löschen", false) { slots.onDelete(save) }
+                }
+            }
+        }
     }
 }
 

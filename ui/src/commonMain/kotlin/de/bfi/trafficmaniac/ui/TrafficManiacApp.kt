@@ -69,6 +69,8 @@ fun TrafficManiacApp(
     sprites: SpriteSource = NoSprites,
     /** Zurück ins Startmenü (Knopf oben rechts und nach der Wertung); `null` = kein Menü. */
     onMenu: (() -> Unit)? = null,
+    /** Spiel speichern (Knopf oben rechts); `null` = kein Speichern. */
+    onSave: (() -> Unit)? = null,
 ) {
     if (city == null) {
         MissingCity(missingCityMessage)
@@ -115,6 +117,7 @@ fun TrafficManiacApp(
                 picker = picker,
                 onShow = show,
                 onMenu = onMenu,
+                onSave = onSave,
                 sprites = sprites,
                 modifier = Modifier.align(Alignment.TopEnd),
             )
