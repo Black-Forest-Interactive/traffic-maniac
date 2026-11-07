@@ -141,6 +141,7 @@ internal fun DrawScope.drawVehicleSprite(
     trouble: IncidentKind?,
     scale: Float,
     seconds: Double,
+    sprites: SpriteSource = NoSprites,
 ) {
     val length = type.length * SPRITE_LENGTH_FACTOR
     val vehicle =
@@ -158,7 +159,56 @@ internal fun DrawScope.drawVehicleSprite(
             role = role,
             trouble = trouble,
         )
-    SpriteBuilder(scale, seconds).draw(this, vehicle)
+    SpriteBuilder(scale, seconds, sprites).draw(this, vehicle)
+}
+
+/** Zustands-Symbol als Grafik (Ladekringel dreht sich, Dampf steigt auf); `false`, wenn es keine gibt. */
+private fun DrawScope.drawStatusSprite(
+    sprites: SpriteSource,
+    v: VehicleView,
+    center: Offset,
+    icon: Float,
+    scale: Float,
+    seconds: Double,
+): Boolean {
+    val above = center + Offset(0f, icon * ICON_LIFT)
+    val size = icon * STATUS_SPRITE
+    val spin = (seconds * SPIN_DEGREES_PER_SECOND / FULL_TURN * 2 * PI).toFloat()
+    return when (v.trouble) {
+        IncidentKind.SOFTWARE_FAILURE -> {
+            drawSprite(sprites, "status_software", above, size, size, scale, -spin)
+        }
+
+        IncidentKind.EMPTY_BATTERY -> {
+            drawSprite(sprites, "status_battery_empty", above, size, size, scale)
+        }
+
+        IncidentKind.ACCIDENT -> {
+            drawSprite(sprites, "status_accident", center, size, size, scale, spin / 2)
+        }
+
+        null -> {
+            when {
+                v.has(FLAG_DISABLED) -> {
+                    drawSprite(sprites, "status_hazard", above, size, size, scale)
+                }
+
+                v.has(FLAG_JAMMED) -> {
+                    val rise = ((seconds * STEAM_SPEED + v.id * GOLDEN) % 1.0).toFloat()
+                    val at = v.point(1f, 0f) + Offset(0f, icon * rise * RISE)
+                    drawSprite(sprites, "status_steam", at, size, size, scale, alpha = 1 - rise)
+                }
+
+                else -> {
+                    true
+                }
+            }
+        }
+
+        else -> {
+            false
+        }
+    }
 }
 
 /** Ein Fahrzeug, fertig interpoliert. [x], [y] ist die Front, [dirX], [dirY] die Fahrtrichtung. */
@@ -201,7 +251,7 @@ private fun DrawScope.drawStroke(
     drawLine(v.color, v.point(0f, 0f), Offset(v.x, v.y), strokeWidth = width, cap = StrokeCap.Butt)
     val light =
         when {
-            v.has(FLAG_EMERGENCY) -> if (blink) MapStyle.blueLight else MapStyle.redLight
+            v.has(FLAG_EMERGENCY) -> if (blink) MapStyle.blueLight else MapStyle.blueLightDim
             v.has(FLAG_DISABLED) && blink -> MapStyle.hazardLight
             else -> return
         }
@@ -243,9 +293,16 @@ private class SpriteBuilder(
         val body =
             when (v.role) {
                 VehicleRole.AMBULANCE -> Color.White
+
                 VehicleRole.POLICE -> POLICE_SILVER
+
                 VehicleRole.FIRE_BRIGADE -> FIRE_RED
-                VehicleRole.TOW_TRUCK, VehicleRole.STREET_SERVICE -> SERVICE_ORANGE
+
+                // Abschleppwagen gelb (wie die Pannenhilfe), Straßenmeisterei orange
+                VehicleRole.TOW_TRUCK -> TOW_YELLOW
+
+                VehicleRole.STREET_SERVICE -> SERVICE_ORANGE
+
                 else -> v.color
             }
         when (v.type) {
@@ -324,13 +381,9 @@ private class SpriteBuilder(
             drawCircle(BRAKE_RED, size, v.point(LAMP_INSET, LAMP_SIDE))
         }
         if (v.has(FLAG_EMERGENCY)) {
+            // Deutsches Blaulicht: nur blau, die beiden Leuchten blitzen abwechselnd auf
             val (left, right) =
-                if (blink) {
-                    MapStyle.blueLight to MapStyle.redLight
-                } else {
-                    MapStyle.redLight to
-                        MapStyle.blueLight
-                }
+                if (blink) MapStyle.blueLight to MapStyle.blueLightDim else MapStyle.blueLightDim to MapStyle.blueLight
             val roof = if (v.type == VehicleType.HEAVY_TRANSPORT) HEAVY_ROOF else ROOF
             drawCircle(left, size * BEACON, v.point(roof, -LAMP_SIDE / 2))
             drawCircle(right, size * BEACON, v.point(roof, LAMP_SIDE / 2))
@@ -347,6 +400,7 @@ private class SpriteBuilder(
     private fun DrawScope.drawStatus(v: VehicleView) {
         val center = v.point(CENTER, 0f)
         val icon = max(v.width, ICON_MIN_METERS)
+        if (drawStatusSprite(sprites, v, center, icon, scale, seconds)) return
         when (v.trouble) {
             IncidentKind.SOFTWARE_FAILURE -> spinner(center + Offset(0f, icon * ICON_LIFT), icon)
             IncidentKind.EMPTY_BATTERY -> battery(center + Offset(0f, icon * ICON_LIFT), icon)
@@ -511,6 +565,7 @@ private val CARGO = Color(0xFFDEE2E6)
 private val FLATBED = Color(0xFF495057)
 private val LOAD = Color(0xFFF4A261)
 private val SERVICE_ORANGE = Color(0xFFFF8C00)
+private val TOW_YELLOW = Color(0xFFFFD60A)
 private val POLICE_SILVER = Color(0xFFDCE1E6)
 private val POLICE_BLUE = Color(0xFF1D4F91)
 private val RESCUE_RED = Color(0xFFFF4F1F)
@@ -553,6 +608,7 @@ private const val HAZARD = 1.2f
 private const val CENTER = 0.5f
 private const val ICON_MIN_METERS = 2f
 private const val ICON_LIFT = 1.4f
+private const val STATUS_SPRITE = 1.6f
 private const val PUFFS = 3
 private const val STEAM_SPEED = 0.6
 private const val GOLDEN = 0.618

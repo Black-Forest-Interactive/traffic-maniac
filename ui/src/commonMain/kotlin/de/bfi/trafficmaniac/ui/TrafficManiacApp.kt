@@ -104,10 +104,7 @@ fun TrafficManiacApp(
             },
         )
         hudFrame?.let { frame ->
-            TrafficHud(frame, fps, Modifier.align(Alignment.TopStart))
-            val income =
-                frame.game.fineIncome + frame.game.parkingOffice.feeIncome + frame.game.parkingOffice.ticketIncome
-            MoneyRain(income, Modifier.align(Alignment.TopStart).size(MONEY_RAIN_WIDTH.dp, MONEY_RAIN_HEIGHT.dp))
+            HudWithMoneyRain(frame, fps, sprites, Modifier.align(Alignment.TopStart))
             SidePanels(
                 frame = frame,
                 rules = rules,
@@ -118,12 +115,45 @@ fun TrafficManiacApp(
                 picker = picker,
                 onShow = show,
                 onMenu = onMenu,
+                sprites = sprites,
                 modifier = Modifier.align(Alignment.TopEnd),
             )
             Messages(frame.game.messages, show, Modifier.align(Alignment.BottomStart).padding(bottom = 24.dp))
         }
-        if (traffic != null) ToolBar(selection, rules, { selection = it }, Modifier.align(Alignment.BottomCenter))
-        hudFrame?.let { EndOfDayOverlays(it, onContinueDay, onMenu) }
+        val tools = ToolBarState(selection, hudFrame?.game?.idleTrailers ?: 0) { selection = it }
+        if (traffic != null) ToolBar(tools, rules, sprites, Modifier.align(Alignment.BottomCenter))
+        hudFrame?.let { EndOfDayOverlays(it, onContinueDay, onMenu, sprites) }
+    }
+}
+
+/** Was die Werkzeugleiste unten braucht: Auswahl, freie Blitzeranhänger und was bei einer Auswahl passiert. */
+private class ToolBarState(
+    val selection: ToolSelection,
+    val idleTrailers: Int,
+    val onSelect: (ToolSelection) -> Unit,
+)
+
+@Composable
+private fun ToolBar(
+    state: ToolBarState,
+    rules: GameRules,
+    sprites: SpriteSource,
+    modifier: Modifier,
+) = ToolBar(state.selection, rules, state.onSelect, modifier, sprites, state.idleTrailers)
+
+/** HUD oben links; bei neuen Einnahmen regnet es Münzen darüber. */
+@Composable
+private fun HudWithMoneyRain(
+    frame: TrafficFrame,
+    fps: Int,
+    sprites: SpriteSource,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier) {
+        TrafficHud(frame, fps, sprites = sprites)
+        val game = frame.game
+        val income = game.fineIncome + game.parkingOffice.feeIncome + game.parkingOffice.ticketIncome
+        MoneyRain(income, Modifier.size(MONEY_RAIN_WIDTH.dp, MONEY_RAIN_HEIGHT.dp), sprites)
     }
 }
 
@@ -154,12 +184,13 @@ private fun EndOfDayOverlays(
     frame: TrafficFrame,
     onContinueDay: () -> Unit,
     onMenu: (() -> Unit)?,
+    sprites: SpriteSource,
 ) {
     val edition = frame.game.latestEdition
     val report = frame.pendingReport
     when {
         frame.game.isGameOver || frame.game.isTermOver -> {
-            ResultOverlay(frame.game, onMenu = onMenu)
+            ResultOverlay(frame.game, onMenu = onMenu, sprites = sprites)
         }
 
         report != null -> {
@@ -227,6 +258,7 @@ private fun segmentCommand(
         Tool.SPEED_LIMIT -> GameCommand.SetSpeedLimit(segment, selection.speedLimit, selection.nightOnly)
         Tool.CAMERA -> GameCommand.PlaceCamera(segment)
         Tool.LASER -> GameCommand.PlaceCamera(segment, mobile = true)
+        Tool.TRAILER -> GameCommand.PlaceTrailer(segment)
         Tool.PRIORITY -> GameCommand.SetPriorityRoad(segment, segment !in frame?.game?.priorityRoads.orEmpty())
         Tool.BIKE_CROSSING -> GameCommand.SetBikeCrossing(segment, segment !in frame?.game?.bikeCrossings.orEmpty())
         else -> null

@@ -129,7 +129,7 @@ fun MapView(
                 val nanos = frameTick.value
                 val frame = traffic()
                 if (currentCamera != null && frame != null) {
-                    val overlays = Overlays(environmentLayer, environmentCache, showMoods, showCondition)
+                    val overlays = Overlays(environmentLayer, environmentCache, showMoods, showCondition, sprites)
                     drawOverlays(currentCamera, frame, segmentPaths, overlays)
                     val viewport = currentCamera.viewport(size.width, size.height)
                     val seconds = nanos / NANOS_PER_SECOND.toDouble()
@@ -322,6 +322,7 @@ private class Overlays(
     val environmentCache: EnvironmentCache,
     val showMoods: Boolean,
     val showCondition: Boolean,
+    val sprites: SpriteSource,
 )
 
 /** Ebenen unter dem Verkehr: Umwelt, Zufriedenheit, Zustand, Baustellen, Umleitungen und Ereignisse. */
@@ -333,11 +334,11 @@ private fun DrawScope.drawOverlays(
 ) = inWorld(camera) {
     val layer = overlays.environmentLayer
     if (layer != EnvironmentLayer.NONE) overlays.environmentCache.draw(this, frame.current.environment, layer)
-    if (overlays.showMoods) drawMoods(frame.game.zoneMoods, camera.scale)
+    if (overlays.showMoods) drawMoods(frame.game.zoneMoods, camera.scale, overlays.sprites)
     val infrastructure = frame.current.infrastructure
     if (overlays.showCondition) drawCondition(segmentPaths, infrastructure, camera.scale)
     drawWorksAndDetours(segmentPaths, infrastructure, camera.scale)
-    drawEvents(segmentPaths, frame.current.events, camera.scale)
+    drawEvents(segmentPaths, frame.current.events, camera.scale, overlays.sprites)
     drawLimitZones(segmentPaths, frame.game.speedLimits.keys, frame.game.nightLimits.keys, camera.scale)
 }
 
@@ -352,7 +353,8 @@ private fun DrawScope.drawTraffic(
 ) = inWorld(camera) {
     effects.flow.draw(this, traffic.current.segmentFlow, camera.scale)
     drawIncidents(traffic.current.incidents, camera.scale, effects.sprites)
-    drawDamage(traffic.game.maintenance.reports, picker, camera.scale)
+    drawDamage(traffic.game.maintenance.reports, picker, camera.scale, effects.sprites)
+    drawInfrastructureIcons(traffic.current.infrastructure, picker, camera.scale, effects.sprites)
     drawExcavators(
         traffic.current.infrastructure.worksSegments
             .map { picker.midpoint(it) },
@@ -375,11 +377,11 @@ private fun DrawScope.drawTraffic(
         )
     }
     drawCameras(traffic.current.cameras, camera.scale, effects.sprites)
-    drawCameraFlashes(traffic.current.cameras, effects.flashes, camera.scale, seconds)
+    drawCameraFlashes(traffic.current.cameras, effects.flashes, camera.scale, seconds, effects.sprites)
     effects.clouds.draw(this, traffic.current, camera.scale, seconds, effects.sprites)
     val signs = speedSigns(traffic.game.speedLimits, traffic.game.nightLimits, picker, camera.scale)
-    drawSpeedSigns(signs, camera.scale, textMeasurer)
+    drawSpeedSigns(signs, camera.scale, textMeasurer, effects.sprites)
     val priority = traffic.game.priorityRoads.map { picker.midpoint(it) }
     val crossings = traffic.game.bikeCrossings.map { picker.midpoint(it) }
-    drawRoadMarkers(priority, crossings, camera.scale)
+    drawRoadMarkers(priority, crossings, camera.scale, effects.sprites)
 }

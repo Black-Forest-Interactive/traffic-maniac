@@ -3,9 +3,11 @@ package de.bfi.trafficmaniac.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,6 +27,7 @@ import de.bfi.trafficmaniac.sim.IncidentKind
 import de.bfi.trafficmaniac.sim.IncidentMarker
 import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
 import de.bfi.trafficmaniac.ui.map.MapPicker
+import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlin.math.roundToInt
 
 /** Einblendbare Fenster rechts oben. */
@@ -68,10 +71,12 @@ internal fun SidePanels(
     /** Klick auf eine Meldung, ein Ereignis oder einen Einsatz: die Karte zeigt die Stelle. */
     onShow: (MapPlace) -> Unit,
     onMenu: (() -> Unit)?,
+    sprites: SpriteSource,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, horizontalAlignment = Alignment.End) {
-        Row {
+        // Bricht in eine zweite Zeile um, statt das HUD links oben zu überdecken
+        FlowRow(Modifier.widthIn(max = BUTTON_ROW_WIDTH.dp), horizontalArrangement = Arrangement.End) {
             onMenu?.let { SmallButton("Menü", it) }
             val layer = toggles.environmentLayer
             SmallButton(if (layer == EnvironmentLayer.NONE) "Umwelt" else "Umwelt: ${layer.label}") {
@@ -96,7 +101,7 @@ internal fun SidePanels(
                 SmallButton(label) { onPanel(option) }
             }
         }
-        PanelContent(panel, frame, rules, onCommand, picker, onShow)
+        PanelContent(panel, frame, rules, onCommand, picker, onShow, sprites)
     }
 }
 
@@ -108,6 +113,7 @@ private fun PanelContent(
     onCommand: (GameCommand) -> Unit,
     picker: MapPicker,
     onShow: (MapPlace) -> Unit,
+    sprites: SpriteSource,
 ) {
     val game = frame.game
     when (panel) {
@@ -162,7 +168,7 @@ private fun PanelContent(
         }
 
         SidePanel.HELP -> {
-            HelpPanel()
+            HelpPanel(sprites = sprites)
         }
 
         SidePanel.NONE -> {}
@@ -234,5 +240,6 @@ private fun SmallButton(
 }
 
 private const val PANEL_WIDTH = 380
+private const val BUTTON_ROW_WIDTH = 860
 private const val MAX_ROWS = 12
 private const val SECONDS_PER_MINUTE = 60.0

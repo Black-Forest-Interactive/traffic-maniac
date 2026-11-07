@@ -87,7 +87,9 @@ internal fun DrawScope.drawAngerCloud(
     center: Offset,
     size: Float,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
+    if (drawSprite(sprites, "anger_cloud", center, size * 2, size * CLOUD_SPRITE_HEIGHT, scale)) return
     cloud(center, size, scale)
     lightning(Path(), center + Offset(0f, -size * BOLT_DROP), size)
 }
@@ -161,6 +163,7 @@ internal fun DrawScope.drawCameraFlashes(
     tracker: FlashTracker,
     scale: Float,
     seconds: Double,
+    sprites: SpriteSource = NoSprites,
 ) {
     val size = max(FLASH_METERS, FLASH_MIN_PIXELS / scale)
     for (camera in cameras) {
@@ -168,6 +171,8 @@ internal fun DrawScope.drawCameraFlashes(
         val progress = (age / FLASH_SECONDS).toFloat()
         val alpha = 1 - progress
         val c = Offset(camera.x, camera.y)
+        val grown = size * (FLASH_SPRITE + progress)
+        if (drawSprite(sprites, "camera_flash", c, grown, grown, scale, alpha = alpha)) continue
         drawCircle(MapStyle.cameraFlash.copy(alpha = alpha * FLASH_GLOW), size * (FLASH_CORE + progress), c)
         for (k in 0 until RAYS) {
             val angle = k * 2 * PI / RAYS
@@ -207,6 +212,7 @@ private const val FLASH_METERS = 14f
 private const val FLASH_MIN_PIXELS = 26f
 private const val FLASH_GLOW = 0.8f
 private const val FLASH_CORE = 0.6f
+private const val FLASH_SPRITE = 1.6f
 private const val RAYS = 8
 private const val RAY_START = 0.7f
 private const val RAY_LENGTH = 0.6f

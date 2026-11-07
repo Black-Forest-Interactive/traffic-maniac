@@ -138,6 +138,10 @@ internal fun DrawScope.drawCameras(
     val ink = Stroke(max(INK_METERS, 1.5f / scale))
     for (camera in cameras) {
         val c = Offset(camera.x, camera.y)
+        if (camera.trailer) {
+            drawTrailer(c, size, scale, ink, sprites)
+            continue
+        }
         val name = if (camera.mobile) "camera_laser" else "camera_fixed"
         if (drawSprite(sprites, name, c, size * SPRITE_CAMERA_WIDTH, size, scale)) continue
         if (camera.mobile) {
@@ -159,6 +163,39 @@ internal fun DrawScope.drawCameras(
         drawCircle(MapStyle.lens, size * LENS, c)
         drawCircle(MapStyle.ink, size * LENS, c, style = ink)
         drawCircle(Color.White, size * GLINT, c + Offset(size * GLINT, size * GLINT))
+    }
+}
+
+/** Blitzeranhänger: Grafik `camera_trailer`, sonst Anhänger mit Rädern und Deichsel, der Blitzer obendrauf. */
+private fun DrawScope.drawTrailer(
+    c: Offset,
+    size: Float,
+    scale: Float,
+    ink: Stroke,
+    sprites: SpriteSource,
+) {
+    if (drawSprite(sprites, "camera_trailer", c, size * TRAILER_WIDTH, size, scale)) return
+    val body = Size(size * TRAILER_WIDTH * TRAILER_BODY, size * TRAILER_BODY_HEIGHT)
+    val topLeft = Offset(c.x - body.width / 2, c.y - size * TRAILER_LOW)
+    // Deichsel nach links, zwei Räder unten
+    drawLine(
+        MapStyle.ink,
+        Offset(topLeft.x, c.y - size * TRAILER_HITCH),
+        Offset(
+            topLeft.x - size * TRAILER_HITCH_LENGTH,
+            c.y - size * TRAILER_HITCH,
+        ),
+        ink.width * 2,
+    )
+    for (dx in listOf(TRAILER_WHEEL_X, 1 - TRAILER_WHEEL_X)) {
+        drawCircle(MapStyle.ink, size * TRAILER_WHEEL, Offset(topLeft.x + body.width * dx, topLeft.y))
+    }
+    drawRoundRect(MapStyle.trailer, topLeft, body, CornerRadius(size * CORNER))
+    drawRoundRect(MapStyle.ink, topLeft, body, CornerRadius(size * CORNER), style = ink)
+    val head = c + Offset(0f, size * TRAILER_HEAD_LIFT)
+    if (!drawSprite(sprites, "camera_fixed", head, size * TRAILER_HEAD, size * TRAILER_HEAD * BODY_HEIGHT, scale)) {
+        drawCircle(MapStyle.lens, size * LENS, head)
+        drawCircle(MapStyle.ink, size * LENS, head, style = ink)
     }
 }
 
@@ -192,6 +229,16 @@ internal fun DrawScope.drawExcavators(
 
 private const val HEAD_MIN_PIXELS = 7f
 private const val SPRITE_CAMERA_WIDTH = 1.25f
+private const val TRAILER_WIDTH = 1.5f
+private const val TRAILER_BODY = 0.8f
+private const val TRAILER_BODY_HEIGHT = 0.45f
+private const val TRAILER_LOW = 0.45f
+private const val TRAILER_HITCH = 0.25f
+private const val TRAILER_HITCH_LENGTH = 0.35f
+private const val TRAILER_WHEEL = 0.13f
+private const val TRAILER_WHEEL_X = 0.25f
+private const val TRAILER_HEAD = 0.85f
+private const val TRAILER_HEAD_LIFT = 0.25f
 private const val CURB_GAP_METERS = 1.5f
 private const val SETBACK_METERS = 2f
 private const val INK_METERS = 0.4f

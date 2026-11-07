@@ -44,6 +44,8 @@ data class CameraRecord(
     val revenuePerTier: List<Long>,
     val fastestMeasuredKmh: Double,
     val fastestLimitKmh: Int,
+    /** Blitzeranhänger (umsetzbar). */
+    val trailer: Boolean = false,
 ) {
     val totalCount: Int get() = countPerTier.sum()
     val totalRevenue: Long get() = revenuePerTier.sum()
@@ -55,6 +57,7 @@ internal class CameraCounter(
     val segment: Int,
     val streetName: String,
     val mobile: Boolean = false,
+    val trailer: Boolean = false,
 ) {
     private val counts = IntArray(FineTier.entries.size)
     private val revenue = LongArray(FineTier.entries.size)
@@ -75,5 +78,15 @@ internal class CameraCounter(
     }
 
     fun toRecord() =
-        CameraRecord(cameraId, segment, streetName, mobile, counts.toList(), revenue.toList(), fastestKmh, fastestLimit)
+        CameraRecord(
+            cameraId,
+            segment,
+            streetName,
+            mobile,
+            counts.toList(),
+            revenue.toList(),
+            fastestKmh,
+            fastestLimit,
+            trailer,
+        )
 }

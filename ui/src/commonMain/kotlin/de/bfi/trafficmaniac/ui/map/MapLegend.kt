@@ -24,6 +24,7 @@ import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.sim.ChargingStationState
 import de.bfi.trafficmaniac.sim.DamageKind
+import de.bfi.trafficmaniac.sim.EventKind
 import de.bfi.trafficmaniac.sim.FLAG_BRAKING
 import de.bfi.trafficmaniac.sim.FLAG_DISABLED
 import de.bfi.trafficmaniac.sim.FLAG_ELECTRIC
@@ -43,7 +44,7 @@ import de.bfi.trafficmaniac.sim.VehicleType
 private class LegendEntry(
     val text: String,
     val scale: Float,
-    val draw: DrawScope.(scale: Float, measurer: TextMeasurer) -> Unit,
+    val draw: DrawScope.(scale: Float, measurer: TextMeasurer, sprites: SpriteSource) -> Unit,
 )
 
 /**
@@ -55,6 +56,8 @@ fun MapLegend(
     textColor: Color,
     mutedColor: Color,
     modifier: Modifier = Modifier,
+    /** Fertige Grafiken – die Legende zeigt dieselben Symbole wie die Karte. */
+    sprites: SpriteSource = NoSprites,
 ) {
     val measurer = rememberTextMeasurer()
     val heading = TextStyle(color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -68,7 +71,7 @@ fun MapLegend(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Canvas(Modifier.size(PREVIEW_WIDTH.dp, PREVIEW_HEIGHT.dp)) {
-                        inWorld(Camera(0f, 0f, entry.scale)) { entry.draw(this, entry.scale, measurer) }
+                        inWorld(Camera(0f, 0f, entry.scale)) { entry.draw(this, entry.scale, measurer, sprites) }
                     }
                     BasicText(entry.text, style = text)
                 }
@@ -81,8 +84,8 @@ fun MapLegend(
     }
 }
 
-private const val PREVIEW_WIDTH = 64
-private const val PREVIEW_HEIGHT = 34
+private const val PREVIEW_WIDTH = 90
+private const val PREVIEW_HEIGHT = 44
 
 /** Die Vorschau zeigt den Zustand "eingeschaltet" (Blinker an, Animation mittendrin). */
 private const val SHOWCASE_SECONDS = 0.1
@@ -97,23 +100,26 @@ private fun vehicle(
     color: Color = CAR_RED,
     flags: Int = 0,
     trouble: IncidentKind? = null,
-    scale: Float = 4f,
-) = LegendEntry(text, scale) { s, _ -> drawVehicleSprite(type, role, color, flags, trouble, s, SHOWCASE_SECONDS) }
+    scale: Float = 7f,
+) = LegendEntry(
+    text,
+    scale,
+) { s, _, sp -> drawVehicleSprite(type, role, color, flags, trouble, s, SHOWCASE_SECONDS, sp) }
 
 private fun signal(
     text: String,
     state: SignalState,
-) = LegendEntry(text, SIGNAL_SCALE) { s, _ ->
-    drawSignals(SignalMarkers(IntArray(1), FloatArray(1), FloatArray(1)), arrayOf(state), s, true, WIDE)
+) = LegendEntry(text, SIGNAL_SCALE) { s, _, sp ->
+    drawSignals(SignalMarkers(IntArray(1), FloatArray(1), FloatArray(1)), arrayOf(state), s, true, WIDE, sp)
 }
 
 private fun damage(
     text: String,
     status: DamageStatus,
     percent: Int,
-) = LegendEntry(text, DAMAGE_SCALE) { _, _ ->
+) = LegendEntry(text, DAMAGE_SCALE) { s, _, sp ->
     val report = DamageReport(0, DamageKind.POTHOLES, 0, -1, "", GameTime(0, 0.0), 1.0, status, percent)
-    drawDamageAt(report, 0f to 0f, DAMAGE_SIZE)
+    drawDamageAt(report, 0f to 0f, DAMAGE_SIZE, sp, s)
 }
 
 private fun line(
@@ -121,7 +127,7 @@ private fun line(
     color: Color,
     width: Float,
     dashed: Boolean = false,
-) = LegendEntry(text, LINE_SCALE) { _, _ ->
+) = LegendEntry(text, LINE_SCALE) { s, _, sp ->
     val effect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(width * DASH, width * DASH)) else null
     drawLine(color, Offset(-LINE_HALF, 0f), Offset(LINE_HALF, 0f), width, pathEffect = effect)
 }
@@ -129,10 +135,32 @@ private fun line(
 private fun incident(
     text: String,
     kind: IncidentKind,
-) = LegendEntry(text, INCIDENT_SCALE) { s, _ -> drawIncidents(listOf(IncidentMarker(kind, 0f, 0f)), s) }
+) = LegendEntry(text, INCIDENT_SCALE) { s, _, sp -> drawIncidents(listOf(IncidentMarker(kind, 0f, 0f)), s, sp) }
 
 private const val DAMAGE_SIZE = 4f
-private const val SIGNAL_SCALE = 1.6f
+private const val ICON_SCALE = 1.5f
+private const val ICON_METERS = 20f
+private const val COLLAPSED_LINE = 12f
+private const val DETOUR_LINE = 13f
+
+/** Ereignis-Marker wie auf der Karte. */
+private fun event(
+    text: String,
+    kind: EventKind,
+) = LegendEntry(text, ICON_SCALE) { s, _, sp -> drawEventMarker(kind, Offset.Zero, s, sp) }
+
+/** Grafik [name], sonst die gezeichnete Ersatzdarstellung [fallback]. */
+private fun icon(
+    text: String,
+    name: String,
+    wide: Boolean = false,
+    fallback: DrawScope.() -> Unit,
+) = LegendEntry(text, ICON_SCALE) { s, _, sp ->
+    val width = if (wide) ICON_METERS * 2 else ICON_METERS
+    if (!drawSprite(sp, name, Offset.Zero, width, ICON_METERS, s)) fallback()
+}
+
+private const val SIGNAL_SCALE = 2.2f
 private const val DAMAGE_SCALE = 3f
 private const val LINE_SCALE = 1.2f
 private const val INCIDENT_SCALE = 2f
@@ -151,7 +179,12 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
                     flags = FLAG_ELECTRIC,
                 ),
                 vehicle("Lieferwagen – hält gern in zweiter Reihe", VehicleType.VAN, color = Color(0xFFE9ECEF)),
-                vehicle("LKW – verschleißt die Straße wie Tausende PKW", VehicleType.TRUCK, color = Color(0xFF5C6B7A)),
+                vehicle(
+                    "LKW – verschleißt die Straße wie Tausende PKW",
+                    VehicleType.TRUCK,
+                    color = Color(0xFF5C6B7A),
+                    scale = 5.5f,
+                ),
                 vehicle(
                     "Rettungswagen (Blaulicht: Vorfahrt, Rettungsgasse)",
                     VehicleType.CAR,
@@ -164,18 +197,23 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
                     VehicleType.TRUCK,
                     VehicleRole.FIRE_BRIGADE,
                     flags = FLAG_EMERGENCY,
-                    scale = 2.5f,
+                    scale = 5.5f,
                 ),
                 vehicle("Abschleppdienst", VehicleType.VAN, VehicleRole.TOW_TRUCK),
                 vehicle("Straßenmeisterei (Ölspuren)", VehicleType.VAN, VehicleRole.STREET_SERVICE),
-                vehicle("Rad-Korso – blockiert die Fahrbahn", VehicleType.BIKE_CORSO, VehicleRole.BIKE_CORSO),
+                vehicle(
+                    "Rad-Korso – blockiert die Fahrbahn",
+                    VehicleType.BIKE_CORSO,
+                    VehicleRole.BIKE_CORSO,
+                    scale = 5f,
+                ),
                 vehicle(
                     "Schwertransport mit Polizeibegleitung",
                     VehicleType.HEAVY_TRANSPORT,
                     VehicleRole.HEAVY_TRANSPORT,
                     Color(0xFFFFD60A),
                     FLAG_EMERGENCY,
-                    scale = 1.4f,
+                    scale = 1.8f,
                 ),
             ),
         "Zustände" to
@@ -208,19 +246,28 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
             ),
         "Schilder & Überwachung" to
             listOf(
-                LegendEntry("Tempolimit (rote Zone: hier gilt es)", 1.5f) { s, m ->
+                LegendEntry("Tempolimit (rote Zone: hier gilt es)", 1.5f) { s, m, sp ->
                     drawLine(MapStyle.limitZone, Offset(-LINE_HALF, 0f), Offset(LINE_HALF, 0f), ZONE_PREVIEW)
-                    drawSpeedSigns(listOf(SpeedSign(0f, 0f, "30")), s, m)
+                    drawSpeedSigns(listOf(SpeedSign(0f, 0f, "30")), s, m, sp)
                 },
-                LegendEntry("Tempolimit nur nachts (22–6 Uhr)", 1.5f) { s, m ->
-                    drawSpeedSigns(listOf(SpeedSign(0f, 0f, "20", night = true)), s, m)
+                LegendEntry("Tempolimit nur nachts (22–6 Uhr)", 1.5f) { s, m, sp ->
+                    drawSpeedSigns(listOf(SpeedSign(0f, 0f, "20", night = true)), s, m, sp)
                 },
-                LegendEntry("Blitzer (fest)", 1.5f) { s, _ -> drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f)), s) },
-                LegendEntry("Lasermessung (mobil, kostet täglich Personal)", 1.5f) { s, _ ->
-                    drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f, mobile = true)), s)
+                LegendEntry(
+                    "Blitzer (fest)",
+                    1.5f,
+                ) { s, _, sp -> drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f)), s, sp) },
+                LegendEntry(
+                    "Blitzeranhänger – mobil, beliebig umsetzbar, Ortskundige kennen ihn nicht",
+                    1.5f,
+                ) { s, _, sp ->
+                    drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f, mobile = true, trailer = true)), s, sp)
                 },
-                LegendEntry("Vorfahrtsstraße / Radweg-Querung", 1.5f) { s, _ ->
-                    drawRoadMarkers(listOf(-MARKER_GAP to 0f), listOf(MARKER_GAP to 0f), s)
+                LegendEntry("Lasermessung (mobil, kostet täglich Personal)", 1.5f) { s, _, sp ->
+                    drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f, mobile = true)), s, sp)
+                },
+                LegendEntry("Vorfahrtsstraße / Radweg-Querung", 1.5f) { s, _, sp ->
+                    drawRoadMarkers(listOf(-MARKER_GAP to 0f), listOf(MARKER_GAP to 0f), s, sp)
                 },
             ),
         "Vorfälle" to
@@ -236,28 +283,43 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
                 damage("Krater", DamageStatus.IGNORED, 20),
                 damage("Warnschild steht (schief und verblasst)", DamageStatus.SIGNED, 50),
                 damage("In Planfeststellung (grauer Kasten)", DamageStatus.PLANNING, 50),
-                LegendEntry("Baustelle", 1.5f) { s, _ -> drawExcavators(listOf(0f to 0f), s) },
+                LegendEntry("Baustelle", 1.5f) { s, _, sp -> drawExcavators(listOf(0f to 0f), s, sp) },
                 line("Baustelle (orange gestrichelt)", MapStyle.works, 8f, dashed = true),
                 line("Gesperrt (rot gestrichelt)", MapStyle.trafficSignal, 8f, dashed = true),
-                line("Brücke eingestürzt", MapStyle.collapsed, 12f),
-                line("Umleitung", MapStyle.detour.copy(alpha = 0.6f), 13f),
+                icon("Brücke eingestürzt", "bridge_collapsed", wide = true) {
+                    drawLine(MapStyle.collapsed, Offset(-LINE_HALF, 0f), Offset(LINE_HALF, 0f), COLLAPSED_LINE)
+                },
+                icon("Umleitung", "detour") {
+                    drawLine(
+                        MapStyle.detour.copy(alpha = 0.6f),
+                        Offset(-LINE_HALF, 0f),
+                        Offset(LINE_HALF, 0f),
+                        DETOUR_LINE,
+                    )
+                },
             ),
         "Ereignisse & Stimmung" to
             listOf(
                 line("Demo, Stadtfest, Marathon, Markt: gesperrt", MapStyle.eventClosure, 8f, dashed = true),
+                event("Spontandemo", EventKind.DEMO),
+                event("Stadtfest", EventKind.CITY_FESTIVAL),
+                event("Marathon", EventKind.MARATHON),
+                event("Wochenmarkt", EventKind.MARKET),
+                event("Rad-Korso", EventKind.BIKE_CORSO),
+                event("Schwertransport", EventKind.HEAVY_TRANSPORT),
                 line("Route von Rad-Korso / Schwertransport", MapStyle.corso.copy(alpha = 0.35f), 14f),
                 line("Stau (Gesamtansicht): gelb zäh, rot Stillstand", MapStyle.flowJam, 10f),
-                LegendEntry("Wutwolke: hier stehen viele lange im Stau", 0.8f) { s, _ ->
-                    drawAngerCloud(Offset(0f, CLOUD_PREVIEW_LIFT), CLOUD_PREVIEW_SIZE, s)
+                LegendEntry("Wutwolke: hier stehen viele lange im Stau", 0.8f) { s, _, sp ->
+                    drawAngerCloud(Offset(0f, CLOUD_PREVIEW_LIFT), CLOUD_PREVIEW_SIZE, s, sp)
                 },
             ),
         "Parken & Laden" to
             listOf(
-                LegendEntry("Parkplatz (roter Rand: voll)", 1.5f) { s, _ ->
-                    drawParkingLots(listOf(ParkingLotState(0, null, 0f, 0f, 100, 100, 100, 1.5)), s)
+                LegendEntry("Parkplatz (roter Rand: voll)", 1.5f) { s, _, sp ->
+                    drawParkingLots(listOf(ParkingLotState(0, null, 0f, 0f, 100, 100, 100, 1.5)), s, sp)
                 },
-                LegendEntry("Ladesäule (roter Rand: Warteschlange)", 1.5f) { s, _ ->
-                    drawChargingStations(listOf(ChargingStationState(0, 0f, 0f, 2, 2, 3)), s)
+                LegendEntry("Ladesäule (roter Rand: Warteschlange)", 1.5f) { s, _, sp ->
+                    drawChargingStations(listOf(ChargingStationState(0, 0f, 0f, 2, 2, 3)), s, sp)
                 },
             ),
     )

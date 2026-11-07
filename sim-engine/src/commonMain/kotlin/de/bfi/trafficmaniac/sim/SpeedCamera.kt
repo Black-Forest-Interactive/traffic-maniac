@@ -10,6 +10,8 @@ class SpeedCamera(
     val x: Float,
     val y: Float,
     val mobile: Boolean = false,
+    /** Blitzeranhänger: mobil (Ortskundige kennen ihn nicht), lässt sich umsetzen. */
+    val trailer: Boolean = false,
 )
 
 /** Eine Messung über dem Limit (nach Abzug der Messtoleranz). */

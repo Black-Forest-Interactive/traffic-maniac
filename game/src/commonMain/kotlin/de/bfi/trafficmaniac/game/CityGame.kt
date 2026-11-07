@@ -127,6 +127,8 @@ class CityGame(
             press = press.state(unhappyShare, maintenance.state(simulation.time)),
             achievementList = achievements.state(),
             firstDay = firstDay,
+            trailers = works.trailers,
+            idleTrailers = works.idleTrailers,
         )
 
     private fun hourIndex() = (simulation.time / SECONDS_PER_HOUR).toInt()
@@ -283,6 +285,10 @@ class CityGame(
 
             is GameCommand.PlaceCamera -> {
                 works.placeCamera(command.segment, command.mobile)
+            }
+
+            is GameCommand.PlaceTrailer -> {
+                works.placeTrailer(command.segment)
             }
 
             is GameCommand.RemoveCamera -> {

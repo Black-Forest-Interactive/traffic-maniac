@@ -153,7 +153,7 @@ internal class VehicleFactory(
                 VehicleRole.AMBULANCE to 0xFFFFFFFF.toInt(),
                 VehicleRole.POLICE to 0xFF1E6FD9.toInt(),
                 VehicleRole.FIRE_BRIGADE to 0xFFC1121F.toInt(),
-                VehicleRole.TOW_TRUCK to 0xFFFF8C00.toInt(),
+                VehicleRole.TOW_TRUCK to 0xFFFFD60A.toInt(),
                 VehicleRole.STREET_SERVICE to 0xFFFFA500.toInt(),
                 VehicleRole.PRIVATE to 0xFF888888.toInt(),
             )

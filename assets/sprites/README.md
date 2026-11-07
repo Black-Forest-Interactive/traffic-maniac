@@ -30,11 +30,14 @@ Warnblinker und Pannen-Symbole zeichnet es weiterhin selbst darüber.
 |-------|--------|
 | `signal_red.svg`, `signal_red_yellow.svg`, `signal_yellow.svg`, `signal_green.svg`, `signal_off.svg` | Ampel von vorn, deutsches Gehäuse (hochkant, etwa 2 : 5) |
 | `camera_fixed.svg`, `camera_laser.svg` | Blitzer, Lasermessung |
+| `camera_trailer.svg` | Blitzeranhänger (Seitenansicht, etwa 3 : 2); fehlt er, wird ein Anhänger mit Blitzer gezeichnet |
 | `excavator.svg` | Baustelle |
 | `oil_spill.svg`, `accident.svg`, `breakdown.svg` | Vorfälle (quadratisch) |
 | `truck_stuck.svg` | eingeklemmter LKW (2 : 1) |
 | `anger_cloud.svg` | Wutwolke (4 : 3) |
 | `parking.svg`, `charging_station.svg` | Parkplatz, Ladesäule |
+
+`tool_trailer.svg` ist das Werkzeug-Icon für den Anhänger (sonst wird `tool_camera.svg` verwendet).
 
 Weitere Namen aus der Gesamtliste (Schilder, Bauamt, Ereignisse, Werkzeugleiste, HUD) werden eingebunden, sobald
 es die Grafiken gibt.

@@ -24,6 +24,11 @@ sealed interface GameCommand {
         val mobile: Boolean = false,
     ) : GameCommand
 
+    /** Blitzeranhänger aufstellen: ein freier aus dem Depot (Umsetzgebühr) oder ein neuer. */
+    data class PlaceTrailer(
+        val segment: Int,
+    ) : GameCommand
+
     data class RemoveCamera(
         val cameraId: Int,
     ) : GameCommand

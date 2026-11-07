@@ -1,11 +1,14 @@
 package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -17,6 +20,8 @@ import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.sim.EnvironmentSnapshot
 import de.bfi.trafficmaniac.sim.Pollutant
 import de.bfi.trafficmaniac.sim.SimulationSnapshot
+import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlin.math.roundToInt
 
 private val HudBackground = ComicTheme.paper
@@ -28,7 +33,43 @@ fun TrafficHud(
     frame: TrafficFrame,
     fps: Int,
     modifier: Modifier = Modifier,
+    sprites: SpriteSource = NoSprites,
 ) {
+    val lines = hudLines(frame, fps)
+    Column(
+        modifier
+            .padding(12.dp)
+            .comicPanel()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        for (line in lines) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                line.forEachIndexed { index, (icon, text) ->
+                    icon?.let { SpriteIcon(sprites, it, HUD_ICON.dp) }
+                    BasicText(
+                        text +
+                            if (index <
+                                line.size - 1
+                            ) {
+                                " ·"
+                            } else {
+                                ""
+                            },
+                        style = TextStyle(color = HudText, fontSize = 13.sp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private const val HUD_ICON = 16
+
+/** Zeilen des HUD: je Zeile Paare aus Symbol (Grafikname oder `null`) und Text. */
+private fun hudLines(
+    frame: TrafficFrame,
+    fps: Int,
+): List<List<Pair<String?, String>>> {
     val snapshot = frame.current
     val stats = snapshot.stats
     val time = snapshot.gameTime
@@ -41,28 +82,30 @@ fun TrafficHud(
     val vehicles = "Fahrzeuge ${stats.activeVehicles} (+${stats.pendingVehicles} wartend)"
     val tripMinutes = "%.1f".format(stats.meanTripMinutes)
     val day = "${time.weekday.germanName}, Tag ${frame.game.termDay(time.day)}/${frame.game.termDays}"
-    val lines =
+    // Zeilen mit Symbol: (Grafikname oder null, Text); die Politik-Zeile hat drei Symbole
+    val politics =
         listOf(
-            "$day · ${time.clockText} Uhr · Tempo $tempo",
-            "Kasse ${formatEuro(frame.game.balance)} · Bußgelder ${formatEuro(frame.game.fineIncome)}",
-            "Bürgerzorn ${frame.game.anger.roundToInt()} · Abwahlindex ${frame.game.recallIndex.roundToInt()}/100 · " +
-                "Reputation ${frame.game.reputation.roundToInt()}",
-            "$vehicles · Ø ${stats.meanSpeedKmh.roundToInt()} km/h",
-            "Angekommen ${stats.completedTrips} (Ø $tripMinutes min) · aufgegeben ${stats.stuckRemovals}",
-            environmentLine(snapshot.environment),
-            commuteLine(frame),
-            incidentLine(snapshot),
-            "Rechenzeit ${"%.2f".format(frame.stepMillis)} ms/Tick · $fps FPS",
-            "Leertaste: Pause · 1–4: Tempo 1x/2x/4x/8x · nachts automatisch ×${GameRunner.NIGHT_BOOST}",
+            "hud_anger" to "Bürgerzorn ${frame.game.anger.roundToInt()}",
+            "hud_recall" to "Abwahlindex ${frame.game.recallIndex.roundToInt()}/100",
+            "hud_reputation" to "Reputation ${frame.game.reputation.roundToInt()}",
         )
-    Column(
-        modifier
-            .padding(12.dp)
-            .comicPanel()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-    ) {
-        for (line in lines) BasicText(line, style = TextStyle(color = HudText, fontSize = 13.sp))
-    }
+    return listOf(
+        listOf("hud_time" to "$day · ${time.clockText} Uhr · Tempo $tempo"),
+        listOf(
+            "hud_money" to
+                "Kasse ${formatEuro(frame.game.balance)} · Bußgelder ${formatEuro(frame.game.fineIncome)}",
+        ),
+        politics,
+        listOf(null to "$vehicles · Ø ${stats.meanSpeedKmh.roundToInt()} km/h"),
+        listOf(
+            null to "Angekommen ${stats.completedTrips} (Ø $tripMinutes min) · aufgegeben ${stats.stuckRemovals}",
+        ),
+        listOf(null to environmentLine(snapshot.environment)),
+        listOf(null to commuteLine(frame)),
+        listOf(null to incidentLine(snapshot)),
+        listOf(null to "Rechenzeit ${"%.2f".format(frame.stepMillis)} ms/Tick · $fps FPS"),
+        listOf(null to "Leertaste: Pause · 1–4: Tempo 1x/2x/4x/8x · nachts automatisch ×${GameRunner.NIGHT_BOOST}"),
+    )
 }
 
 private fun environmentLine(environment: EnvironmentSnapshot): String {

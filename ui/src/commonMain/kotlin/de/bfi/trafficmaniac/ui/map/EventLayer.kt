@@ -19,6 +19,7 @@ internal fun DrawScope.drawEvents(
     paths: SegmentPaths,
     events: List<EventMarker>,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
     if (events.isEmpty()) return
     val width = max(EVENT_WIDTH_METERS, EVENT_MIN_PIXELS / scale)
@@ -37,12 +38,24 @@ internal fun DrawScope.drawEvents(
                 )
             }
         }
-        val radius = max(MARKER_METERS, MARKER_MIN_PIXELS / scale)
-        val center = Offset(event.x, event.y)
-        drawCircle(Color.White, radius, center)
-        drawCircle(color, radius, center, style = Stroke(radius * MARKER_RING))
-        drawCircle(color, radius * MARKER_DOT, center)
+        drawEventMarker(event.kind, Offset(event.x, event.y), scale, sprites)
     }
+}
+
+/** Marker eines Ereignisses: Grafik (z. B. `event_demo`) oder ein Ring in der Farbe des Ereignisses. */
+internal fun DrawScope.drawEventMarker(
+    kind: EventKind,
+    center: Offset,
+    scale: Float,
+    sprites: SpriteSource = NoSprites,
+) {
+    val radius = max(MARKER_METERS, MARKER_MIN_PIXELS / scale)
+    val icon = radius * EVENT_SPRITE
+    if (drawSprite(sprites, "event_" + EVENT_SPRITES.getValue(kind), center, icon, icon, scale)) return
+    val color = colorOf(kind)
+    drawCircle(Color.White, radius, center)
+    drawCircle(color, radius, center, style = Stroke(radius * MARKER_RING))
+    drawCircle(color, radius * MARKER_DOT, center)
 }
 
 private fun colorOf(kind: EventKind): Color =
@@ -61,3 +74,13 @@ private const val MARKER_METERS = 12f
 private const val MARKER_MIN_PIXELS = 7f
 private const val MARKER_RING = 0.3f
 private const val MARKER_DOT = 0.4f
+private const val EVENT_SPRITE = 2.8f
+private val EVENT_SPRITES =
+    mapOf(
+        EventKind.DEMO to "demo",
+        EventKind.CITY_FESTIVAL to "festival",
+        EventKind.MARATHON to "marathon",
+        EventKind.MARKET to "market",
+        EventKind.BIKE_CORSO to "corso",
+        EventKind.HEAVY_TRANSPORT to "heavy_transport",
+    )

@@ -55,6 +55,7 @@ internal fun DrawScope.drawSprite(
     height: Float,
     scale: Float,
     angle: Float = 0f,
+    alpha: Float = 1f,
 ): Boolean {
     if (!sprites.has(name)) return false
     val pixels = width * scale
@@ -70,6 +71,7 @@ internal fun DrawScope.drawSprite(
             image,
             dstOffset = IntOffset(-image.width / 2, -image.height / 2),
             dstSize = IntSize(image.width, image.height),
+            alpha = alpha,
         )
     }
     return true
