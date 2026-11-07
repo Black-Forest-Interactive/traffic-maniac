@@ -29,6 +29,7 @@ import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameMessage
 import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
@@ -71,6 +72,8 @@ fun TrafficManiacApp(
     onMenu: (() -> Unit)? = null,
     /** Spiel speichern (Knopf oben rechts); `null` = kein Speichern. */
     onSave: (() -> Unit)? = null,
+    /** Geführte Schritte, die die Werkzeuge nach und nach freischalten. */
+    tutorial: Boolean = false,
 ) {
     if (city == null) {
         MissingCity(missingCityMessage)
@@ -79,6 +82,7 @@ fun TrafficManiacApp(
     var fps by remember { mutableStateOf(0) }
     var selection by remember { mutableStateOf(ToolSelection()) }
     var panel by remember { mutableStateOf(SidePanel.NONE) }
+    var step by remember { mutableStateOf(if (tutorial) TutorialStep.WELCOME else null) }
     val toggles = remember { MapToggles() }
     val picker = remember(city) { MapPicker(city) }
     val zoom = remember { floatArrayOf(1f) }
@@ -122,19 +126,26 @@ fun TrafficManiacApp(
                 modifier = Modifier.align(Alignment.TopEnd),
             )
             Messages(frame.game.messages, show, Modifier.align(Alignment.BottomStart).padding(bottom = 24.dp))
+            step?.let { s -> TutorialPanel(s, frame.game, { step = it }, Modifier.align(Alignment.CenterStart)) }
         }
-        val tools = ToolBarState(selection, hudFrame?.game?.idleTrailers ?: 0) { selection = it }
+        val tools = ToolBarState(selection, hudFrame?.game, step) { selection = it }
         if (traffic != null) ToolBar(tools, rules, sprites, Modifier.align(Alignment.BottomCenter))
         hudFrame?.let { EndOfDayOverlays(it, onContinueDay, onMenu, sprites) }
     }
 }
 
-/** Was die Werkzeugleiste unten braucht: Auswahl, freie Blitzeranhänger und was bei einer Auswahl passiert. */
+/** Was die Werkzeugleiste unten braucht: Auswahl, Spielstand, Tutorial-Schritt und was bei einer Auswahl passiert. */
 private class ToolBarState(
     val selection: ToolSelection,
-    val idleTrailers: Int,
+    game: GameState?,
+    step: TutorialStep?,
     val onSelect: (ToolSelection) -> Unit,
-)
+) {
+    val idleTrailers = game?.idleTrailers ?: 0
+
+    /** Im Tutorial nur die freigeschalteten Werkzeuge. */
+    val available = step?.unlocked ?: Tool.entries.toSet()
+}
 
 @Composable
 private fun ToolBar(
@@ -142,7 +153,7 @@ private fun ToolBar(
     rules: GameRules,
     sprites: SpriteSource,
     modifier: Modifier,
-) = ToolBar(state.selection, rules, state.onSelect, modifier, sprites, state.idleTrailers)
+) = ToolBar(state.selection, rules, state.onSelect, modifier, sprites, state.idleTrailers, state.available)
 
 /** HUD oben links; bei neuen Einnahmen regnet es Münzen darüber. */
 @Composable

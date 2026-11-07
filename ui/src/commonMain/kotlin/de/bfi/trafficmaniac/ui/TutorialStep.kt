@@ -1,0 +1,147 @@
+package de.bfi.trafficmaniac.ui
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.game.GameState
+import de.bfi.trafficmaniac.game.PrContract
+
+/**
+ * Die Schritte des Tutorials. Jeder Schritt schaltet Werkzeuge frei ([tools]) und ist entweder erledigt, sobald
+ * [done] zutrifft, oder – ohne Bedingung – mit „Weiter“. Schritte, deren Ziel schon erreicht ist (z. B. nach dem
+ * Laden eines Spielstands), werden übersprungen.
+ */
+enum class TutorialStep(
+    val title: String,
+    val text: String,
+    val tools: Set<Tool> = emptySet(),
+    val done: ((GameState) -> Boolean)? = null,
+) {
+    WELCOME(
+        "Willkommen im Rathaus!",
+        "Sie sind der neue Verkehrsbürgermeister. Ihr Ziel: Geld für die Stadtkasse verdienen, gut dastehen " +
+            "und nicht abgewählt werden. Mausrad zoomt, Ziehen verschiebt die Karte. Leertaste hält die Zeit an.",
+        setOf(Tool.LOOK),
+    ),
+    SPEED_LIMIT(
+        "Erst die Schilder",
+        "Wählen Sie unten das Werkzeug „Tempolimit“ – 30 ist schon eingestellt – und klicken Sie auf eine große " +
+            "Straße mit viel Verkehr. Das Limit gilt von Kreuzung zu Kreuzung.",
+        setOf(Tool.SPEED_LIMIT, Tool.REMOVE),
+        { it.speedLimits.isNotEmpty() },
+    ),
+    CAMERA(
+        "Dann der Blitzer",
+        "Wo ein Limit ist, darf geblitzt werden. Nehmen Sie „Blitzer“ und klicken Sie auf dieselbe Straße. " +
+            "Ein fester Blitzer ist teuer, verdient aber Tag und Nacht.",
+        setOf(Tool.CAMERA),
+        { it.cameras.isNotEmpty() },
+    ),
+    FINES(
+        "Abwarten und kassieren",
+        "Taste 4 schaltet auf achtfaches Tempo. Sobald der erste Raser geblitzt wird, klingelt die Kasse – " +
+            "die Bußgelder stehen oben links.",
+        done = { it.fineIncome > 0 },
+    ),
+    CITIZENS(
+        "Die Bürger schauen zu",
+        "Oben links stehen auch Bürgerzorn, Abwahlindex und Reputation. Zu viel Schikane, und der Abwahlindex " +
+            "steigt – bei 100 sind Sie Ihr Amt los. Der Knopf „Zufriedenheit“ zeigt, wo es brodelt.",
+    ),
+    PRESS(
+        "Gute Presse kaufen",
+        "Öffnen Sie oben rechts „Haushalt & PR“ und schließen Sie einen PR-Vertrag ab. Dann schreibt die Zeitung " +
+            "freundlicher, und der Ärger der Bürger zählt weniger.",
+        done = { it.prContract != PrContract.NONE },
+    ),
+    TOOLBOX(
+        "Der ganze Werkzeugkasten",
+        "Jetzt ist alles frei: Ampeln, mobile Blitzer, Vorfahrt, Radweg-Querungen und Umleitungen. Ampeln bremsen " +
+            "zuverlässig, Umleitungen ärgern alle. Was ein Symbol bedeutet, steht unter „Legende ?“.",
+        Tool.entries.toSet(),
+    ),
+    EVENING(
+        "Feierabend",
+        "Lassen Sie den Tag zu Ende laufen (nachts geht es von selbst schneller). Am Abend kommt der " +
+            "Tagesabschluss, am nächsten Morgen die Zeitung.",
+        done = { it.daysPlayed >= 1 },
+    ),
+    READY(
+        "Sie sind bereit",
+        "Der Rest der Amtszeit gehört Ihnen. Viel Erfolg – und denken Sie immer an die Sicherheit unserer Kinder.",
+    ),
+    ;
+
+    /** Werkzeuge, die bis einschließlich dieses Schritts frei sind. */
+    val unlocked: Set<Tool> get() = entries.take(ordinal + 1).flatMap { it.tools }.toSet()
+
+    /** Der nächste Schritt, oder `null` am Ende. */
+    val next: TutorialStep? get() = entries.getOrNull(ordinal + 1)
+}
+
+/** Sprechblase mit dem aktuellen Schritt; erledigte Ziele schalten von selbst weiter. */
+@Composable
+internal fun TutorialPanel(
+    step: TutorialStep,
+    state: GameState,
+    onStep: (TutorialStep?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val reached = step.done?.invoke(state) == true
+    LaunchedEffect(step, reached) { if (reached) onStep(step.next) }
+    val ink = ComicTheme.ink
+    Column(
+        modifier
+            .padding(start = 16.dp)
+            .width(PANEL_WIDTH.dp)
+            .comicPanel(shadow = 5.dp)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        BasicText(
+            "Tutorial ${step.ordinal + 1}/${TutorialStep.entries.size}",
+            style = TextStyle(color = ComicTheme.muted, fontSize = 11.sp),
+        )
+        BasicText(step.title, style = TextStyle(color = ink, fontSize = 17.sp, fontWeight = FontWeight.Black))
+        BasicText(step.text, style = TextStyle(color = ink, fontSize = 13.sp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (step.done == null) {
+                TutorialButton(if (step.next == null) "Los geht's" else "Weiter", true) { onStep(step.next) }
+            } else {
+                BasicText("Aufgabe läuft …", style = TextStyle(color = ComicTheme.muted, fontSize = 12.sp))
+            }
+            TutorialButton("Tutorial beenden", false) { onStep(null) }
+        }
+    }
+}
+
+@Composable
+private fun TutorialButton(
+    label: String,
+    active: Boolean,
+    onClick: () -> Unit,
+) {
+    BasicText(
+        label,
+        style = TextStyle(color = ComicTheme.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold),
+        modifier =
+            Modifier
+                .comicButton(active)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+    )
+}
+
+private const val PANEL_WIDTH = 340

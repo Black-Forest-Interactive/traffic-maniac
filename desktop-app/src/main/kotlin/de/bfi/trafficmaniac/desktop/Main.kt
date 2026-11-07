@@ -219,6 +219,7 @@ private fun Playing(
         sprites = sprites,
         onMenu = onMenu,
         onSave = { scope.save(current, saves, "spiel-" + LocalDateTime.now().format(SAVE_ID_FORMAT)) },
+        tutorial = current.scenario.tutorial,
     )
 }
 

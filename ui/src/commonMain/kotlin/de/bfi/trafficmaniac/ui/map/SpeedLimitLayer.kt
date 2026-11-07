@@ -63,8 +63,9 @@ internal fun speedSigns(
 
 /**
  * Wo auf [segment] Schilder stehen: am Anfang bzw. Ende nur, wenn dort die Strecke beginnt oder endet (Kreuzung oder
- * anderes Limit dahinter), dazwischen wie an echten Straßen etwa alle 300 m eine Wiederholung – außer rund um die
- * Mitte, wo ein Blitzer stehen kann.
+ * anderes Limit dahinter) – und an einer Kreuzung, über die die Straße mit gleichem Limit weiterläuft, nur einmal.
+ * Dazwischen wie an echten Straßen etwa alle 300 m eine Wiederholung – außer rund um die Mitte, wo ein Blitzer
+ * stehen kann.
  */
 private fun signFractions(
     segment: Int,
@@ -75,7 +76,14 @@ private fun signFractions(
     val (from, to) = picker.endsOf(segment)
     val kmh = limits[segment]
 
-    fun boundary(node: Int) = picker.stretches.continuation(segment, node)?.let { limits[it] != kmh } ?: true
+    // Strecke endet hier – außer es geht mit demselben Limit weiter; geht dieselbe Straße hinter der Kreuzung mit
+    // gleichem Limit weiter, steht nur ein Schild für beide Seiten (beim Abschnitt mit der kleineren Nummer)
+    fun boundary(node: Int): Boolean {
+        val stretches = picker.stretches
+        val continues = stretches.continuation(segment, node)?.let { limits[it] == kmh } ?: false
+        val sharedSign = stretches.sameStreetAcross(segment, node).any { limits[it] == kmh && it < segment }
+        return !continues && !sharedSign
+    }
     val atStart = boundary(from)
     val atEnd = boundary(to)
     val length = picker.lengthOf(segment)
