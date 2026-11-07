@@ -51,6 +51,7 @@ fun main(args: Array<String>) {
     game?.let { repeat(options.warmupMinutes * TICKS_PER_MINUTE * config.ticksPerSecond) { _ -> it.step() } }
     val runner = game?.let { GameRunner(it) }
     val sound = if (city != null) SynthSoundBoard.open() else NoSound
+    val sprites = loadSprites()
 
     application {
         runner?.let { LaunchedEffect(it) { it.run() } }
@@ -68,10 +69,17 @@ fun main(args: Array<String>) {
                 onCommand = { game?.submit(it) },
                 onContinueDay = { runner?.acknowledgeReport() },
                 sound = sound,
+                sprites = sprites,
             )
         }
     }
 }
+
+/** Grafiken aus `assets/sprites/`; fehlende zeichnet das Spiel selbst. */
+private fun loadSprites(): SvgSprites =
+    SvgSprites(File(SvgSprites.DEFAULT_FOLDER)).also {
+        if (it.count > 0) println("${it.count} Grafiken aus ${SvgSprites.DEFAULT_FOLDER} geladen")
+    }
 
 private class Options(
     val cityFile: String?,

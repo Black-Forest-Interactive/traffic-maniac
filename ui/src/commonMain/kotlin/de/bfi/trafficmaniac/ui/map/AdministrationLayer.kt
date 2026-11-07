@@ -144,12 +144,15 @@ private fun DrawScope.drawWarningTriangle(
 internal fun DrawScope.drawParkingLots(
     lots: List<ParkingLotState>,
     scale: Float,
+    sprites: SpriteSource = NoSprites,
 ) {
     val size = max(LOT_SIZE_METERS, LOT_MIN_PIXELS / scale)
     for (lot in lots) {
         val topLeft = Offset(lot.x - size / 2, lot.y - size / 2)
         val fill = if (lot.capacity == 0) MapStyle.chargingFull else MapStyle.parking
-        drawRect(fill, topLeft, Size(size, size))
+        // Abgeschaffte Parkplätze bleiben grau gezeichnet
+        val drawn = lot.capacity > 0 && drawSprite(sprites, "parking", Offset(lot.x, lot.y), size, size, scale)
+        if (!drawn) drawRect(fill, topLeft, Size(size, size))
         if (lot.capacity > 0 && lot.occupied >= lot.capacity) {
             drawRect(MapStyle.trafficSignal, topLeft, Size(size, size), style = Stroke(size * LOT_RING))
         }

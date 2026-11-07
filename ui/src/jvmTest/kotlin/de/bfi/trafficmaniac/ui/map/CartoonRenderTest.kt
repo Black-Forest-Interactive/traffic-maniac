@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.ui.map
 
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.text.TextMeasurer
@@ -132,9 +133,59 @@ class CartoonRenderTest {
         }
     }
 
+    /** Zählt, welche Grafiken angefordert wurden, und liefert leere Bilder. */
+    private class RecordingSprites : SpriteSource {
+        val requested = HashSet<String>()
+
+        override fun has(name: String) = true
+
+        override fun image(
+            name: String,
+            widthPx: Int,
+        ): ImageBitmap {
+            requested += name
+            return ImageBitmap(widthPx, widthPx / 2)
+        }
+    }
+
+    @Test
+    fun usesSpritesWhereTheyExist() {
+        val city = town()
+        val config = SimulationConfig(seed = 2, peakTripsPerHour = 3_000.0, demandProfile = DemandProfile.CONSTANT)
+        val game = CityGame(city, config)
+        game.submit(GameCommand.PlaceCamera(0))
+        repeat(120 * config.ticksPerSecond) { game.step() }
+        val snapshot = game.simulation.snapshot()
+        val frame =
+            TrafficFrame(snapshot, snapshot, TimeSource.Monotonic.markNow(), 1.seconds, 0.0, 1, 0, null, game.state())
+        val sprites = RecordingSprites()
+        val image = ImageBitmap(WIDTH, HEIGHT)
+        val camera = Camera(0f, 0f, SPRITE_ZOOM)
+        CanvasDrawScope().draw(
+            Density(1f),
+            LayoutDirection.Ltr,
+            Canvas(image),
+            Size(WIDTH.toFloat(), HEIGHT.toFloat()),
+        ) {
+            val viewport = camera.viewport(size.width, size.height)
+            inWorld(camera) {
+                drawVehicles(frame, SPRITE_ZOOM, viewport, 1.0, sprites)
+                drawSignals(snapshot.signalMarkers, snapshot.signalStates, SPRITE_ZOOM, true, viewport, sprites)
+                drawCameras(snapshot.cameras, SPRITE_ZOOM, sprites)
+            }
+        }
+        assertTrue(
+            sprites.requested.any { it.startsWith("car_") || it == "van" || it == "truck" },
+            "${sprites.requested}",
+        )
+        assertTrue(sprites.requested.any { it.startsWith("signal_") }, "${sprites.requested}")
+        assertTrue("camera_fixed" in sprites.requested)
+    }
+
     private companion object {
         const val WIDTH = 400
         const val HEIGHT = 300
         const val STEP = 7
+        const val SPRITE_ZOOM = 3f
     }
 }

@@ -38,6 +38,7 @@ internal class AngerClouds {
         snapshot: SimulationSnapshot,
         scale: Float,
         seconds: Double,
+        sprites: SpriteSource = NoSprites,
     ) = with(scope) {
         // Herausgezoomt werden die Zellen größer: weniger, dafür größere Wolken
         var cell = CELL_METERS
@@ -49,8 +50,11 @@ internal class AngerClouds {
             // Nah dran nicht größer als ein paar Autos, damit der Stau darunter sichtbar bleibt
             val size = (max(CLOUD_METERS, CLOUD_MIN_PIXELS / scale) * growth).coerceAtMost(CLOUD_MAX_PIXELS / scale)
             val wobble = sin(seconds * WOBBLE_SPEED + c.seed % WOBBLE_SEEDS).toFloat() * size * WOBBLE
-            cloud(center + Offset(wobble, 0f), size, scale)
-            lightning(path, center + Offset(wobble, -size * BOLT_DROP), size)
+            val at = center + Offset(wobble, 0f)
+            if (!drawSprite(sprites, "anger_cloud", at, size * 2, size * CLOUD_SPRITE_HEIGHT, scale)) {
+                cloud(at, size, scale)
+                lightning(path, center + Offset(wobble, -size * BOLT_DROP), size)
+            }
         }
     }
 
@@ -179,6 +183,7 @@ internal fun DrawScope.drawCameraFlashes(
 }
 
 private const val CELL_METERS = 200f
+private const val CLOUD_SPRITE_HEIGHT = 1.5f
 private const val CELL_MIN_PIXELS = 70f
 private const val CELL_SHIFT = 32
 private const val CELL_MASK = 0xFFFFFFFFL

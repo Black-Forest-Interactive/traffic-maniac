@@ -20,6 +20,7 @@ import de.bfi.trafficmaniac.sim.IncidentKind
 import de.bfi.trafficmaniac.sim.VehicleRole
 import de.bfi.trafficmaniac.sim.VehicleType
 import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
@@ -39,13 +40,14 @@ internal fun DrawScope.drawVehicles(
     scale: Float,
     viewport: Rect,
     seconds: Double,
+    sprites: SpriteSource = NoSprites,
 ) {
     if (scale < MapStyle.FLOW_MAX_SCALE) return
     val previous = frame.previous
     val current = frame.current
     val t = frame.interpolation()
-    val sprites = scale >= SPRITE_MIN_SCALE
-    val sprite = SpriteBuilder(scale, seconds)
+    val detailed = scale >= SPRITE_MIN_SCALE
+    val sprite = SpriteBuilder(scale, seconds, sprites)
     var j = 0
     for (i in 0 until current.vehicleCount) {
         val id = current.ids[i]
@@ -66,15 +68,15 @@ internal fun DrawScope.drawVehicles(
                 dirX = current.dirX[i],
                 dirY = current.dirY[i],
                 // Cartoon: Sprites sind deutlich breiter und etwas länger als in echt
-                width = current.widths[i] * if (sprites) SPRITE_WIDTH_FACTOR else 1f,
-                length = current.lengths[i] * if (sprites) SPRITE_LENGTH_FACTOR else 1f,
+                width = current.widths[i] * if (detailed) SPRITE_WIDTH_FACTOR else 1f,
+                length = current.lengths[i] * if (detailed) SPRITE_LENGTH_FACTOR else 1f,
                 color = Color(current.colors[i]),
                 flags = current.flags[i].toInt(),
                 type = VehicleType.entries.getOrElse(current.types[i].toInt()) { VehicleType.CAR },
                 role = VehicleRole.entries.getOrElse(current.roles[i].toInt()) { VehicleRole.PRIVATE },
                 trouble = IncidentKind.entries.getOrNull(current.troubles[i] - 1),
             )
-        if (sprites) sprite.draw(this, vehicle) else drawStroke(vehicle, scale, blinkOn(seconds))
+        if (detailed) sprite.draw(this, vehicle) else drawStroke(vehicle, scale, blinkOn(seconds))
     }
 }
 
@@ -208,8 +210,9 @@ private fun DrawScope.drawStroke(
 
 /** Zeichnet Sprites; ein [Path] wird für alle Fahrzeuge wiederverwendet. */
 private class SpriteBuilder(
-    scale: Float,
+    private val scale: Float,
     private val seconds: Double,
+    private val sprites: SpriteSource = NoSprites,
 ) {
     private val path = Path()
     private val outline = Stroke(max(OUTLINE_METERS, MIN_OUTLINE_PIXELS / scale), join = StrokeJoin.Round)
@@ -219,6 +222,14 @@ private class SpriteBuilder(
         scope: DrawScope,
         v: VehicleView,
     ) = with(scope) {
+        // Fertige Grafik, wenn es sie gibt – Lichter und Zustände kommen in jedem Fall darüber
+        val name = vehicleSpriteName(v.type, v.role, v.color, v.has(FLAG_ELECTRIC))
+        val angle = atan2(v.dirY, v.dirX)
+        if (drawSprite(sprites, name, v.point(CENTER, 0f), v.length, v.width, scale, angle)) {
+            drawLights(v)
+            drawStatus(v)
+            return@with
+        }
         if (v.type == VehicleType.BIKE_CORSO) return@with drawCorso(v)
         drawBody(v)
         drawDetails(v)

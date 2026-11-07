@@ -35,6 +35,8 @@ import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
 import de.bfi.trafficmaniac.ui.map.MapFocus
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.MapView
+import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.hypot
@@ -63,6 +65,8 @@ fun TrafficManiacApp(
     onCommand: (GameCommand) -> Unit = {},
     onContinueDay: () -> Unit = {},
     sound: SoundBoard = NoSound,
+    /** Fertige Grafiken für Karte und Fahrzeuge; fehlende werden gezeichnet. */
+    sprites: SpriteSource = NoSprites,
 ) {
     if (city == null) {
         MissingCity(missingCityMessage)
@@ -84,6 +88,7 @@ fun TrafficManiacApp(
     Box(Modifier.fillMaxSize()) {
         MapView(
             focus = focus,
+            sprites = sprites,
             city = city,
             traffic = traffic?.let { flow -> { flow.value } },
             onFps = { fps = it },
