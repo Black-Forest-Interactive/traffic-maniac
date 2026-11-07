@@ -65,6 +65,8 @@ fun ToolBar(
     sprites: SpriteSource = NoSprites,
     /** Blitzeranhänger im Depot (für den Kostenhinweis). */
     idleTrailers: Int = 0,
+    /** Freigeschaltete Werkzeuge (im Tutorial nach und nach). */
+    available: Set<Tool> = Tool.entries.toSet(),
 ) {
     Column(
         modifier
@@ -89,7 +91,7 @@ fun ToolBar(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (tool in Tool.entries) {
+            for (tool in Tool.entries.filter { it in available }) {
                 ToolButton(
                     "${tool.label}${costHint(tool, rules, idleTrailers)}",
                     selection.tool == tool,

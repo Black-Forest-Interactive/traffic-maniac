@@ -55,8 +55,12 @@ object Balancing {
     }
 
     /** Szenarien für das Startmenü (`balancing/scenarios.json`, beim ersten Start mit den Standards angelegt). */
-    fun scenarios(directory: File = File(DIRECTORY)): List<Scenario> =
-        load(File(directory, "scenarios.json"), ListSerializer(Scenario.serializer()), Scenario.DEFAULTS)
+    fun scenarios(directory: File = File(DIRECTORY)): List<Scenario> {
+        val own = load(File(directory, "scenarios.json"), ListSerializer(Scenario.serializer()), Scenario.DEFAULTS)
+        // Neue Standardszenarien (z. B. das Tutorial) erscheinen auch bei einer älteren eigenen Datei
+        val ids = own.map { it.id }.toSet()
+        return Scenario.DEFAULTS.filter { it.id !in ids } + own
+    }
 
     private fun <T> load(
         file: File,

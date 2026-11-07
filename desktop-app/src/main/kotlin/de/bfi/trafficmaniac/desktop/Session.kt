@@ -32,7 +32,7 @@ internal class Session(
                 .filterNotNull()
                 .first { it.game.isTermOver || it.game.isGameOver }
                 .game
-        if (end.isGameOver) return null
+        if (end.isGameOver || scenario.tutorial) return null
         return HighscoreEntry(
             scenarioId = scenario.id,
             difficulty = difficulty,

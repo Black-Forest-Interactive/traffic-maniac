@@ -30,6 +30,8 @@ data class Scenario(
     /** Zustand der Straßen zu Beginn: schlechtester Abschnitt (0..1). */
     val initialConditionMin: Double? = null,
     val corsoChanceWeekend: Double? = null,
+    /** Mit geführten Schritten, die die Werkzeuge nach und nach freischalten; zählt nicht für die Bestenliste. */
+    val tutorial: Boolean = false,
 ) {
     /** Simulation und Spielregeln für dieses Szenario auf [difficulty]. */
     fun apply(
@@ -62,6 +64,17 @@ data class Scenario(
     companion object {
         val DEFAULTS =
             listOf(
+                Scenario(
+                    id = "tutorial",
+                    title = "Tutorial: Der erste Tag im Amt",
+                    description =
+                        "Schritt für Schritt: Tempolimit, Blitzer, Bußgelder, Presse. Die Werkzeuge kommen nach und " +
+                            "nach dazu – ideal für den Einstieg.",
+                    termDays = 3,
+                    startHour = 7.0,
+                    warmupMinutes = 30,
+                    tutorial = true,
+                ),
                 Scenario(
                     id = "erste-amtszeit",
                     title = "Erste Amtszeit",
