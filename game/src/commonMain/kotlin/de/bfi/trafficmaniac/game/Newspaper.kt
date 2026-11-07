@@ -13,6 +13,8 @@ data class NewspaperEdition(
     val letters: List<String> = emptyList(),
     /** Tonlage der Ausgabe, z. B. "Jubelpresse" oder "Verriss". */
     val tone: String = "",
+    /** Name der Zeitung im Kopf. */
+    val masthead: String = CityTexts().newspaper,
 )
 
 /** Was die Zeitung über einen Tag weiß. */
@@ -36,7 +38,7 @@ internal class DayNews(
 )
 
 /**
- * Die Pforzheimer Lokalzeitung. Ihr Ton kommt aus dem [Press]-Modell: mit PR-Vertrag freundlich, ohne kritisch –
+ * Die Lokalzeitung der Stadt. Ihr Ton kommt aus dem [Press]-Modell: mit PR-Vertrag freundlich, ohne kritisch –
  * Einzelschicksale interessieren die Leserbriefschreiber aber in keinem Fall.
  */
 internal object Newspaper {
@@ -87,13 +89,14 @@ internal object Newspaper {
                 EventHeadlines.heavyTransport(news),
                 EventHeadlines.ceremony(news),
                 EventHeadlines.market(news),
-                pr(friendly, random),
+                pr(news.state.city, friendly, random),
             ).distinct().take(MAX_HEADLINES)
         return NewspaperEdition(
             news.report.day,
-            headlines.ifEmpty { listOf(QUIET_DAY.random(random)) },
+            headlines.ifEmpty { listOf(quietDay(news.state.city).random(random)) },
             EventHeadlines.letters(news, friendly, random),
             Press.toneLabel(news.tone),
+            news.state.city.newspaper,
         )
     }
 
@@ -122,7 +125,8 @@ internal object Newspaper {
             software >= SOFTWARE_STORY -> {
                 listOf(
                     "$software Autos bleiben liegen: „Update wird installiert, bitte warten“",
-                    "Bitte Neustart durchführen: $software moderne Autos streiken auf Pforzheims Straßen",
+                    "Bitte Neustart durchführen: $software moderne Autos streiken auf " +
+                        "${news.state.city.genitive} Straßen",
                 ).random(random)
             }
 
@@ -202,7 +206,7 @@ internal object Newspaper {
         val previous = news.previous
         val jam = previous != null && news.report.meanTripMinutes >= previous.meanTripMinutes * TRAFFIC_JAM_RATIO
         return when {
-            late >= HALF_LATE -> "Halb Pforzheim kam heute zu spät"
+            late >= HALF_LATE -> "Halb ${news.state.city.name} kam heute zu spät"
             late >= QUARTER_LATE -> "${(late * PERCENT).roundToInt()} % der Pendler zu spät – Chefs genervt"
             jam -> "Stau-Rekord: Pendler brauchten im Schnitt ${"%.0f".format(news.report.meanTripMinutes)} Minuten"
             else -> null
@@ -222,20 +226,21 @@ internal object Newspaper {
     }
 
     private fun pr(
+        city: CityTexts,
         friendly: Boolean,
         random: Random,
     ): String? {
         if (!friendly) return null
         return listOf(
-            "Pforzheim wird zur Modellstadt der Verkehrsberuhigung",
+            "${city.name} wird zur Modellstadt der Verkehrsberuhigung",
             "Umfrage (von der Stadt bezahlt): 9 von 10 Bürgern lieben Tempo 20",
             "Spatenstich für das neue Verkehrskonzept – Fertigstellung voraussichtlich 2066",
         ).random(random)
     }
 
-    private val QUIET_DAY =
+    private fun quietDay(city: CityTexts) =
         listOf(
-            "Ruhiger Tag in Pforzheim – Verkehr fließt, niemand regt sich auf",
-            "Goldstadt im Glück: Alle kamen pünktlich an",
+            "Ruhiger Tag in ${city.name} – Verkehr fließt, niemand regt sich auf",
+            "${city.nickname} im Glück: Alle kamen pünktlich an",
         )
 }

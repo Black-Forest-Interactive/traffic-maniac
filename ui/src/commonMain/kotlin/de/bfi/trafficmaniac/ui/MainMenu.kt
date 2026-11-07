@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.game.CityTexts
 import de.bfi.trafficmaniac.game.Difficulty
 import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.Highscores
@@ -59,6 +60,9 @@ fun MainMenu(
     loading: String? = null,
     /** Gespeicherte Partien; ohne Speicherfunktion leer. */
     saves: SaveSlots = SaveSlots(),
+    /** Unterzeile unter dem Titel – kommt aus dem Stadtpaket. */
+    tagline: String = CityTexts().tagline,
+    cities: CityChoice = CityChoice(),
 ) {
     var tab by remember { mutableStateOf(MenuTab.PLAY) }
     var selected by remember { mutableStateOf(scenarios.firstOrNull()) }
@@ -69,7 +73,7 @@ fun MainMenu(
                 style = TextStyle(color = ComicTheme.ink, fontSize = 44.sp, fontWeight = FontWeight.Black),
             )
             BasicText(
-                "Die Verkehrs„beruhigung“ für Pforzheim – reich werden, gut dastehen, nicht abgewählt werden.",
+                tagline,
                 style = TextStyle(color = ComicTheme.muted, fontSize = 15.sp),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -80,8 +84,11 @@ fun MainMenu(
                 Box(Modifier.width(CONTENT_WIDTH.dp).comicPanel(shadow = 6.dp).padding(20.dp)) {
                     when (tab) {
                         MenuTab.PLAY -> {
-                            PlayTab(scenarios, selected, highscores, settings, { selected = it }, onSettings) {
-                                selected?.let(onStart)
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                CityRow(cities)
+                                PlayTab(scenarios, selected, highscores, settings, { selected = it }, onSettings) {
+                                    selected?.let(onStart)
+                                }
                             }
                         }
 
@@ -167,6 +174,28 @@ private fun ScenarioCard(
     }
 }
 
+/** Stadtauswahl: Namen der Stadtpakete, die gewählte und ihre Beschreibung. */
+class CityChoice(
+    val names: List<String> = emptyList(),
+    val selected: Int = 0,
+    val description: String = "",
+    val onSelect: (Int) -> Unit = {},
+)
+
+@Composable
+private fun CityRow(cities: CityChoice) {
+    if (cities.names.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BasicText("Stadt:", style = body())
+            cities.names.forEachIndexed { index, name ->
+                MenuChip(name, index == cities.selected) { cities.onSelect(index) }
+            }
+        }
+        if (cities.description.isNotEmpty()) BasicText(cities.description, style = muted())
+    }
+}
+
 /** Spielstände fürs Menü: Liste, Laden und Löschen. */
 class SaveSlots(
     val saves: List<SaveInfo> = emptyList(),
@@ -191,7 +220,7 @@ private fun LoadTab(slots: SaveSlots) {
             ) {
                 val quick = if (save.id == SaveInfo.QUICK_SAVE) "Schnellspeicher · " else ""
                 BasicText(
-                    "$quick${save.scenarioTitle} · ${save.difficulty.label}",
+                    "$quick${save.cityName} · ${save.scenarioTitle} · ${save.difficulty.label}",
                     style = body().copy(fontWeight = FontWeight.Bold),
                 )
                 BasicText(

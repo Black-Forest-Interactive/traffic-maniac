@@ -98,7 +98,7 @@ private fun Masthead(
 ) {
     val ink = ComicTheme.ink
     BasicText(
-        "PFORZHEIMER MORGENPOST",
+        edition.masthead,
         style =
             TextStyle(
                 color = ink,

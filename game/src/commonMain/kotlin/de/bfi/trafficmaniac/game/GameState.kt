@@ -66,6 +66,8 @@ data class GameState(
     val press: PressState = PressState(),
     /** Alle Achievements mit Freischalt-Tag ([achievements] enthält nur die Titel der freigeschalteten). */
     val achievementList: List<AchievementStatus> = emptyList(),
+    /** Texte der Stadt: Zeitung, Anrede, Spitzname. */
+    val city: CityTexts = CityTexts(),
     /** Gekaufte Blitzeranhänger und davon gerade im Depot (frei zum Aufstellen). */
     val trailers: Int = 0,
     val idleTrailers: Int = 0,

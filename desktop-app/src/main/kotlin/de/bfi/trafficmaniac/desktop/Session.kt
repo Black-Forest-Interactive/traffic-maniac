@@ -1,6 +1,5 @@
 package de.bfi.trafficmaniac.desktop
 
-import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.Difficulty
 import de.bfi.trafficmaniac.game.GameRunner
@@ -17,6 +16,7 @@ import kotlin.math.roundToInt
 
 /** Eine laufende Partie: Szenario, Schwierigkeitsgrad, Spiel und der Takt, der es antreibt. */
 internal class Session(
+    val pack: CityPack,
     val scenario: Scenario,
     val difficulty: Difficulty,
     val game: CityGame,
@@ -55,6 +55,8 @@ internal class Session(
             val info =
                 SaveInfo(
                     id = id,
+                    cityId = pack.id,
+                    cityName = pack.name,
                     scenarioId = scenario.id,
                     scenarioTitle = scenario.title,
                     difficulty = difficulty,
@@ -78,32 +80,38 @@ internal class Session(
         fun resume(
             saves: SaveGames,
             info: SaveInfo,
+            pack: CityPack,
             scenario: Scenario,
         ): Session {
             val game = saves.load(info)
             val runner = GameRunner(game)
             runner.setSpeed(0)
             game.announce("Spielstand geladen – Leertaste setzt fort")
-            return Session(scenario, info.difficulty, game, runner)
+            return Session(pack, scenario, info.difficulty, game, runner)
         }
 
         /** Bereitet [scenario] vor (Regeln, Schwierigkeitsgrad, Vorlauf); läuft im Hintergrund, kann etwas dauern. */
         fun start(
-            city: CityMap,
+            pack: CityPack,
             scenario: Scenario,
             settings: GameSettings,
             options: Options,
         ): Session {
-            val base = Balancing.simulationConfig()
+            val base = pack.simulationConfig(Balancing.simulationConfig())
             val withOptions = options.peakTrips?.let { base.copy(peakTripsPerHour = it) } ?: base
-            val (config, rules) = scenario.apply(withOptions, Balancing.gameRules(), settings.difficulty)
-            val game = CityGame(city, config, rules)
+            val (config, rules) =
+                scenario.apply(
+                    withOptions,
+                    pack.gameRules(Balancing.gameRules()),
+                    settings.difficulty,
+                )
+            val game = CityGame(pack.map, config, rules)
             val warmupTicks =
                 (scenario.warmupMinutes + options.warmupMinutes) * SECONDS_PER_MINUTE * config.ticksPerSecond
             repeat(warmupTicks) { game.step() }
             val runner = GameRunner(game)
             runner.setSpeed(settings.startSpeed)
-            return Session(scenario, settings.difficulty, game, runner)
+            return Session(pack, scenario, settings.difficulty, game, runner)
         }
     }
 }

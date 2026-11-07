@@ -191,7 +191,7 @@ private fun DrawnSeal() {
 /** Die Abschiedsrede: Bilanz, Blitzer, Presse und Achievements – Hauptsache, es klingt gut. */
 internal fun farewellSpeech(state: GameState): List<String> {
     val lines = ArrayList<String>()
-    lines += "„Liebe Pforzheimerinnen und Pforzheimer,"
+    lines += "„${state.city.greeting}"
     lines +=
         if (state.score.earnings > 0) {
             "in meiner Amtszeit habe ich ${formatEuro(state.score.earnings)} für die Stadtkasse erwirtschaftet – " +

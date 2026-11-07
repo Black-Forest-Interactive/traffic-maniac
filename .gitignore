@@ -31,3 +31,6 @@ data/cities/
 # Betriebssystem
 .DS_Store
 Thumbs.db
+
+# Stadtkarten werden erzeugt (scripts/import-city.sh <id>)
+cities/*/map.city

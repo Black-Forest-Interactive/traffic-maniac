@@ -16,7 +16,7 @@ enum class Achievement(
         "Keine einzige Brücke über Enz und Nagold ist mehr befahrbar",
         { it.bridgesOpen == 0 },
     ),
-    HALF_LATE("Halb Pforzheim kam zu spät", "Mindestens die Hälfte der Pendler eines Tages zu spät", {
+    HALF_LATE("Die halbe Stadt kam zu spät", "Mindestens die Hälfte der Pendler eines Tages zu spät", {
         it.lateShare >=
             0.5
     }),

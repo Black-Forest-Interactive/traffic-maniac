@@ -24,7 +24,8 @@ import java.util.zip.InflaterInputStream
  * beim Laden dieselbe.
  */
 class SaveGames(
-    private val city: CityMap,
+    /** Karte zu einem Stadtpaket; `null`, wenn es die Stadt nicht (mehr) gibt. */
+    private val maps: (String) -> CityMap?,
     private val directory: File = File(System.getProperty("user.home"), ".traffic-maniac/saves"),
 ) {
     private val json =
@@ -51,7 +52,8 @@ class SaveGames(
         directory.mkdirs()
         // Erst in Zwischendateien, dann umbenennen: ein Absturz beim Schreiben zerstört keinen alten Spielstand
         val snapshot = File(directory, "${info.id}.sav.tmp")
-        Output(DeflaterOutputStream(snapshot.outputStream())).use { kryo().writeClassAndObject(it, game) }
+        val kryo = kryo(cityOf(info))
+        Output(DeflaterOutputStream(snapshot.outputStream())).use { kryo.writeClassAndObject(it, game) }
         snapshot.replace(snapshotFile(info.id))
         val meta = File(directory, "${info.id}.json.tmp")
         meta.writeText(json.encodeToString(SaveInfo.serializer(), info) + "\n")
@@ -59,10 +61,14 @@ class SaveGames(
     }
 
     /** Lädt das Spiel zu [info]. */
-    fun load(info: SaveInfo): CityGame =
-        Input(
-            InflaterInputStream(snapshotFile(info.id).inputStream()),
-        ).use { kryo().readClassAndObject(it) as CityGame }
+    fun load(info: SaveInfo): CityGame {
+        val kryo = kryo(cityOf(info))
+        return Input(InflaterInputStream(snapshotFile(info.id).inputStream())).use {
+            kryo.readClassAndObject(it) as CityGame
+        }
+    }
+
+    private fun cityOf(info: SaveInfo) = checkNotNull(maps(info.cityId)) { "Stadt ${info.cityName} fehlt" }
 
     fun delete(info: SaveInfo) {
         snapshotFile(info.id).delete()
@@ -76,7 +82,7 @@ class SaveGames(
         check(renameTo(target)) { "$target konnte nicht geschrieben werden" }
     }
 
-    private fun kryo(): Kryo =
+    private fun kryo(city: CityMap): Kryo =
         SingletonAwareKryo().apply {
             isRegistrationRequired = false
             references = true

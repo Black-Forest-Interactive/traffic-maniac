@@ -38,7 +38,7 @@ private const val OFFICE_HOURS = 8
  * Strategien: nichts, abkassieren, abkassieren-pr, massvoll-pr, schild-blitzer, reparieren, parken-weg, parken-teuer
  */
 fun main(args: Array<String>) {
-    val city = CityMapCodec.decode(File("data/cities/pforzheim.city").readBytes())
+    val city = CityPacks.discover().first { it.id == "pforzheim" }.map
     val days = args.getOrNull(0)?.toInt() ?: DEFAULT_DAYS
     val names = args.getOrNull(1)?.split(',') ?: Strategy.entries.map { it.id }
     val strategies = names.map { name -> Strategy.entries.first { it.id == name } }
