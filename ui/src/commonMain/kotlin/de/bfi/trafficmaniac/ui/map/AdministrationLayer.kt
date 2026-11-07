@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
 import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.DamageStatus
@@ -93,7 +94,11 @@ private fun DrawScope.drawDamageAt(
         }
         when (report.status) {
             DamageStatus.SIGNED -> {
-                drawWarningTriangle(x - size * SIGN_OFFSET, y + size * SIGN_OFFSET, size)
+                // Das Schild steht gern jahrelang: schief und verblasst
+                val tilt = ((report.id * SIGN_TILT_STEP) % (2 * SIGN_MAX_TILT)) - SIGN_MAX_TILT
+                rotate(tilt, pivot = Offset(x - size * SIGN_OFFSET, y + size * SIGN_OFFSET)) {
+                    drawWarningTriangle(x - size * SIGN_OFFSET, y + size * SIGN_OFFSET, size)
+                }
             }
 
             DamageStatus.PLANNING -> {
@@ -130,8 +135,9 @@ private fun DrawScope.drawWarningTriangle(
             lineTo(x - size, y - size * TRIANGLE_BASE)
             close()
         }
-    drawPath(triangle, Color.White)
-    drawPath(triangle, MapStyle.trafficSignal, style = Stroke(size * TRIANGLE_RING))
+    drawPath(triangle, Color.White.copy(alpha = FADED))
+    drawPath(triangle, MapStyle.trafficSignal.copy(alpha = FADED), style = Stroke(size * TRIANGLE_RING))
+    drawLine(MapStyle.ink, Offset(x, y - size * TRIANGLE_BASE), Offset(x, y - size * POLE), size * POLE_WIDTH)
 }
 
 /** Parkplätze: blaues Quadrat, rot umrandet, wenn voll; grau, wenn abgeschafft. */
@@ -172,6 +178,11 @@ private const val HOLE_OFFSET = 0.5f
 private const val SIGN_OFFSET = 1.8f
 private const val TRIANGLE_BASE = 0.7f
 private const val TRIANGLE_RING = 0.25f
+private const val SIGN_TILT_STEP = 7f
+private const val SIGN_MAX_TILT = 14f
+private const val FADED = 0.7f
+private const val POLE = 1.6f
+private const val POLE_WIDTH = 0.15f
 private const val LOT_SIZE_METERS = 10f
 private const val LOT_MIN_PIXELS = 6f
 private const val LOT_RING = 0.25f

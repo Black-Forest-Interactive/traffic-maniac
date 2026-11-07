@@ -439,6 +439,10 @@ class Simulation(
             parkingLots = parking.states(),
             parking = parking.summary(),
             flags = ByteArray(count) { flagsOf(vehicles[it]) },
+            types = ByteArray(count) { vehicles[it].type.ordinal.toByte() },
+            roles = ByteArray(count) { vehicles[it].role.ordinal.toByte() },
+            troubles = ByteArray(count) { vehicles[it].trouble?.let { kind -> (kind.ordinal + 1).toByte() } ?: 0 },
+            segmentFlow = router.segmentFlow(),
             stats =
                 SimulationStats(
                     activeVehicles = vehicles.size,

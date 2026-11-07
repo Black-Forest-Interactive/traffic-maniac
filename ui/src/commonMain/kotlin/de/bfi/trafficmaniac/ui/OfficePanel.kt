@@ -25,11 +25,11 @@ import de.bfi.trafficmaniac.game.UnidentifiedPolicy
 import de.bfi.trafficmaniac.game.formatEuro
 import kotlin.math.roundToInt
 
-private val PanelBackground = Color(0xF21D1F2E)
-private val PanelText = Color(0xFFF1F1F1)
-private val Muted = Color(0xFFB0B3C6)
-private val Active = Color(0xFFE63946)
-private val Idle = Color(0xFF3A3D52)
+private val PanelBackground = ComicTheme.paper
+private val PanelText = ComicTheme.ink
+private val Muted = ComicTheme.muted
+private val Active = ComicTheme.red
+private val Idle = ComicTheme.button
 private const val PERCENT = 100
 private const val HOURS_PER_DAY = 24
 
@@ -52,7 +52,7 @@ fun OfficePanel(
         modifier
             .width(400.dp)
             .padding(12.dp)
-            .background(PanelBackground, RoundedCornerShape(10.dp))
+            .comicPanel()
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -141,7 +141,7 @@ private fun Choice(
             ),
         modifier =
             Modifier
-                .background(if (active) Active else Idle, RoundedCornerShape(6.dp))
+                .comicButton(active)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 8.dp, vertical = 5.dp),
     )

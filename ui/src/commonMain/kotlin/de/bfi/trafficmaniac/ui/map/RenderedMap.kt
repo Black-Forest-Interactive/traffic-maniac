@@ -7,8 +7,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Die statische Karte als fertig gerastertes Bild für eine bestimmte Kamera.
@@ -29,8 +32,16 @@ internal class RenderedMap(
         val worldX = this@RenderedMap.camera.screenToWorldX(0f, width)
         val worldY = this@RenderedMap.camera.screenToWorldY(0f, height)
         val zoom = camera.scale / this@RenderedMap.camera.scale
+        val x = camera.worldToScreenX(worldX, size.width)
+        val y = camera.worldToScreenY(worldY, size.height)
+        if (abs(zoom - 1f) < SAME_ZOOM) {
+            // Gleiche Zoomstufe (Verschieben, Stillstand): auf ganze Pixel runden – dann wird nur kopiert statt
+            // jedes Pixel interpoliert, das spart ohne Grafikkarte rund 30 ms pro Frame
+            drawImage(image, topLeft = Offset(x.roundToInt().toFloat(), y.roundToInt().toFloat()))
+            return@with
+        }
         withTransform({
-            translate(camera.worldToScreenX(worldX, size.width), camera.worldToScreenY(worldY, size.height))
+            translate(x, y)
             scale(zoom, zoom, pivot = Offset.Zero)
         }) {
             drawImage(image)
@@ -38,6 +49,8 @@ internal class RenderedMap(
     }
 
     companion object {
+        private const val SAME_ZOOM = 1e-4f
+
         fun render(
             layers: MapLayers,
             camera: Camera,
@@ -45,6 +58,7 @@ internal class RenderedMap(
             height: Int,
             density: Density,
             showStaticSignals: Boolean,
+            textMeasurer: TextMeasurer? = null,
         ): RenderedMap {
             val image = ImageBitmap(width, height)
             CanvasDrawScope().draw(
@@ -54,7 +68,7 @@ internal class RenderedMap(
                 Size(width.toFloat(), height.toFloat()),
             ) {
                 drawRect(MapStyle.land)
-                drawStaticMap(layers, camera, showStaticSignals)
+                drawStaticMap(layers, camera, showStaticSignals, textMeasurer)
             }
             return RenderedMap(image, camera)
         }

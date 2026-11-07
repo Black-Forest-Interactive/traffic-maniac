@@ -25,11 +25,11 @@ import de.bfi.trafficmaniac.game.PrContract
 import de.bfi.trafficmaniac.game.formatEuro
 import kotlin.math.roundToInt
 
-private val PanelBackground = Color(0xF21D1F2E)
-private val PanelText = Color(0xFFF1F1F1)
-private val Muted = Color(0xFFB0B3C6)
-private val Active = Color(0xFFE63946)
-private val Idle = Color(0xFF3A3D52)
+private val PanelBackground = ComicTheme.paper
+private val PanelText = ComicTheme.ink
+private val Muted = ComicTheme.muted
+private val Active = ComicTheme.red
+private val Idle = ComicTheme.button
 
 /** Haushalt & PR: Agenturvertrag und Kampagne "Totschlagargumente". Abgerechnet wird sonntags. */
 @Composable
@@ -48,7 +48,7 @@ fun BudgetPanel(
         modifier
             .width(380.dp)
             .padding(12.dp)
-            .background(PanelBackground, RoundedCornerShape(10.dp))
+            .comicPanel()
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -57,10 +57,14 @@ fun BudgetPanel(
             "Wöchentlicher Haushalt: +${formatEuro(rules.weeklyAllowance)} (sonntags um Mitternacht)",
             style = muted,
         )
-        BasicText("PR-Agentur – solange bezahlt wird, schreibt die Lokalzeitung Jubel-Stories:", style = text)
+        BasicText(
+            "PR-Agentur (Kosten je Woche) – solange bezahlt wird, schreibt die Lokalzeitung Jubel-Stories:",
+            style = text,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (contract in PrContract.entries) {
-                Choice("${contract.label} (${formatEuro(contract.weeklyCost)}/Woche)", state.prContract == contract) {
+                val price = if (contract.weeklyCost > 0) " ${formatEuro(contract.weeklyCost)}" else ""
+                Choice("${contract.label}$price", state.prContract == contract) {
                     onContract(contract)
                 }
             }
@@ -143,7 +147,7 @@ private fun Choice(
             ),
         modifier =
             Modifier
-                .background(if (active) Active else Idle, RoundedCornerShape(6.dp))
+                .comicButton(active)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 8.dp, vertical = 5.dp),
     )

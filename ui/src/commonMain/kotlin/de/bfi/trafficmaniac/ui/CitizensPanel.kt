@@ -25,12 +25,12 @@ import de.bfi.trafficmaniac.game.HouseholdType
 import de.bfi.trafficmaniac.game.ZoneMood
 import kotlin.math.roundToInt
 
-private val PanelBackground = Color(0xF21D1F2E)
-private val PanelText = Color(0xFFF1F1F1)
-private val Muted = Color(0xFFB0B3C6)
-private val Good = Color(0xFF2DC653)
-private val Bad = Color(0xFFD7263D)
-private val BarTrack = Color(0xFF3A3D52)
+private val PanelBackground = ComicTheme.paper
+private val PanelText = ComicTheme.ink
+private val Muted = ComicTheme.muted
+private val Good = ComicTheme.green
+private val Bad = ComicTheme.red
+private val BarTrack = ComicTheme.track
 private const val PERCENT = 100
 private const val WORST_ZONES = 3
 
@@ -47,7 +47,7 @@ fun CitizensPanel(
         modifier
             .width(380.dp)
             .padding(12.dp)
-            .background(PanelBackground, RoundedCornerShape(10.dp))
+            .comicPanel()
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {

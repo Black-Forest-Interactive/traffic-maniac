@@ -255,6 +255,9 @@ class Vehicle internal constructor(
     /** Panne oder Unfall: steht und wartet auf den Abschleppdienst. */
     internal var disabled = false
 
+    /** Warum das Fahrzeug liegen geblieben ist (für die Darstellung), `null` = alles in Ordnung. */
+    internal var trouble: IncidentKind? = null
+
     /** Einsatzfahrzeug arbeitet am Einsatzort. */
     internal var working = false
 

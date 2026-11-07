@@ -25,9 +25,9 @@ import de.bfi.trafficmaniac.game.FineTier
 import de.bfi.trafficmaniac.game.formatEuro
 import kotlin.math.roundToInt
 
-private val PanelBackground = Color(0xF21D1F2E)
-private val PanelText = Color(0xFFF1F1F1)
-private val Muted = Color(0xFFB0B3C6)
+private val PanelBackground = ComicTheme.paper
+private val PanelText = ComicTheme.ink
+private val Muted = ComicTheme.muted
 private val TierColors = listOf(Color(0xFF2A9D8F), Color(0xFFFFBE0B), Color(0xFFF4A261), Color(0xFFE63946))
 private const val PERCENT = 100
 
@@ -47,7 +47,7 @@ fun CameraStatsPanel(
         modifier
             .width(380.dp)
             .padding(12.dp)
-            .background(PanelBackground, RoundedCornerShape(10.dp))
+            .comicPanel()
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {

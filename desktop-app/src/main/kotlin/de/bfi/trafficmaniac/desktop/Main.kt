@@ -17,6 +17,8 @@ import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.GameInfo
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.GameRunner
+import de.bfi.trafficmaniac.ui.NoSound
+import de.bfi.trafficmaniac.ui.SoundBoard
 import de.bfi.trafficmaniac.ui.TrafficManiacApp
 import java.io.File
 
@@ -48,6 +50,7 @@ fun main(args: Array<String>) {
     val game = city?.let { CityGame(it, config, Balancing.gameRules()) }
     game?.let { repeat(options.warmupMinutes * TICKS_PER_MINUTE * config.ticksPerSecond) { _ -> it.step() } }
     val runner = game?.let { GameRunner(it) }
+    val sound = if (city != null) SynthSoundBoard.open() else NoSound
 
     application {
         runner?.let { LaunchedEffect(it) { it.run() } }
@@ -55,7 +58,7 @@ fun main(args: Array<String>) {
             onCloseRequest = ::exitApplication,
             title = city?.let { "${GameInfo.TITLE} – ${it.name}" } ?: GameInfo.TITLE,
             state = rememberWindowState(size = DpSize(1280.dp, 800.dp)),
-            onKeyEvent = { event -> runner != null && handleKey(event, runner) },
+            onKeyEvent = { event -> runner != null && handleKey(event, runner, sound) },
         ) {
             TrafficManiacApp(
                 city = city,
@@ -64,6 +67,7 @@ fun main(args: Array<String>) {
                 rules = game?.rules ?: GameRules(),
                 onCommand = { game?.submit(it) },
                 onContinueDay = { runner?.acknowledgeReport() },
+                sound = sound,
             )
         }
     }
@@ -90,9 +94,11 @@ private fun parseOptions(args: Array<String>): Options {
     return Options(positional.firstOrNull(), named["--warmup"]?.toInt() ?: 0, named["--peak-trips"]?.toDouble())
 }
 
+/** Leertaste: Pause, Enter: Tagesabschluss schließen, 1–4: Tempo, M: stumm, N: Musik an/aus. */
 private fun handleKey(
     event: KeyEvent,
     runner: GameRunner,
+    sound: SoundBoard,
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val speed = speedKeys[event.key]
@@ -100,6 +106,8 @@ private fun handleKey(
         event.key == Key.Spacebar -> runner.togglePause()
         event.key == Key.Enter -> runner.acknowledgeReport()
         speed != null -> runner.setSpeed(speed)
+        event.key == Key.M -> sound.muted = !sound.muted
+        event.key == Key.N -> sound.music = !sound.music
         else -> return false
     }
     return true
