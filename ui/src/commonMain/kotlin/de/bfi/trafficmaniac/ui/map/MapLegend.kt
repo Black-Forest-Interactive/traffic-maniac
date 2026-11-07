@@ -201,6 +201,7 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
         "Ampeln" to
             listOf(
                 signal("Rot (oben)", SignalState.RED),
+                signal("Rot-Gelb – gleich wird es grün", SignalState.RED_YELLOW),
                 signal("Gelb (Mitte)", SignalState.YELLOW),
                 signal("Grün (unten)", SignalState.GREEN),
                 signal("Ausgefallen – blinkt gelb, rechts vor links", SignalState.FLASHING),

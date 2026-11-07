@@ -105,4 +105,30 @@ class SignalSystemTest {
             time += 1.0
         }
     }
+
+    @Test
+    fun redYellowComesOneSecondBeforeGreenWhileCrossTrafficIsRed() {
+        val west = approachFrom(1)
+        val north = approachFrom(3)
+        var time = 0.0
+        var redYellowSeconds = 0.0
+        var previous = signals.state(west, 0.0)
+        while (time < SignalSystem.CYCLE_SECONDS) {
+            val state = signals.state(west, time)
+            if (state == SignalState.RED_YELLOW) {
+                redYellowSeconds += STEP
+                assertEquals(SignalState.RED, signals.state(north, time), "Querrichtung hat Rot")
+            }
+            if (state == SignalState.GREEN && previous != SignalState.GREEN) {
+                assertEquals(SignalState.RED_YELLOW, previous, "Vor Grün kommt Rot-Gelb")
+            }
+            previous = state
+            time += STEP
+        }
+        assertEquals(SignalSystem.RED_YELLOW_SECONDS, redYellowSeconds, 0.2)
+    }
+
+    private companion object {
+        const val STEP = 0.1
+    }
 }

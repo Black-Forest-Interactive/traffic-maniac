@@ -68,7 +68,7 @@ private fun DrawScope.drawSignalDot(
     val color =
         when (state) {
             SignalState.GREEN -> MapStyle.signalGreen
-            SignalState.RED -> MapStyle.trafficSignal
+            SignalState.RED, SignalState.RED_YELLOW -> MapStyle.trafficSignal
             else -> MapStyle.signalYellow
         }
     drawCircle(color, radius, c)
@@ -90,19 +90,21 @@ private fun DrawScope.drawSignalHead(
     drawRoundRect(Color.White, topLeft, Size(width, height), CornerRadius(width * HEAD_CORNER), style = ink)
     val lamp = r * LAMP_RADIUS
     val spacing = r * LAMP_SPACING
+    // Leuchten von oben: Rot, Gelb, Grün
     val lit =
         when (state) {
-            SignalState.RED -> 0
-            SignalState.YELLOW -> 1
-            SignalState.GREEN -> 2
-            SignalState.FLASHING -> if (blink) 1 else -1
-            else -> -1
+            SignalState.RED -> setOf(0)
+            SignalState.RED_YELLOW -> setOf(0, 1)
+            SignalState.YELLOW -> setOf(1)
+            SignalState.GREEN -> setOf(2)
+            SignalState.FLASHING -> if (blink) setOf(1) else emptySet()
+            else -> emptySet()
         }
     for (k in 0..2) {
-        val color = if (k == lit) LAMP_ON[k] else LAMP_OFF[k]
+        val on = k in lit
         val center = Offset(c.x, c.y + spacing * (1 - k))
-        if (k == lit) drawCircle(LAMP_ON[k].copy(alpha = GLOW_ALPHA), lamp * GLOW, center)
-        drawCircle(color, lamp, center)
+        if (on) drawCircle(LAMP_ON[k].copy(alpha = GLOW_ALPHA), lamp * GLOW, center)
+        drawCircle(if (on) LAMP_ON[k] else LAMP_OFF[k], lamp, center)
     }
 }
 
