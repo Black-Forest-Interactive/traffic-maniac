@@ -38,6 +38,7 @@ fun BudgetPanel(
     rules: GameRules,
     onContract: (PrContract) -> Unit,
     onArguments: (Boolean) -> Unit,
+    onCeremony: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val title = TextStyle(color = PanelText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -70,6 +71,7 @@ fun BudgetPanel(
             Choice("An", state.argumentsCampaign) { onArguments(true) }
             Choice("Aus", !state.argumentsCampaign) { onArguments(false) }
         }
+        PressSection(state, rules, onCeremony)
         BasicText(
             "Unzufrieden: ${(state.unhappyShare * PERCENT).roundToInt()} % der Bürger · " +
                 "Zorn ${state.anger.roundToInt()} · Abwahlindex ${state.recallIndex.roundToInt()}/100",
@@ -91,6 +93,37 @@ fun BudgetPanel(
                 style = muted,
             )
         }
+    }
+}
+
+/** Tonlage der Zeitung, Wirkung und Preis der Story, Spatenstich. */
+@Composable
+private fun PressSection(
+    state: GameState,
+    rules: GameRules,
+    onCeremony: () -> Unit,
+) {
+    val text = TextStyle(color = PanelText, fontSize = 12.sp)
+    val muted = TextStyle(color = Muted, fontSize = 11.sp)
+    val press = state.press
+    BasicText(
+        "Lokalzeitung: ${press.toneLabel} · Reputation ${state.reputation.roundToInt()}/100",
+        style = text.copy(fontWeight = FontWeight.Bold),
+    )
+    val effect = (press.prEffect * PERCENT).roundToInt()
+    BasicText(
+        "Die Story wirkt zu $effect %" +
+            (if (effect < PERCENT) " – bei so viel Leid glaubt der Agentur keiner mehr" else "") +
+            ". Aufschlag für die Lücke zwischen Story und Realität: " +
+            "+${(press.prGapSurcharge * PERCENT).roundToInt()} %",
+        style = muted,
+    )
+    val next = press.nextCeremony
+    if (next != null) {
+        Choice("Spatenstich / Eröffnung (${formatEuro(rules.ceremonyCost)})", active = false, onClick = onCeremony)
+        BasicText("Nächster Anlass: $next", style = muted)
+    } else {
+        BasicText("Heute wurde schon gefeiert – morgen gibt es die nächste Schaufel.", style = muted)
     }
 }
 

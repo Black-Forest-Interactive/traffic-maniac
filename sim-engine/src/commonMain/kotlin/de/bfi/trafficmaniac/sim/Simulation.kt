@@ -55,6 +55,9 @@ class Simulation(
             infrastructure,
         )
 
+    /** Demos, Feste, Märkte, Rad-Korsos und Schwertransporte – ausgelöst vom Spiel. */
+    val events = CityEvents(graph, infrastructure.closures, router, factory, lanes) { pending.addLast(it) }
+
     private val deliveries = Deliveries(graph, config, random, dayStatistics) { parking.secondRowStop(it) }
 
     /** Parkplätze, Straßenrand, Parksuchverkehr und Falschparker. */
@@ -112,6 +115,7 @@ class Simulation(
         move()
         crossNodes()
         incidents.update(time)
+        events.update(time)
         charging.update(time)
         laneChanger.changeLanes(clock.tick)
         if (clock.tick % QUEUE_UPDATE_TICKS == 0L) {
@@ -429,6 +433,7 @@ class Simulation(
             cameras = speedControl.cameras.toList(),
             environment = environment.snapshot,
             incidents = incidents.active.map { IncidentMarker(it.kind, it.x, it.y) },
+            events = events.markers(),
             chargingStations = charging.states(),
             infrastructure = infrastructure.snapshot(),
             parkingLots = parking.states(),

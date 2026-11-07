@@ -19,6 +19,9 @@ internal class Construction(
     var repaired = 0
         private set
 
+    /** Zuletzt fertig gewordene Reparatur – ein Anlass für eine feierliche Wiedereröffnung. */
+    var lastRepaired: String? = null
+
     /** Reparatur beauftragen; `false`, wenn das Geld nicht reicht. */
     fun order(
         case: DamageCase,
@@ -122,6 +125,7 @@ internal class Construction(
             message("Repariert: ${case.place}")
         }
         repaired++
+        lastRepaired = case.place
     }
 
     /** Sekunden bis zur nächsten vollen [hour] Uhr (0, wenn es gerade so weit ist). */

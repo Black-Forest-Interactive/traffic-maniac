@@ -9,6 +9,10 @@ import kotlin.random.Random
 data class NewspaperEdition(
     val day: Int,
     val headlines: List<String>,
+    /** Leserbriefe – satirisch gleichgültig. */
+    val letters: List<String> = emptyList(),
+    /** Tonlage der Ausgabe, z. B. "Jubelpresse" oder "Verriss". */
+    val tone: String = "",
 )
 
 /** Was die Zeitung über einen Tag weiß. */
@@ -24,10 +28,15 @@ internal class DayNews(
     val commute: CommuteStats,
     val maintenance: MaintenanceNews = MaintenanceNews(),
     val parking: ParkingNews = ParkingNews(),
+    val events: EventNews = EventNews(),
+    /** Spatenstiche und Eröffnungen des Tages (schon als Schlagzeile formuliert). */
+    val ceremonies: List<String> = emptyList(),
+    /** Tonlage der Zeitung −1..+1 (siehe [Press]). */
+    val tone: Double = 0.0,
 )
 
 /**
- * Die Pforzheimer Lokalzeitung. Mit PR-Vertrag ist sie freundlich, ohne PR wird sie kritisch –
+ * Die Pforzheimer Lokalzeitung. Ihr Ton kommt aus dem [Press]-Modell: mit PR-Vertrag freundlich, ohne kritisch –
  * Einzelschicksale interessieren die Leserbriefschreiber aber in keinem Fall.
  */
 internal object Newspaper {
@@ -47,13 +56,17 @@ internal object Newspaper {
 
     fun edition(news: DayNews): NewspaperEdition {
         val random = Random(news.report.day)
-        val friendly = news.state.prContract != PrContract.NONE
+        val friendly = news.tone > 0
         val headlines =
             listOfNotNull(
                 recall(news),
+                EventHeadlines.ceremony(news).takeIf { friendly },
+                EventHeadlines.demos(news, friendly),
                 AdministrationHeadlines.collapse(news),
                 ambulance(news),
                 AdministrationHeadlines.bridgeClosed(news),
+                EventHeadlines.corso(news, friendly),
+                EventHeadlines.planned(news),
                 AdministrationHeadlines.truckStuck(news, random),
                 AdministrationHeadlines.crater(news, friendly),
                 AdministrationHeadlines.ripOffSign(news, friendly),
@@ -71,9 +84,17 @@ internal object Newspaper {
                 stuckCommuter(news, random),
                 breakdowns(news, random),
                 charging(news),
-                pr(news, random),
-            ).take(MAX_HEADLINES)
-        return NewspaperEdition(news.report.day, headlines.ifEmpty { listOf(QUIET_DAY.random(random)) })
+                EventHeadlines.heavyTransport(news),
+                EventHeadlines.ceremony(news),
+                EventHeadlines.market(news),
+                pr(friendly, random),
+            ).distinct().take(MAX_HEADLINES)
+        return NewspaperEdition(
+            news.report.day,
+            headlines.ifEmpty { listOf(QUIET_DAY.random(random)) },
+            EventHeadlines.letters(news, friendly, random),
+            Press.toneLabel(news.tone),
+        )
     }
 
     private fun recall(news: DayNews): String? =
@@ -201,10 +222,10 @@ internal object Newspaper {
     }
 
     private fun pr(
-        news: DayNews,
+        friendly: Boolean,
         random: Random,
     ): String? {
-        if (news.state.prContract == PrContract.NONE) return null
+        if (!friendly) return null
         return listOf(
             "Pforzheim wird zur Modellstadt der Verkehrsberuhigung",
             "Umfrage (von der Stadt bezahlt): 9 von 10 Bürgern lieben Tempo 20",

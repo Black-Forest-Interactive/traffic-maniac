@@ -244,7 +244,7 @@ internal class Incidents(
     fun sweep(vehicles: List<Vehicle>) {
         val open = incidents.mapTo(HashSet()) { it.id }
         for (vehicle in vehicles) {
-            if (vehicle.role == VehicleRole.PRIVATE || vehicle.incidentId in open) continue
+            if (vehicle.role == VehicleRole.PRIVATE || vehicle.role.isEvent || vehicle.incidentId in open) continue
             lanes[vehicle.link][vehicle.lane].remove(vehicle)
             vehicle.active = false
             vehicle.removedByIncident = true

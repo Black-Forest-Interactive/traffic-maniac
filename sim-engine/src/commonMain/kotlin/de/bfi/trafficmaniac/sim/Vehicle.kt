@@ -25,6 +25,8 @@ enum class VehicleType(
     val noiseBonusDb: Double,
     /** Achsen – zusammen mit der Masse maßgeblich für den Straßenverschleiß. */
     val axles: Int = 2,
+    /** Mit Muskelkraft unterwegs: kein Kraftstoff, keine Abgase. */
+    val musclePowered: Boolean = false,
 ) {
     CAR(
         4.5f,
@@ -62,6 +64,36 @@ enum class VehicleType(
         exhaustPmPerLiter = 0.2,
         noiseBonusDb = 9.0,
         axles = 3,
+    ),
+
+    /** Rad-Korso: ein Pulk Radfahrer, der die Fahrbahn im Schritttempo belegt (ein "Fahrzeug" je Gruppe). */
+    BIKE_CORSO(
+        14f,
+        2.6f,
+        0.6,
+        1.5,
+        4.5,
+        massKg = 1_200.0,
+        idleFuelPerSecond = 0.0,
+        noxPerLiter = 0.0,
+        exhaustPmPerLiter = 0.0,
+        noiseBonusDb = -12.0,
+        musclePowered = true,
+    ),
+
+    /** Schwertransport samt Polizeibegleitung: lang, breit, schwer und langsam. */
+    HEAVY_TRANSPORT(
+        40f,
+        3.6f,
+        0.3,
+        1.0,
+        7.0,
+        massKg = 110_000.0,
+        idleFuelPerSecond = 0.002,
+        noxPerLiter = 25.0,
+        exhaustPmPerLiter = 0.2,
+        noiseBonusDb = 12.0,
+        axles = 10,
     ),
     ;
 
@@ -178,10 +210,21 @@ enum class VehicleRole(
     POLICE("Polizei"),
     TOW_TRUCK("Abschleppdienst"),
     STREET_SERVICE("Straßenmeisterei"),
+    BIKE_CORSO("Rad-Korso"),
+    HEAVY_TRANSPORT("Schwertransport"),
     ;
 
     /** Blaulicht: darf über Rot und bekommt eine Rettungsgasse. */
     val isEmergency: Boolean get() = this == AMBULANCE || this == POLICE
+
+    /** Fährt im Rahmen eines Ereignisses ([CityEvent]) und gehört zu keinem Einsatz. */
+    val isEvent: Boolean get() = this == BIKE_CORSO || this == HEAVY_TRANSPORT
+
+    /**
+     * Fährt über Rot und nimmt sich die Vorfahrt: Blaulicht, der Korso (ignoriert Ampeln grundsätzlich) und der
+     * Schwertransport (die Polizeibegleitung sichert die Kreuzungen).
+     */
+    val ignoresSignals: Boolean get() = isEmergency || isEvent
 }
 
 /** Ein Fahrzeug im Netz. Position ist die Stoßstange vorn, gemessen ab Beginn des aktuellen Links. */

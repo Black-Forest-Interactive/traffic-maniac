@@ -58,6 +58,12 @@ data class GameState(
     val parkingOffice: ParkingOfficeState = ParkingOfficeState(),
     /** Abschnitte der ausgeschilderten Umleitung. */
     val detourSegments: Set<Int> = emptySet(),
+    /** Spielkalender und laufende Ereignisse. */
+    val events: EventsState = EventsState(),
+    /** Tonlage der Zeitung, PR-Wirkung, nächster Spatenstich. */
+    val press: PressState = PressState(),
+    /** Alle Achievements mit Freischalt-Tag ([achievements] enthält nur die Titel der freigeschalteten). */
+    val achievementList: List<AchievementStatus> = emptyList(),
 )
 
 /**

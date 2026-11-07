@@ -7,10 +7,12 @@ import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.DamageResponse
 import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.game.GameCommand
+import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.PrContract
 import de.bfi.trafficmaniac.game.RepairMethod
 import de.bfi.trafficmaniac.game.Strictness
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.sim.DayReport
 import java.io.File
 import java.util.concurrent.Executors
 import kotlin.math.hypot
@@ -61,6 +63,7 @@ private enum class Strategy(
     REPAIR("reparieren", "Jeden Schaden per Ausschreibung reparieren, wenn das Geld reicht, sonst Planfeststellung"),
     PARKING("parken-weg", "Parkplätze abschaffen, Straßenrand zu Blumenkübeln, 10 Politessen, gnadenlos"),
     EXPENSIVE_PARKING("parken-teuer", "Parken überall 3 €/Std., Brötchentaste weg, 6 Politessen"),
+    CEREMONY("pr-feiern", "Standard-PR und jeden Tag um 11 Uhr ein Spatenstich"),
 }
 
 private fun play(
@@ -76,12 +79,13 @@ private fun play(
         game.submit(GameCommand.SetPrContract(PrContract.PREMIUM))
         game.submit(GameCommand.SetArgumentsCampaign(true))
     }
+    if (strategy == Strategy.CEREMONY) game.submit(GameCommand.SetPrContract(PrContract.STANDARD))
     if (strategy == Strategy.PARKING) abolishParking(game)
     if (strategy == Strategy.EXPENSIVE_PARKING) expensiveParking(game)
     log.append(
         "Tag | Kasse        | Bußgelder    | unzufrieden | Zorn | Abwahl | Reputation | Personal | Stapel | verjährt" +
             " | Zustand | Schäden (offen/ign.) | Klagen     | Parken     | Knöllchen  | Falschp. | Suche max" +
-            " | geparkt (Rand/Platz)\n",
+            " | geparkt (Rand/Platz) | Presse      | Ereignisse\n",
     )
     for (day in 1..days) {
         repeat(HOURS_PER_DAY) {
@@ -90,35 +94,11 @@ private fun play(
         }
         val state = game.state()
         val report = game.simulation.dayReports.last()
-        val reports = state.maintenance.reports
-        log.append(
-            (
-                "%3d | %12s | %12s | %10d%% | %4d | %6d | %10d | %8d | %6d | %8d" +
-                    " | %6d%% | %9d / %-8d | %10s | %10s | %10s | %8d | %6.0f min | %6d / %-6d%s\n"
-            ).format(
-                day,
-                formatEuro(state.balance),
-                formatEuro(state.fineIncome),
-                (state.unhappyShare * PERCENT).roundToInt(),
-                state.anger.roundToInt(),
-                state.recallIndex.roundToInt(),
-                state.reputation.roundToInt(),
-                state.fineOffice.staff,
-                state.fineOffice.backlog,
-                state.fineOffice.expired,
-                state.maintenance.meanConditionPercent,
-                reports.count { it.status == DamageStatus.OPEN },
-                reports.count { it.status == DamageStatus.IGNORED },
-                formatEuro(state.maintenance.lawsuitCosts),
-                formatEuro(state.parkingOffice.feeIncome),
-                formatEuro(state.parkingOffice.ticketIncome),
-                report.illegalParkers,
-                report.parkingSearchMinutes.maxOrNull() ?: 0.0,
-                report.parkedCurb,
-                report.parkedLots,
-                if (state.isGameOver) "  ← ABGEWÄHLT" else "",
-            ),
-        )
+        log.append(dayLine(day, state, report))
+        state.latestEdition?.let { edition ->
+            log.append("      Zeitung: ${edition.headlines.joinToString(" / ")}\n")
+            log.append("      Leserbrief: ${edition.letters.firstOrNull().orEmpty()}\n")
+        }
         if (state.isGameOver) break
     }
     val score = game.state().score
@@ -126,6 +106,45 @@ private fun play(
         "Punkte: ${score.points} (verdient ${formatEuro(score.earnings)} × ${"%.2f".format(score.reputationFactor)})\n",
     )
     return log.toString()
+}
+
+/** Eine Zeile der Tabelle: Kasse, Stimmung, Verwaltung, Parken, Presse und Ereignisse. */
+private fun dayLine(
+    day: Int,
+    state: GameState,
+    report: DayReport,
+): String {
+    val reports = state.maintenance.reports
+    return (
+        "%3d | %12s | %12s | %10d%% | %4d | %6d | %10d | %8d | %6d | %8d" +
+            " | %6d%% | %9d / %-8d | %10s | %10s | %10s | %8d | %6.0f min | %6d / %-6d" +
+            "      | %-11s | %s%s\n"
+    ).format(
+        day,
+        formatEuro(state.balance),
+        formatEuro(state.fineIncome),
+        (state.unhappyShare * PERCENT).roundToInt(),
+        state.anger.roundToInt(),
+        state.recallIndex.roundToInt(),
+        state.reputation.roundToInt(),
+        state.fineOffice.staff,
+        state.fineOffice.backlog,
+        state.fineOffice.expired,
+        state.maintenance.meanConditionPercent,
+        reports.count { it.status == DamageStatus.OPEN },
+        reports.count { it.status == DamageStatus.IGNORED },
+        formatEuro(state.maintenance.lawsuitCosts),
+        formatEuro(state.parkingOffice.feeIncome),
+        formatEuro(state.parkingOffice.ticketIncome),
+        report.illegalParkers,
+        report.parkingSearchMinutes.maxOrNull() ?: 0.0,
+        report.parkedCurb,
+        report.parkedLots,
+        state.press.toneLabel,
+        state.events.totals.entries
+            .joinToString { (kind, count) -> "$count× ${kind.label}" },
+        if (state.isGameOver) "  ← ABGEWÄHLT" else "",
+    )
 }
 
 /** Die Entscheidungen einer Stunde. In den letzten Tagen ([saving]) wird gespart: Neue Blitzer lohnen nicht mehr. */
@@ -143,6 +162,9 @@ private fun playHour(
     if (strategy != Strategy.NOTHING) staffFineOffice(game)
     if (strategy == Strategy.SIGN_CAMERA) signAndCamera(game)
     if (strategy == Strategy.REPAIR) repairEverything(game)
+    if (strategy == Strategy.CEREMONY && game.simulation.gameTime.hour == CEREMONY_HOUR) {
+        game.submit(GameCommand.HoldCeremony)
+    }
 }
 
 /** Schild + absurdes Tempo + Blitzer an jedem gemeldeten Straßenschaden. */
@@ -197,6 +219,7 @@ private fun expensiveParking(game: CityGame) {
 }
 
 private const val EXPENSIVE_FEE = 3.0
+private const val CEREMONY_HOUR = 11
 private const val EXPENSIVE_WARDENS = 4
 private const val SIGN_KMH = 10
 private const val REPAIR_RESERVE = 60_000L

@@ -105,6 +105,8 @@ data class MaintenanceState(
     /** Laufende Wartungsverträge mit dem Turbo-Konsortium. */
     val turboContracts: Int = 0,
     val repaired: Int = 0,
+    /** Zuletzt reparierte Straße, die noch nicht feierlich wiedereröffnet wurde. */
+    val lastRepaired: String? = null,
 )
 
 /** Was das Bauamt heute erlebt hat (für die Zeitung). */
@@ -147,7 +149,7 @@ internal class Maintenance(
     private var lawsuits = 0
     var today = MaintenanceNews()
         private set
-    private val construction = Construction(simulation, rules, treasury, { today }, message)
+    internal val construction = Construction(simulation, rules, treasury, { today }, message)
 
     fun state(time: Double): MaintenanceState =
         MaintenanceState(
@@ -158,6 +160,7 @@ internal class Maintenance(
             lawsuits = lawsuits,
             turboContracts = construction.turboContracts,
             repaired = construction.repaired,
+            lastRepaired = construction.lastRepaired,
         )
 
     fun weeklyCost(): Long =

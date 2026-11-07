@@ -137,6 +137,8 @@ private enum class SidePanel(
     MAINTENANCE("Bauamt"),
     PARKING("Parken"),
     CITIZENS("Bürger"),
+    EVENTS("Kalender"),
+    ACHIEVEMENTS("Achievements"),
 }
 
 @Composable
@@ -180,6 +182,7 @@ private fun SidePanels(
                     rules,
                     onContract = { onCommand(GameCommand.SetPrContract(it)) },
                     onArguments = { onCommand(GameCommand.SetArgumentsCampaign(it)) },
+                    onCeremony = { onCommand(GameCommand.HoldCeremony) },
                 )
             }
 
@@ -203,6 +206,14 @@ private fun SidePanels(
 
             SidePanel.CITIZENS -> {
                 CitizensPanel(frame.game)
+            }
+
+            SidePanel.EVENTS -> {
+                EventsPanel(frame.game.events, frame.current.gameTime.day)
+            }
+
+            SidePanel.ACHIEVEMENTS -> {
+                AchievementsPanel(frame.game.achievementList)
             }
 
             SidePanel.NONE -> {}

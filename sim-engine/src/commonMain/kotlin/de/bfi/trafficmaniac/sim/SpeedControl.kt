@@ -115,6 +115,7 @@ class SpeedControl internal constructor(
     ): Double {
         val limit = graph.linkSpeedLimit[link].toDouble()
         if (vehicle.role.isEmergency) return min(limit * EMERGENCY_SPEED_FACTOR, vehicle.type.maxSpeed)
+        if (vehicle.role.isEvent) return min(limit, vehicle.type.maxSpeed)
         val speeding = vehicle.speedingKmh > 0
         var desired = if (speeding) limit + vehicle.speedingKmh / KMH_PER_MS else limit * vehicle.driver.speedFactor
         desired *= graph.speedFactor(link)
@@ -126,7 +127,7 @@ class SpeedControl internal constructor(
         if (vehicle.knowsCameras && fixedCameraAhead) desired = min(desired, limit * CAMERA_BRAKE_FACTOR)
         // Unsichere werden vor Kreuzungen langsamer
         if (graph.linkLength[link] - vehicle.position < JUNCTION_ZONE) desired *= vehicle.driver.junctionCaution
-        return min(desired, vehicle.type.maxSpeed)
+        return min(min(desired, vehicle.type.maxSpeed), graph.linkEventSpeedCap[link].toDouble())
     }
 
     /** Prüft, ob [vehicle] auf [link] bei der Fahrt von [oldPosition] aus einen Blitzer passiert hat. */
