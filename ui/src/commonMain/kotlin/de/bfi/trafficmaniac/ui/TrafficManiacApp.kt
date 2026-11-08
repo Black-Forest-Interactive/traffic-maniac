@@ -4,9 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
@@ -37,6 +39,8 @@ import de.bfi.trafficmaniac.ui.map.MapFocus
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.MapView
 import de.bfi.trafficmaniac.ui.map.MapZoom
+import de.bfi.trafficmaniac.ui.map.NetworkDebug
+import de.bfi.trafficmaniac.ui.map.NetworkPick
 import de.bfi.trafficmaniac.ui.map.NoSprites
 import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlinx.coroutines.delay
@@ -53,6 +57,7 @@ private const val MIN_PICK_RADIUS_METERS = 6f
 private const val MILLIS_PER_SECOND = 1_000.0
 private const val MONEY_RAIN_WIDTH = 360
 private const val MONEY_RAIN_HEIGHT = 260
+private const val INSPECTOR_MAX_HEIGHT = 560
 
 /** Zustand der Spieloberfläche: Werkzeug, offenes Fenster, Tutorial-Schritt, Kartenansicht, Flug- und Zoomziel. */
 internal class HudState(
@@ -65,6 +70,9 @@ internal class HudState(
     val toggles = MapToggles()
     var focus by mutableStateOf<MapFocus?>(null)
     var zoom by mutableStateOf<MapZoom?>(null)
+
+    /** Im Straßennetz-Modus (F4) angeklickter Knoten bzw. Abschnitt. */
+    var networkPick by mutableStateOf<NetworkPick?>(null)
 
     /** Aktuelle Zoomstufe der Karte – für die Lautstärke der Geräuschkulisse. */
     val zoomLevel = floatArrayOf(1f)
@@ -134,7 +142,7 @@ fun TrafficManiacApp(
                         rules,
                         command,
                         sprites,
-                        input.debug,
+                        input,
                         Modifier.weight(1f),
                     )
                     hudFrame?.let { frame ->
@@ -165,9 +173,11 @@ private fun MapArea(
     rules: GameRules,
     command: (GameCommand) -> Unit,
     sprites: SpriteSource,
-    debug: Boolean,
+    input: HudInput,
     modifier: Modifier = Modifier,
 ) {
+    val networkData = remember(city) { lazy { NetworkDebug(city) } }
+    val network = if (input.network) networkData.value else null
     Box(modifier.fillMaxSize()) {
         MapView(
             focus = hud.focus,
@@ -182,8 +192,14 @@ private fun MapArea(
             onZoom = { hud.zoomLevel[0] = it },
             onMapClick = { x, y, metersPerPixel ->
                 val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
-                commandFor(hud.selection, picker, traffic?.value, x, y, radius)?.let(command)
+                if (network != null) {
+                    hud.networkPick = network.pick(x, y, radius)
+                } else {
+                    commandFor(hud.selection, picker, traffic?.value, x, y, radius)?.let(command)
+                }
             },
+            network = network,
+            networkPick = hud.networkPick,
         )
         MapViewSwitcher(hud.toggles, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
         ZoomControls({ hud.zoom = MapZoom(it) }, Modifier.align(Alignment.CenterEnd).padding(end = 14.dp))
@@ -199,16 +215,38 @@ private fun MapArea(
             hud.step?.let { s ->
                 TutorialPanel(s, game, { hud.step = it }, Modifier.align(Alignment.BottomStart).padding(bottom = 14.dp))
             }
-            if (debug) {
-                DebugOverlay(
-                    frame,
-                    hud.fps,
-                    Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 26.dp),
-                )
-            }
+            DeveloperOverlays(frame, hud, network, input)
             val dock = ToolDockState(hud.selection, hud.availableTools, game.idleTrailers) { hud.selection = it }
             ToolDock(dock, rules, Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
         }
+    }
+}
+
+/** Entwickler-Werkzeuge: Straßennetz-Inspektor (F4) unten links, Rechenzeit und Bildrate (F3) unten rechts. */
+@Composable
+private fun BoxScope.DeveloperOverlays(
+    frame: TrafficFrame,
+    hud: HudState,
+    network: NetworkDebug?,
+    input: HudInput,
+) {
+    if (network != null) {
+        NetworkInspector(
+            network,
+            hud.networkPick,
+            frame.game.speedLimits,
+            { hud.networkPick = it },
+            { x, y -> hud.focus = MapFocus(x, y) },
+            { input.network = false },
+            Modifier.align(Alignment.BottomStart).padding(14.dp).heightIn(max = INSPECTOR_MAX_HEIGHT.dp),
+        )
+    }
+    if (input.debug) {
+        DebugOverlay(
+            frame,
+            hud.fps,
+            Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 26.dp),
+        )
     }
 }
 

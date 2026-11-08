@@ -34,6 +34,7 @@ private val CONTROLS =
         "M · N" to translatable("Ton bzw. Musik aus/an"),
         "F5" to translatable("Schnell speichern (Laden im Startmenü)"),
         "F3" to translatable("Rechenzeit und Bildrate einblenden"),
+        "F4" to translatable("Straßennetz-Modus: Knoten, Abschnitte und Strecken, Klick zeigt die Daten"),
     )
 
 /** Hilfe: Bedienung in Kürze und die Legende aller Kartensymbole. */
