@@ -4,6 +4,8 @@ import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.GameTime
 import de.bfi.trafficmaniac.sim.SimulationConfig
+import de.bfi.trafficmaniac.sim.SnowSpell
+import de.bfi.trafficmaniac.sim.WeatherConfig
 import de.bfi.trafficmaniac.sim.Weekday
 import kotlinx.serialization.Serializable
 
@@ -36,6 +38,8 @@ data class Scenario(
     val tutorial: Boolean = false,
     /** Kurzes Etikett auf der Szenario-Karte im Menü („Empfohlen“, „Knappe Kasse“ …). */
     val tag: String? = null,
+    /** Schnee, Sommerreifen und Räumdienst; `null` = trocken. */
+    val weather: WeatherConfig? = null,
 ) {
     /** Simulation und Spielregeln für dieses Szenario auf [difficulty]. */
     fun apply(
@@ -52,6 +56,7 @@ data class Scenario(
                 vanShare = vanShare ?: config.vanShare,
                 electricShare = electricShare ?: config.electricShare,
                 initialConditionMin = initialConditionMin ?: config.initialConditionMin,
+                weather = weather ?: config.weather,
             )
         val game =
             rules.copy(
@@ -106,6 +111,31 @@ data class Scenario(
                     warmupMinutes = 60,
                     demandFactor = 1.2,
                     startBudget = 180_000,
+                ),
+                Scenario(
+                    id = "erster-schnee",
+                    tag = translatable("Glatteis"),
+                    title = translatable("Berufsverkehr und erster Schnee"),
+                    description =
+                        translatable(
+                            "Montag, 6 Uhr, und es fängt an zu schneien. Die Hälfte fährt noch Sommerreifen, die " +
+                                "Räumfahrzeuge stehen im Stau. Wie viel Winterdienst darf es sein?",
+                        ),
+                    termDays = 5,
+                    startHour = 5.5,
+                    warmupMinutes = 60,
+                    demandFactor = 1.1,
+                    startBudget = 200_000,
+                    weather =
+                        WeatherConfig(
+                            spells =
+                                listOf(
+                                    SnowSpell(day = 0, startHour = 6.0, hours = 6.0, cmPerHour = 1.5),
+                                    SnowSpell(day = 2, startHour = 15.0, hours = 4.0, cmPerHour = 2.5),
+                                ),
+                            summerTyreShare = 0.5,
+                            ploughs = 3,
+                        ),
                 ),
                 Scenario(
                     id = "adventssamstag",

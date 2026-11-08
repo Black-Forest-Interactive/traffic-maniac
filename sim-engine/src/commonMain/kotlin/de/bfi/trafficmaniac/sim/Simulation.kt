@@ -40,6 +40,9 @@ class Simulation(
     private val dt = clock.tickDurationSeconds
     private val dayStatistics = DayStatistics()
 
+    /** Schnee und Räumdienst (nur in Szenarien mit Wetter). */
+    val weather = Weather(city, graph, config, router, factory) { pending.addLast(it) }
+
     /** Pannen, Ölspuren, Unfälle und Einsatzfahrzeuge. */
     private val incidents =
         Incidents(
@@ -53,6 +56,7 @@ class Simulation(
             { pending.addLast(it) },
             dayStatistics,
             infrastructure,
+            weather,
         )
 
     /** Demos, Feste, Märkte, Rad-Korsos und Schwertransporte – ausgelöst vom Spiel. */
@@ -108,6 +112,7 @@ class Simulation(
         if (clock.tick % ENVIRONMENT_TICKS == 0L) {
             updateEnvironment()
             infrastructure.update(ENVIRONMENT_TICKS * dt, time)
+            weather.update(time, ENVIRONMENT_TICKS * dt)
             parking.update(time)
         }
         graph.setQuietHours(gameTime.isQuietHours)
@@ -117,6 +122,7 @@ class Simulation(
         computeAccelerations()
         move()
         crossNodes()
+        weather.updatePloughs(time)
         incidents.update(time)
         events.update(time)
         charging.update(time)
@@ -146,6 +152,11 @@ class Simulation(
             val route = router.route(trip.originNode, trip.destinationNode)
             if (route != null && pending.size < config.maxPendingVehicles) {
                 val vehicle = factory.create(route, trip, time, router.referenceTime(route))
+                // Wer noch nicht umgerüstet hat, fährt mit Sommerreifen
+                val termDay =
+                    ((config.startSecondOfDay % GameTime.SECONDS_PER_DAY + time) / GameTime.SECONDS_PER_DAY)
+                        .toInt()
+                vehicle.summerTyres = random.nextDouble() < weather.summerTyreShare(termDay)
                 router.planFor(vehicle, trip)
                 charging.planTrip(vehicle)
                 parking.planTrip(vehicle, trip)
@@ -446,6 +457,7 @@ class Simulation(
             roles = ByteArray(count) { vehicles[it].role.ordinal.toByte() },
             troubles = ByteArray(count) { vehicles[it].trouble?.let { kind -> (kind.ordinal + 1).toByte() } ?: 0 },
             segmentFlow = router.segmentFlow(),
+            weather = weather.snapshot(),
             stats =
                 SimulationStats(
                     activeVehicles = vehicles.size,

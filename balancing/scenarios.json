@@ -106,5 +106,41 @@
         "initialConditionMin": 0.25,
         "corsoChanceWeekend": null,
         "tutorial": false
+    },
+    {
+        "id": "erster-schnee",
+        "title": "Berufsverkehr und erster Schnee",
+        "description": "Montag, 6 Uhr, und es fängt an zu schneien. Die Hälfte fährt noch Sommerreifen, die Räumfahrzeuge stehen im Stau. Wie viel Winterdienst darf es sein?",
+        "termDays": 5,
+        "startWeekday": "MONDAY",
+        "startHour": 5.5,
+        "warmupMinutes": 60,
+        "demandFactor": 1.1,
+        "startBudget": 200000,
+        "weeklyAllowance": null,
+        "truckShare": null,
+        "vanShare": null,
+        "electricShare": null,
+        "initialConditionMin": null,
+        "corsoChanceWeekend": null,
+        "tutorial": false,
+        "weather": {
+            "spells": [
+                {
+                    "day": 0,
+                    "startHour": 6.0,
+                    "hours": 6.0,
+                    "cmPerHour": 1.5
+                },
+                {
+                    "day": 2,
+                    "startHour": 15.0,
+                    "hours": 4.0,
+                    "cmPerHour": 2.5
+                }
+            ],
+            "summerTyreShare": 0.5,
+            "ploughs": 3
+        }
     }
 ]
