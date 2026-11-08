@@ -41,7 +41,8 @@ private class RailEntry(
 
 private val OFFICES =
     listOf(
-        RailEntry(SidePanel.OFFICE, translatable("Ordnungs\u00ADamt"), Icons.Scale),
+        // Bewusst getrennt: ein weiches Trennzeichen bricht um, zeigt aber keinen Bindestrich („Ordnungs / amt“)
+        RailEntry(SidePanel.OFFICE, translatable("Ordnungs-\namt"), Icons.Scale),
         RailEntry(SidePanel.MAINTENANCE, translatable("Bauamt"), Icons.HardHat),
         RailEntry(SidePanel.PARKING, translatable("Parken"), Icons.Parking),
     )
