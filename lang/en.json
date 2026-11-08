@@ -138,6 +138,8 @@
   "„Warum steht in der Zeitung nichts über MEINE Straße?“": "\"Why is there nothing in the paper about MY street?\"",
   "Innenstadt ({name})": "Town centre ({name})",
   "Stadtrand": "Outskirts",
+  "bis {time}": "until {time}",
+  "unterwegs": "on the move",
   "{kind} – {place} ist bis {endHour}:00 Uhr gesperrt": "{kind} – {place} is closed until {endHour}:00",
   "Rad-Korso startet an der {place} – Radwege werden grundsätzlich ignoriert": "Bike parade sets off at {place} – bike lanes are ignored on principle",
   "Spontandemo auf der {place} – {segments} Abschnitte gesperrt (etwa {hours} Std.)": "Flash demo on {place} – {segments} sections closed (about {hours} h)",

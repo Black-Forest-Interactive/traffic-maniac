@@ -35,6 +35,8 @@ data class ActiveEvent(
     val until: String,
     /** Gesperrte Abschnitte bzw. Route – wohin ein Klick die Karte führt. */
     val segments: Set<Int> = emptySet(),
+    /** Wie weit es ist (0..1): verstrichene Zeit der Sperrung bzw. zurückgelegte Route der Kolonne. */
+    val progress: Float = 0f,
 )
 
 data class EventsState(
@@ -138,11 +140,13 @@ internal class EventPlanner(
             simulation.events.active.map { event ->
                 val until =
                     if (event.kind.isClosure) {
-                        "bis ${GameTime.at(event.endTime, simulation.config.startSecondOfDay).clockText}"
+                        val end = GameTime.at(event.endTime, simulation.config.startSecondOfDay).clockText
+                        tr("bis {time}", "time" to end)
                     } else {
-                        "unterwegs"
+                        tr("unterwegs")
                     }
-                ActiveEvent(event.kind, event.place, running[event.id] ?: "", until, event.segments)
+                val progress = event.progress(simulation.time)
+                ActiveEvent(event.kind, event.place, running[event.id] ?: "", until, event.segments, progress)
             }
         return EventsState(
             calendar = calendar.filter { it.day > now.day || (it.day == now.day && it.endHour > now.hour) },

@@ -35,6 +35,7 @@ import de.bfi.trafficmaniac.sim.IncidentKind
 import de.bfi.trafficmaniac.sim.IncidentMarker
 import de.bfi.trafficmaniac.ui.components.Badge
 import de.bfi.trafficmaniac.ui.components.BadgeTone
+import de.bfi.trafficmaniac.ui.components.Meter
 import de.bfi.trafficmaniac.ui.components.PanelScaffold
 import de.bfi.trafficmaniac.ui.components.PanelSection
 import de.bfi.trafficmaniac.ui.map.MapPicker
@@ -255,6 +256,8 @@ private fun IncidentCard(
                     )
                 }
             }
+            // Sobald alle da sind: wie weit Bergung, Abschleppen oder Reinigung sind
+            incident.workProgress?.let { Meter(it, Modifier.fillMaxWidth(), height = 5.dp, color = accent) }
         }
     }
 }

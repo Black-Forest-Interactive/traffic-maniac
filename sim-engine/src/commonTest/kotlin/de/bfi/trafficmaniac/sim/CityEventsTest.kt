@@ -44,6 +44,16 @@ class CityEventsTest {
     }
 
     @Test
+    fun closureProgressFollowsTheClock() {
+        val simulation = Simulation(crossroads(), config)
+        val start = simulation.time
+        val event = simulation.events.startClosure(EventKind.DEMO, listOf(0), "Westarm", start, start + 600)
+        assertEquals(0f, event.progress(start))
+        assertEquals(0.5f, event.progress(start + 300), 0.001f)
+        assertEquals(1f, event.progress(start + 900), "Nie über 100 %")
+    }
+
+    @Test
     fun overlappingClosuresKeepTheRoadClosedUntilBothAreOver() {
         val simulation = Simulation(crossroads(), config)
         val link = simulation.graph.segmentLinks[0].first()
