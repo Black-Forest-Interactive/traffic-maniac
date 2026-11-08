@@ -4,52 +4,46 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Einheitlicher Comic-Stil für HUD, Werkzeugleiste, Fenster und Dialoge: cremefarbenes Papier, dunkle Tusche,
- * kräftige Akzente und ein versetzter harter Schatten wie im Comicheft.
+ * Brücke vom alten Comic-Stil zum Design „Leitstelle“: Die Namen bleiben, damit noch nicht umgebaute Fenster
+ * weiter funktionieren, die Farben kommen aus [TmColors]. Neue Oberflächen verwenden [TmColors], [TmType] und die
+ * Bausteine aus `ui.components` direkt.
  */
 object ComicTheme {
-    val paper = Color(0xFFFFF4D6)
-    val paperDark = Color(0xFFF3E2B8)
-    val ink = Color(0xFF2B2121)
-    val muted = Color(0xFF7A6A5C)
-    val red = Color(0xFFE63946)
-    val orange = Color(0xFFE76F00)
-    val green = Color(0xFF2A9D58)
-    val button = Color(0xFFFFE2A8)
-    val track = Color(0xFFE8D9B5)
-    val shadow = Color(0x592B2121)
-    val scrim = Color(0x99000000)
+    val paper = TmColors.Surface
+    val paperDark = TmColors.Ground
+    val ink = TmColors.Ink
+    val muted = TmColors.Muted
+    val red = TmColors.Danger
+    val orange = TmColors.Warn
+    val green = TmColors.Success
+    val button = TmColors.Surface
+    val track = TmColors.Track
+    val shadow = TmColors.Ink.copy(alpha = SHADOW_ALPHA)
+    val scrim = TmColors.Scrim
 
-    val panelShape = RoundedCornerShape(12.dp)
+    val panelShape = RoundedCornerShape(14.dp)
     val buttonShape = RoundedCornerShape(8.dp)
-    val border: Dp = 2.5.dp
-    val shadowOffset: Dp = 5.dp
 }
 
-/** Comic-Kasten: Papier, Tusche-Rand und harter Schatten nach rechts unten. */
+/** Fenster über der Karte: weiß, feiner Rahmen, weicher Schatten. [shadow] ist die Schattenhöhe. */
 fun Modifier.comicPanel(
     background: Color = ComicTheme.paper,
-    shadow: Dp = ComicTheme.shadowOffset,
+    shadow: Dp = PANEL_ELEVATION.dp,
 ): Modifier =
-    drawBehind {
-        val offset = shadow.toPx()
-        val radius = CORNER_DP.dp.toPx()
-        drawRoundRect(ComicTheme.shadow, Offset(offset, offset), size, CornerRadius(radius))
-    }.background(background, ComicTheme.panelShape)
-        .border(ComicTheme.border, ComicTheme.ink, ComicTheme.panelShape)
+    shadow(shadow, ComicTheme.panelShape, spotColor = ComicTheme.shadow, ambientColor = ComicTheme.shadow)
+        .background(background, ComicTheme.panelShape)
+        .border(1.dp, TmColors.Line, ComicTheme.panelShape)
 
-/** Knopf im Comic-Stil: aktiv rot, sonst cremegelb, immer mit Tusche-Rand. */
+/** Knopf: gewählt Ampelgelb (Text dunkel), sonst weiß mit feinem Rahmen. */
 fun Modifier.comicButton(active: Boolean): Modifier =
-    background(if (active) ComicTheme.red else ComicTheme.button, ComicTheme.buttonShape)
-        .border(BUTTON_BORDER_DP.dp, ComicTheme.ink, ComicTheme.buttonShape)
+    background(if (active) TmColors.Active else TmColors.Surface, ComicTheme.buttonShape)
+        .border(1.dp, if (active) TmColors.Active else TmColors.Line, ComicTheme.buttonShape)
 
-private const val CORNER_DP = 12
-private const val BUTTON_BORDER_DP = 1.5f
+private const val PANEL_ELEVATION = 6
+private const val SHADOW_ALPHA = 0.18f
