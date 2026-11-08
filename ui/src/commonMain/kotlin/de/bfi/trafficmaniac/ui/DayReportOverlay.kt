@@ -59,9 +59,9 @@ fun DayReportOverlay(
                     "germanName" to report.weekday.germanName,
                     "firstDay" to report.day - firstDay + 1,
                 ),
-                style = TextStyle(color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold),
+                style = TmType.display(22.sp, Ink),
             )
-            val text = TextStyle(color = Ink, fontSize = 15.sp)
+            val text = TmType.text(15.sp, color = Ink)
             DayFigures(report, text)
             BasicText(
                 tr("Fahrten je Stunde"),
@@ -80,7 +80,7 @@ fun DayReportOverlay(
             edition?.let { ComicNewspaper(it, Modifier.padding(top = 8.dp), firstDay) }
             BasicText(
                 tr("Weiter zum nächsten Tag (Enter)"),
-                style = TextStyle(color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                style = TmType.text(15.sp, FontWeight.Bold, Ink),
                 modifier =
                     Modifier
                         .align(Alignment.End)

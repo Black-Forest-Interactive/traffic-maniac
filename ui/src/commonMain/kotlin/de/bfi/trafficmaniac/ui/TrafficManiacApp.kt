@@ -385,14 +385,15 @@ private fun removeCommandFor(
 }
 
 @Composable
-private fun MissingCity(message: String) {
-    Box(
-        modifier = Modifier.fillMaxSize().background(BackgroundColor),
-        contentAlignment = Alignment.Center,
-    ) {
-        BasicText(
-            text = message,
-            style = TextStyle(color = Color.White, fontSize = 18.sp, textAlign = TextAlign.Center),
-        )
+private fun MissingCity(message: String) =
+    TmTheme {
+        Box(
+            modifier = Modifier.fillMaxSize().background(BackgroundColor),
+            contentAlignment = Alignment.Center,
+        ) {
+            BasicText(
+                text = message,
+                style = TmType.text(18.sp, color = TmColors.OnDark).copy(textAlign = TextAlign.Center),
+            )
+        }
     }
-}
