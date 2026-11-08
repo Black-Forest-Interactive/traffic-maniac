@@ -1,6 +1,8 @@
 package de.bfi.trafficmaniac.sim
 
 import de.bfi.trafficmaniac.city.Bounds
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import kotlin.math.exp
 import kotlin.math.log10
 import kotlin.math.max
@@ -8,16 +10,19 @@ import kotlin.math.pow
 
 /** Was der Verkehr in die Luft (und die Ohren) bläst. */
 enum class Pollutant(
-    val label: String,
+    private val labelText: String,
     /** Halbwertszeit im Raster in Sekunden: Abgase verwehen langsam, Lärm ist sofort weg. */
     val halfLifeSeconds: Double,
 ) {
     CO2("CO₂", halfLifeSeconds = 1_800.0),
-    NOX("Stickoxide", halfLifeSeconds = 1_800.0),
-    PM_EXHAUST("Feinstaub (Abgas)", halfLifeSeconds = 3_600.0),
-    PM_TIRES("Feinstaub (Reifen)", halfLifeSeconds = 3_600.0),
-    PM_BRAKES("Feinstaub (Bremsen)", halfLifeSeconds = 3_600.0),
-    NOISE("Lärm", halfLifeSeconds = 60.0),
+    NOX(translatable("Stickoxide"), halfLifeSeconds = 1_800.0),
+    PM_EXHAUST(translatable("Feinstaub (Abgas)"), halfLifeSeconds = 3_600.0),
+    PM_TIRES(translatable("Feinstaub (Reifen)"), halfLifeSeconds = 3_600.0),
+    PM_BRAKES(translatable("Feinstaub (Bremsen)"), halfLifeSeconds = 3_600.0),
+    NOISE(translatable("Lärm"), halfLifeSeconds = 60.0),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Unveränderliche Kopie des Umweltrasters für Oberfläche und Spiel. */

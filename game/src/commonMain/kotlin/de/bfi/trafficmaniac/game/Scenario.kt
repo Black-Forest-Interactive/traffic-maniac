@@ -1,5 +1,7 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.GameTime
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import de.bfi.trafficmaniac.sim.Weekday
@@ -66,10 +68,12 @@ data class Scenario(
             listOf(
                 Scenario(
                     id = "tutorial",
-                    title = "Tutorial: Der erste Tag im Amt",
+                    title = translatable("Tutorial: Der erste Tag im Amt"),
                     description =
-                        "Schritt für Schritt: Tempolimit, Blitzer, Bußgelder, Presse. Die Werkzeuge kommen nach und " +
-                            "nach dazu – ideal für den Einstieg.",
+                        translatable(
+                            "Schritt für Schritt: Tempolimit, Blitzer, Bußgelder, Presse. Die Werkzeuge kommen nach und " +
+                                "nach dazu – ideal für den Einstieg.",
+                        ),
                     termDays = 3,
                     startHour = 7.0,
                     warmupMinutes = 30,
@@ -77,17 +81,21 @@ data class Scenario(
                 ),
                 Scenario(
                     id = "erste-amtszeit",
-                    title = "Erste Amtszeit",
+                    title = translatable("Erste Amtszeit"),
                     description =
-                        "Zwei Wochen im Amt, ein ganz normaler Start am Montag um 5 Uhr. " +
-                            "Lernen Sie die Stadt kennen – und ihre Autofahrer.",
+                        translatable(
+                            "Zwei Wochen im Amt, ein ganz normaler Start am Montag um 5 Uhr. " +
+                                "Lernen Sie die Stadt kennen – und ihre Autofahrer.",
+                        ),
                 ),
                 Scenario(
                     id = "berufsverkehr",
-                    title = "Berufsverkehr Montagmorgen",
+                    title = translatable("Berufsverkehr Montagmorgen"),
                     description =
-                        "Fünf Werktage, die Straßen voller Pendler, die Kasse knapp. " +
-                            "Wer jetzt blitzt, verdient – oder wird abgewählt.",
+                        translatable(
+                            "Fünf Werktage, die Straßen voller Pendler, die Kasse knapp. " +
+                                "Wer jetzt blitzt, verdient – oder wird abgewählt.",
+                        ),
                     termDays = 5,
                     startHour = 6.0,
                     warmupMinutes = 60,
@@ -96,10 +104,12 @@ data class Scenario(
                 ),
                 Scenario(
                     id = "adventssamstag",
-                    title = "Adventssamstag",
+                    title = translatable("Adventssamstag"),
                     description =
-                        "Eine Woche ab Samstag: Einkaufsverkehr, Lieferwagen in zweiter Reihe, " +
-                            "Parkplatznot in der Innenstadt. Ein Fest für die Politessen.",
+                        translatable(
+                            "Eine Woche ab Samstag: Einkaufsverkehr, Lieferwagen in zweiter Reihe, " +
+                                "Parkplatznot in der Innenstadt. Ein Fest für die Politessen.",
+                        ),
                     termDays = 7,
                     startWeekday = Weekday.SATURDAY,
                     startHour = 9.0,
@@ -109,10 +119,12 @@ data class Scenario(
                 ),
                 Scenario(
                     id = "ferienbeginn",
-                    title = "Ferienbeginn",
+                    title = translatable("Ferienbeginn"),
                     description =
-                        "Eine Woche ab Freitag: weniger Pendler, kaum LKW, dafür viel Freizeit – " +
-                            "die Rad-Korsos lassen nicht lange auf sich warten.",
+                        translatable(
+                            "Eine Woche ab Freitag: weniger Pendler, kaum LKW, dafür viel Freizeit – " +
+                                "die Rad-Korsos lassen nicht lange auf sich warten.",
+                        ),
                     termDays = 7,
                     startWeekday = Weekday.FRIDAY,
                     startHour = 12.0,
@@ -123,10 +135,12 @@ data class Scenario(
                 ),
                 Scenario(
                     id = "brueckensanierung",
-                    title = "Brückensanierung",
+                    title = translatable("Brückensanierung"),
                     description =
-                        "Zwei Wochen mit maroden Straßen und bröckelnden Brücken über Enz und Nagold. " +
-                            "Reparieren, Schilder aufstellen oder Planfeststellung bis 2066?",
+                        translatable(
+                            "Zwei Wochen mit maroden Straßen und bröckelnden Brücken über Enz und Nagold. " +
+                                "Reparieren, Schilder aufstellen oder Planfeststellung bis 2066?",
+                        ),
                     initialConditionMin = 0.25,
                     startBudget = 400_000,
                 ),
@@ -136,14 +150,17 @@ data class Scenario(
 
 /** Schwierigkeitsgrad: wie viel Geld es gibt und wie schnell die Bürger die Geduld verlieren. */
 enum class Difficulty(
-    val label: String,
+    private val labelText: String,
     val budgetFactor: Double,
     /** Verschiebt die Schwelle, ab der Unzufriedenheit zu Zorn wird. */
     val angerThresholdShift: Double,
     /** Größer = der Abwahlindex steigt langsamer. */
     val recallFactor: Double,
 ) {
-    EASY("Leicht", budgetFactor = 1.5, angerThresholdShift = 0.08, recallFactor = 1.5),
-    NORMAL("Normal", budgetFactor = 1.0, angerThresholdShift = 0.0, recallFactor = 1.0),
-    HARD("Schwer", budgetFactor = 0.7, angerThresholdShift = -0.05, recallFactor = 0.7),
+    EASY(translatable("Leicht"), budgetFactor = 1.5, angerThresholdShift = 0.08, recallFactor = 1.5),
+    NORMAL(translatable("Normal"), budgetFactor = 1.0, angerThresholdShift = 0.0, recallFactor = 1.0),
+    HARD(translatable("Schwer"), budgetFactor = 0.7, angerThresholdShift = -0.05, recallFactor = 0.7),
+    ;
+
+    val label: String get() = tr(labelText)
 }

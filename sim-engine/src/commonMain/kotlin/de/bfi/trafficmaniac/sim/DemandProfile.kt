@@ -1,5 +1,6 @@
 package de.bfi.trafficmaniac.sim
 
+import de.bfi.trafficmaniac.i18n.tr
 import kotlinx.serialization.Serializable
 
 /**
@@ -15,7 +16,7 @@ class DemandProfile(
     init {
         require(
             listOf(workday, saturday, sunday).all { it.size == GameTime.HOURS_PER_DAY },
-        ) { "24 hourly factors required" }
+        ) { tr("24 hourly factors required") }
     }
 
     fun factor(time: GameTime): Double {

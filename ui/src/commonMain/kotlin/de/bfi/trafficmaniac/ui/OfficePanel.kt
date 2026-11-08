@@ -23,6 +23,8 @@ import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.Strictness
 import de.bfi.trafficmaniac.game.UnidentifiedPolicy
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.tr
 import kotlin.math.roundToInt
 
 private val PanelBackground = ComicTheme.paper
@@ -56,11 +58,11 @@ fun OfficePanel(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        BasicText("Ordnungsamt & Bußgeldstelle", style = title)
+        BasicText(tr("Ordnungsamt & Bußgeldstelle"), style = title)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicText(
-                "Sachbearbeiter: ${office.staff}" +
-                    if (office.hiring > 0) " (+${office.hiring} in Einarbeitung)" else "",
+                tr("Sachbearbeiter: {staff}", "staff" to office.staff) +
+                    if (office.hiring > 0) tr(" (+{hiring} in Einarbeitung)", "hiring" to office.hiring) else "",
                 style = text,
             )
             Choice("−1", false) { onCommand(GameCommand.FireStaff(1)) }
@@ -68,30 +70,61 @@ fun OfficePanel(
             Choice("+5", false) { onCommand(GameCommand.HireStaff(FIVE)) }
         }
         BasicText(
-            "Gehalt ${formatEuro(rules.staffWeeklySalary)}/Woche je Kopf · ${rules.casesPerStaffHour} Fälle/Stunde, " +
-                "werktags ${rules.officeStartHour}–${rules.officeEndHour} Uhr",
+            tr(
+                "Gehalt {staffWeeklySalary}/Woche je Kopf · {casesPerStaffHour} Fälle/Stunde, " +
+                    "werktags {officeStartHour}–{officeEndHour} Uhr",
+                "staffWeeklySalary" to formatEuro(rules.staffWeeklySalary),
+                "casesPerStaffHour" to rules.casesPerStaffHour,
+                "officeStartHour" to rules.officeStartHour,
+                "officeEndHour" to rules.officeEndHour,
+            ),
             style = muted,
         )
-        BasicText("Aufklärungsquote: ${(office.identificationRate * PERCENT).roundToInt()} %", style = text)
+        BasicText(
+            tr(
+                "Aufklärungsquote: {identificationRate} %",
+                "identificationRate" to (office.identificationRate * PERCENT).roundToInt(),
+            ),
+            style = text,
+        )
         val stack =
-            "Aktenstapel: ${office.backlog} Fotos" +
-                if (office.backlog > 0) ", ältestes ${age(office.oldestCaseHours)}" else ""
+            tr("Aktenstapel: {backlog} Fotos", "backlog" to office.backlog) +
+                if (office.backlog >
+                    0
+                ) {
+                    tr(", ältestes {oldestCaseHours}", "oldestCaseHours" to age(office.oldestCaseHours))
+                } else {
+                    ""
+                }
         BasicText(stack, style = text.copy(fontWeight = FontWeight.Bold))
         BasicText(
-            "Bearbeitet ${office.processed} · bezahlt ${office.paid} · " +
-                "verjährt ${office.expired} · eingestellt ${office.dropped}",
+            tr(
+                "Bearbeitet {processed} · bezahlt {paid} · " +
+                    "verjährt {expired} · eingestellt {dropped}",
+                "processed" to office.processed,
+                "paid" to office.paid,
+                "expired" to office.expired,
+                "dropped" to office.dropped,
+            ),
             style = muted,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicText(
-                "Bearbeitungsfrist: ${office.deadlineDays} Tage (max. ${rules.legalMaxDeadlineDays})",
+                tr(
+                    "Bearbeitungsfrist: {deadlineDays} Tage (max. {legalMaxDeadlineDays})",
+                    "deadlineDays" to office.deadlineDays,
+                    "legalMaxDeadlineDays" to rules.legalMaxDeadlineDays,
+                ),
                 style = text,
             )
             Choice("−", false) { onCommand(GameCommand.SetDeadlineDays(office.deadlineDays - 1)) }
             Choice("+", false) { onCommand(GameCommand.SetDeadlineDays(office.deadlineDays + 1)) }
         }
         OfficePolicies(office, onCommand, text)
-        BasicText("Fahrverbote und entzogene Führerscheine: $bannedDrivers", style = muted)
+        BasicText(
+            tr("Fahrverbote und entzogene Führerscheine: {bannedDrivers}", "bannedDrivers" to bannedDrivers),
+            style = muted,
+        )
     }
 }
 
@@ -101,18 +134,22 @@ private fun OfficePolicies(
     onCommand: (GameCommand) -> Unit,
     text: TextStyle,
 ) {
-    BasicText("Schärfe:", style = text)
+    BasicText(tr("Schärfe:"), style = text)
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for (strictness in Strictness.entries) {
             Choice(
-                "${strictness.label} (±${strictness.toleranceKmh.roundToInt()} km/h)",
+                tr(
+                    "{strictness} (±{toleranceKmh} km/h)",
+                    "strictness" to strictness.label,
+                    "toleranceKmh" to strictness.toleranceKmh.roundToInt(),
+                ),
                 office.strictness == strictness,
             ) {
                 onCommand(GameCommand.SetStrictness(strictness))
             }
         }
     }
-    BasicText("Fahrer nicht ermittelbar:", style = text)
+    BasicText(tr("Fahrer nicht ermittelbar:"), style = text)
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for (policy in UnidentifiedPolicy.entries) {
             Choice(policy.label, office.policy == policy) { onCommand(GameCommand.SetUnidentifiedPolicy(policy)) }
@@ -121,7 +158,16 @@ private fun OfficePolicies(
 }
 
 private fun age(hours: Double): String =
-    if (hours < HOURS_PER_DAY) "${hours.roundToInt()} Std." else "${"%.1f".format(hours / HOURS_PER_DAY)} Tage"
+    if (hours <
+        HOURS_PER_DAY
+    ) {
+        tr("{hours} Std.", "hours" to hours.roundToInt())
+    } else {
+        tr(
+            "{hours} Tage",
+            "hours" to formatDecimal(hours / HOURS_PER_DAY),
+        )
+    }
 
 private const val FIVE = 5
 

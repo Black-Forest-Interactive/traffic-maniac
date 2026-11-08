@@ -7,6 +7,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(libs.kotlinx.serialization.cbor)
+            api(project(":i18n"))
         }
     }
 }

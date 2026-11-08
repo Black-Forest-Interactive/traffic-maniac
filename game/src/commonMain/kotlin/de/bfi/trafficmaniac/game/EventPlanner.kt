@@ -4,6 +4,7 @@ import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.RoadClass
 import de.bfi.trafficmaniac.city.RoadSegment
 import de.bfi.trafficmaniac.city.ZoneKind
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.CityEvent
 import de.bfi.trafficmaniac.sim.EventKind
 import de.bfi.trafficmaniac.sim.GameTime
@@ -164,7 +165,12 @@ internal class EventPlanner(
             start(simulation.events.startClosure(entry.kind, entry.segments, entry.place, simulation.time, until))
             today.planned += entry.kind to entry.place
             messenger.say(
-                "${entry.kind.label} – ${entry.place} ist bis ${entry.endHour}:00 Uhr gesperrt",
+                tr(
+                    "{kind} – {place} ist bis {endHour}:00 Uhr gesperrt",
+                    "kind" to entry.kind.label,
+                    "place" to entry.place,
+                    "endHour" to entry.endHour,
+                ),
                 city.placeOfSegments(entry.segments),
             )
         }
@@ -193,7 +199,7 @@ internal class EventPlanner(
             corsosToday++
             today.corsos += place
             messenger.say(
-                "Rad-Korso startet an der $place – Radwege werden grundsätzlich ignoriert",
+                tr("Rad-Korso startet an der {place} – Radwege werden grundsätzlich ignoriert", "place" to place),
                 city.placeOfNode(from),
             )
         }
@@ -233,7 +239,12 @@ internal class EventPlanner(
         demosToday++
         today.demos += place to size
         messenger.say(
-            "Spontandemo auf der $place – ${segments.size} Abschnitte gesperrt (etwa ${hours.roundToInt()} Std.)",
+            tr(
+                "Spontandemo auf der {place} – {segments} Abschnitte gesperrt (etwa {hours} Std.)",
+                "place" to place,
+                "segments" to segments.size,
+                "hours" to hours.roundToInt(),
+            ),
             city.placeOfSegments(segments),
         )
     }
@@ -250,13 +261,21 @@ internal class EventPlanner(
         if (gates.size < 2) return
         val from = gates.random(random)
         val to = gates.maxBy { hypot(it.x - from.x, it.y - from.y) }
-        val place = "von ${places.streetAtNode(from.node)} nach ${places.streetAtNode(to.node)}"
+        val place =
+            tr(
+                "von {node} nach {node2}",
+                "node" to places.streetAtNode(from.node),
+                "node2" to places.streetAtNode(to.node),
+            )
         val event =
             simulation.events.startConvoy(EventKind.HEAVY_TRANSPORT, from.node, to.node, 1, place, simulation.time)
                 ?: return
         start(event)
         today.heavyTransports++
-        messenger.say("Schwertransport mit Polizeibegleitung unterwegs $place", city.placeOfNode(from.node))
+        messenger.say(
+            tr("Schwertransport mit Polizeibegleitung unterwegs {place}", "place" to place),
+            city.placeOfNode(from.node),
+        )
     }
 
     private fun start(event: CityEvent) {
@@ -269,7 +288,11 @@ internal class EventPlanner(
     private fun collectFinished() {
         for (event in simulation.events.drainFinished()) {
             running.remove(event.id)
-            if (event.kind == EventKind.DEMO) messenger.say("Demo auf der ${event.place} löst sich auf")
+            if (event.kind ==
+                EventKind.DEMO
+            ) {
+                messenger.say(tr("Demo auf der {place} löst sich auf", "place" to event.place))
+            }
         }
     }
 

@@ -1,5 +1,7 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.DayReport
 import de.bfi.trafficmaniac.sim.IncidentKind
 import kotlin.math.roundToInt
@@ -102,14 +104,17 @@ internal object Newspaper {
 
     private fun recall(news: DayNews): String? =
         when {
-            news.state.recallIndex >= RECALL_ALARM -> "Gemeinderat: Rücktrittsforderungen werden lauter"
+            news.state.recallIndex >= RECALL_ALARM -> tr("Gemeinderat: Rücktrittsforderungen werden lauter")
             else -> null
         }
 
     private fun ambulance(news: DayNews): String? {
         val worst = news.report.ambulanceMinutes.maxOrNull() ?: return null
         return if (worst >= AMBULANCE_STORY_MINUTES) {
-            "Rettungswagen steckt ${worst.roundToInt()} Minuten im Stau fest – Leserbrief: „Hauptsache, ich komme pünktlich heim“"
+            tr(
+                "Rettungswagen steckt {worst} Minuten im Stau fest – Leserbrief: „Hauptsache, ich komme pünktlich heim“",
+                "worst" to worst.roundToInt(),
+            )
         } else {
             null
         }
@@ -124,14 +129,21 @@ internal object Newspaper {
         return when {
             software >= SOFTWARE_STORY -> {
                 listOf(
-                    "$software Autos bleiben liegen: „Update wird installiert, bitte warten“",
-                    "Bitte Neustart durchführen: $software moderne Autos streiken auf " +
-                        "${news.state.city.genitive} Straßen",
+                    tr(
+                        "{software} Autos bleiben liegen: „Update wird installiert, bitte warten“",
+                        "software" to software,
+                    ),
+                    tr(
+                        "Bitte Neustart durchführen: {software} moderne Autos streiken auf " +
+                            "{genitive} Straßen",
+                        "software" to software,
+                        "genitive" to news.state.city.genitive,
+                    ),
                 ).random(random)
             }
 
             oil >= OIL_STORY -> {
-                "$oil Ölspuren an einem Tag – Straßenmeisterei im Dauereinsatz"
+                tr("{oil} Ölspuren an einem Tag – Straßenmeisterei im Dauereinsatz", "oil" to oil)
             }
 
             else -> {
@@ -147,7 +159,7 @@ internal object Newspaper {
         return if (longest >=
             CHARGING_STORY_MINUTES
         ) {
-            "Ladesäulen-Chaos: E-Autofahrer warten bis zu $longest Minuten"
+            tr("Ladesäulen-Chaos: E-Autofahrer warten bis zu {longest} Minuten", "longest" to longest)
         } else {
             null
         }
@@ -157,16 +169,28 @@ internal object Newspaper {
         if (news.office.expired >=
             EXPIRED_STORY
         ) {
-            "Bußgeldstelle überlastet: ${news.office.expired} Blitzerfotos verjährt"
+            tr("Bußgeldstelle überlastet: {expired} Blitzerfotos verjährt", "expired" to news.office.expired)
         } else {
             null
         }
 
     private fun licenses(news: DayNews): String? =
-        if (news.revocations > 0) "${news.revocations}× Führerschein weg – Pendler steigen aufs Rad um" else null
+        if (news.revocations >
+            0
+        ) {
+            tr("{revocations}× Führerschein weg – Pendler steigen aufs Rad um", "revocations" to news.revocations)
+        } else {
+            null
+        }
 
     private fun letterWave(news: DayNews): String? =
-        if (news.office.paid >= LETTER_WAVE) "Bescheid-Welle: ${news.office.paid} Bußgeldbriefe an einem Tag" else null
+        if (news.office.paid >=
+            LETTER_WAVE
+        ) {
+            tr("Bescheid-Welle: {paid} Bußgeldbriefe an einem Tag", "paid" to news.office.paid)
+        } else {
+            null
+        }
 
     private fun record(
         news: DayNews,
@@ -175,9 +199,17 @@ internal object Newspaper {
         val (measured, limit) = news.recordSpeed ?: return null
         val speed = measured.roundToInt()
         return if (friendly) {
-            "Erfolg für die Verkehrssicherheit: Wir haben einen mit $speed in der $limit-er-Zone erwischt!"
+            tr(
+                "Erfolg für die Verkehrssicherheit: Wir haben einen mit {speed} in der {limit}-er-Zone erwischt!",
+                "speed" to speed,
+                "limit" to limit,
+            )
         } else {
-            "Mit $speed km/h in der $limit-er-Zone – Stadt präsentiert Rekord-Raser"
+            tr(
+                "Mit {speed} km/h in der {limit}-er-Zone – Stadt präsentiert Rekord-Raser",
+                "speed" to speed,
+                "limit" to limit,
+            )
         }
     }
 
@@ -190,13 +222,13 @@ internal object Newspaper {
         val amount = formatEuro(news.finesToday)
         return if (friendly) {
             listOf(
-                "$amount für mehr Sicherheit: Stadt investiert in Verkehrsberuhigung",
-                "Bürgermeister: „Jeder Euro fließt in die Sicherheit unserer Kinder“",
+                tr("{amount} für mehr Sicherheit: Stadt investiert in Verkehrsberuhigung", "amount" to amount),
+                tr("Bürgermeister: „Jeder Euro fließt in die Sicherheit unserer Kinder“"),
             ).random(random)
         } else {
             listOf(
-                "Abzocke-Blitzer? Stadt kassiert $amount an einem Tag",
-                "Leserbrief: „Die Stadt füllt sich die Taschen“ ($amount Bußgeld)",
+                tr("Abzocke-Blitzer? Stadt kassiert {amount} an einem Tag", "amount" to amount),
+                tr("Leserbrief: „Die Stadt füllt sich die Taschen“ ({amount} Bußgeld)", "amount" to amount),
             ).random(random)
         }
     }
@@ -206,10 +238,27 @@ internal object Newspaper {
         val previous = news.previous
         val jam = previous != null && news.report.meanTripMinutes >= previous.meanTripMinutes * TRAFFIC_JAM_RATIO
         return when {
-            late >= HALF_LATE -> "Halb ${news.state.city.name} kam heute zu spät"
-            late >= QUARTER_LATE -> "${(late * PERCENT).roundToInt()} % der Pendler zu spät – Chefs genervt"
-            jam -> "Stau-Rekord: Pendler brauchten im Schnitt ${"%.0f".format(news.report.meanTripMinutes)} Minuten"
-            else -> null
+            late >= HALF_LATE -> {
+                tr("Halb {name} kam heute zu spät", "name" to news.state.city.name)
+            }
+
+            late >= QUARTER_LATE -> {
+                tr(
+                    "{late} % der Pendler zu spät – Chefs genervt",
+                    "late" to (late * PERCENT).roundToInt(),
+                )
+            }
+
+            jam -> {
+                tr(
+                    "Stau-Rekord: Pendler brauchten im Schnitt {meanTripMinutes} Minuten",
+                    "meanTripMinutes" to formatDecimal(news.report.meanTripMinutes, 0),
+                )
+            }
+
+            else -> {
+                null
+            }
         }
     }
 
@@ -219,9 +268,12 @@ internal object Newspaper {
     ): String? {
         if (news.report.stuckRemovals < STUCK_STORY) return null
         return listOf(
-            "${news.report.stuckRemovals} Autofahrer gaben im Stau auf – " +
-                "Leserbrief: „Hauptsache, MEIN Parkplatz bleibt“",
-            "Pendler steht 5 Minuten still und fährt nach Hause – die Nachbarn zucken mit den Schultern",
+            tr(
+                "{stuckRemovals} Autofahrer gaben im Stau auf – " +
+                    "Leserbrief: „Hauptsache, MEIN Parkplatz bleibt“",
+                "stuckRemovals" to news.report.stuckRemovals,
+            ),
+            tr("Pendler steht 5 Minuten still und fährt nach Hause – die Nachbarn zucken mit den Schultern"),
         ).random(random)
     }
 
@@ -232,15 +284,15 @@ internal object Newspaper {
     ): String? {
         if (!friendly) return null
         return listOf(
-            "${city.name} wird zur Modellstadt der Verkehrsberuhigung",
-            "Umfrage (von der Stadt bezahlt): 9 von 10 Bürgern lieben Tempo 20",
-            "Spatenstich für das neue Verkehrskonzept – Fertigstellung voraussichtlich 2066",
+            tr("{name} wird zur Modellstadt der Verkehrsberuhigung", "name" to city.name),
+            tr("Umfrage (von der Stadt bezahlt): 9 von 10 Bürgern lieben Tempo 20"),
+            tr("Spatenstich für das neue Verkehrskonzept – Fertigstellung voraussichtlich 2066"),
         ).random(random)
     }
 
     private fun quietDay(city: CityTexts) =
         listOf(
-            "Ruhiger Tag in ${city.name} – Verkehr fließt, niemand regt sich auf",
-            "${city.nickname} im Glück: Alle kamen pünktlich an",
+            tr("Ruhiger Tag in {name} – Verkehr fließt, niemand regt sich auf", "name" to city.name),
+            tr("{nickname} im Glück: Alle kamen pünktlich an", "nickname" to city.nickname),
         )
 }

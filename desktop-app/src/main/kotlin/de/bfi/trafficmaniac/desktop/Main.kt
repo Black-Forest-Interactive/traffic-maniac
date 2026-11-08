@@ -26,6 +26,7 @@ import de.bfi.trafficmaniac.game.HighscoreEntry
 import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.CityChoice
 import de.bfi.trafficmaniac.ui.MainMenu
 import de.bfi.trafficmaniac.ui.NoSound
@@ -98,8 +99,12 @@ private class Library(
 
 private fun missingCitiesMessage(): String {
     val missing = CityPacks.missingMaps().joinToString(" ") { it.name }.ifEmpty { "pforzheim" }
-    return "Keine Stadt mit Karte gefunden (Ordner ${File(CityPacks.DIRECTORY).absolutePath}).\n\n" +
-        "Karte erzeugen mit: scripts/import-city.sh $missing"
+    return tr(
+        "Keine Stadt mit Karte gefunden (Ordner {absolutePath}).\n\n" +
+            "Karte erzeugen mit: scripts/import-city.sh {missing}",
+        "absolutePath" to File(CityPacks.DIRECTORY).absolutePath,
+        "missing" to missing,
+    )
 }
 
 /** Menü oder laufendes Spiel; nach der Wertung geht es zurück ins Menü. */
@@ -127,7 +132,7 @@ private fun Game(
         userData.save(settings)
     }
     val start: (Scenario) -> Unit = { scenario ->
-        loading = "${scenario.title}: ${pack.name} wird vorbereitet …"
+        loading = tr("{title}: {name} wird vorbereitet …", "title" to tr(scenario.title), "name" to pack.name)
         scope.launch {
             session = withContext(Dispatchers.Default) { Session.start(pack, scenario, settings, options) }
             loading = null
@@ -135,10 +140,10 @@ private fun Game(
     }
     LaunchedEffect(Unit) { options.scenario?.let { id -> library.scenarios.firstOrNull { it.id == id }?.let(start) } }
     val load: (SaveInfo) -> Unit = { info ->
-        loading = "Spielstand wird geladen …"
+        loading = tr("Spielstand wird geladen …")
         scope.launch {
             val loaded = resume(library, info)
-            loading = if (loaded == null) "Dieser Spielstand passt nicht mehr zum Spiel." else null
+            loading = if (loaded == null) tr("Dieser Spielstand passt nicht mehr zum Spiel.") else null
             session = loaded
             if (loaded == null) {
                 delay(NOTICE_MILLIS)
@@ -246,7 +251,14 @@ private fun CoroutineScope.save(
     launch(Dispatchers.IO) {
         runCatching { session.save(saves, id) }.onFailure {
             println("Speichern fehlgeschlagen: $it")
-            session.runner.paused { game -> game.announce("Speichern fehlgeschlagen: ${it.message}") }
+            session.runner.paused { game ->
+                game.announce(
+                    tr(
+                        "Speichern fehlgeschlagen: {message}",
+                        "message" to it.message,
+                    ),
+                )
+            }
         }
     }
 }

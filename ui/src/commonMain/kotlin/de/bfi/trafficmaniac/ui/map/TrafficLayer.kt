@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.game.ZoneMood
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.ChargingStationState
 import de.bfi.trafficmaniac.sim.EnvironmentSnapshot
 import de.bfi.trafficmaniac.sim.FLAG_DISABLED
@@ -197,12 +199,15 @@ private const val MARKER_STRIPE_GAP = 0.6f
 
 /** Umwelt-Ebene der Karte. */
 enum class EnvironmentLayer(
-    val label: String,
+    private val labelText: String,
 ) {
-    NONE("Umwelt"),
-    NOISE("Lärm"),
-    AIR("Luft"),
+    NONE(translatable("Umwelt")),
+    NOISE(translatable("Lärm")),
+    AIR(translatable("Luft")),
     CO2("CO₂"),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /**

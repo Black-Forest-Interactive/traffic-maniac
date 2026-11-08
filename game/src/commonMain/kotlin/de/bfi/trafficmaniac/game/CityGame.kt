@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.city.CityMap
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.EventKind
 import de.bfi.trafficmaniac.sim.IncidentKind
 import de.bfi.trafficmaniac.sim.Simulation
@@ -163,7 +164,7 @@ class CityGame(
         press.hourPassed(unhappyShare)
         events.hourPassed(politics.anger, drivers.bannedCount, moods)
         achievements.check(hourlyFacts(), simulation.gameTime.day)
-        if (isGameOver) message("Der Gemeinderat hat Ihnen das Vertrauen entzogen. Sie sind abgewählt!")
+        if (isGameOver) message(tr("Der Gemeinderat hat Ihnen das Vertrauen entzogen. Sie sind abgewählt!"))
     }
 
     private fun hourlyFacts(): AchievementFacts {
@@ -237,7 +238,7 @@ class CityGame(
         recordToday = null
         if (works.laserCount > 0) treasury.charge(works.laserCount * rules.laserDailyCost)
         if (report.weekday == Weekday.SUNDAY) budgetRound()
-        if (isTermOver) message("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!")
+        if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
     }
 
     /** Sonntag um Mitternacht: Haushalt überweisen, PR, Kampagne und Gehälter bezahlen. */
@@ -259,7 +260,11 @@ class CityGame(
         treasury.charge(costs)
         lastBudgetRound = round
         message(
-            "Haushaltsrunde: +${formatEuro(round.allowance)} Haushalt, −${formatEuro(costs)} PR, Gehälter und Erhalt",
+            tr(
+                "Haushaltsrunde: +{allowance} Haushalt, −{costs} PR, Gehälter und Erhalt",
+                "allowance" to formatEuro(round.allowance),
+                "costs" to formatEuro(costs),
+            ),
         )
     }
 
@@ -306,13 +311,19 @@ class CityGame(
 
             is GameCommand.SetPrContract -> {
                 prContract = command.contract
-                message("PR-Vertrag: ${command.contract.label}")
+                message(tr("PR-Vertrag: {contract}", "contract" to command.contract.label))
             }
 
             is GameCommand.SetArgumentsCampaign -> {
                 argumentsCampaign = command.enabled
                 message(
-                    if (command.enabled) "„Wer sich ans Tempo hält, hat nichts zu befürchten.“" else "Kampagne beendet",
+                    if (command.enabled) {
+                        tr(
+                            "„Wer sich ans Tempo hält, hat nichts zu befürchten.“",
+                        )
+                    } else {
+                        tr("Kampagne beendet")
+                    },
                 )
             }
 
@@ -335,17 +346,17 @@ class CityGame(
             is GameCommand.SetStrictness -> {
                 office.strictness = command.strictness
                 simulation.speedControl.toleranceKmh = command.strictness.toleranceKmh
-                message("Ordnungsamt: ${command.strictness.label}")
+                message(tr("Ordnungsamt: {strictness}", "strictness" to command.strictness.label))
             }
 
             is GameCommand.SetUnidentifiedPolicy -> {
                 office.policy = command.policy
-                message("Fahrer nicht ermittelbar: ${command.policy.label}")
+                message(tr("Fahrer nicht ermittelbar: {policy}", "policy" to command.policy.label))
             }
 
             is GameCommand.SetDeadlineDays -> {
                 office.deadlineDays = command.days
-                message("Bearbeitungsfrist: ${office.deadlineDays} Tage")
+                message(tr("Bearbeitungsfrist: {deadlineDays} Tage", "deadlineDays" to office.deadlineDays))
             }
 
             else -> {
@@ -363,7 +374,7 @@ class CityGame(
 
             is GameCommand.SetMaintenanceBudget -> {
                 maintenance.budget = command.budget
-                message("Erhaltungsbudget: ${command.budget.label}")
+                message(tr("Erhaltungsbudget: {budget}", "budget" to command.budget.label))
             }
 
             is GameCommand.SetDetour -> {

@@ -4,6 +4,8 @@ import de.bfi.trafficmaniac.city.Facility
 import de.bfi.trafficmaniac.city.FacilityKind
 import de.bfi.trafficmaniac.city.Zone
 import de.bfi.trafficmaniac.city.ZoneKind
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.random.Random
@@ -40,13 +42,16 @@ data class ParkingSummary(
 )
 
 enum class ParkingViolationKind(
-    val label: String,
+    private val labelText: String,
 ) {
     /** Nach langer Suche "nur kurz" irgendwo abgestellt. */
-    ILLEGAL("Falschparker"),
+    ILLEGAL(translatable("Falschparker")),
 
     /** Lieferwagen in zweiter Reihe. */
-    SECOND_ROW("zweite Reihe"),
+    SECOND_ROW(translatable("zweite Reihe")),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Ein Parkverstoß – ob er ein Knöllchen gibt, entscheiden die Politessen im Spiel. */

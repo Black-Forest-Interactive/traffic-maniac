@@ -2,6 +2,8 @@ package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.city.Zone
 import de.bfi.trafficmaniac.city.ZoneKind
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.EnvironmentSnapshot
 import de.bfi.trafficmaniac.sim.Pollutant
 import de.bfi.trafficmaniac.sim.TripResult
@@ -10,15 +12,18 @@ import kotlin.math.pow
 
 /** Haushaltstypen gewichten die Bedürfnisse unterschiedlich. */
 enum class HouseholdType(
-    val label: String,
+    private val labelText: String,
     val speedWeight: Double,
     val mobilityWeight: Double,
     val quietWeight: Double,
     val airWeight: Double,
 ) {
-    COMMUTER("Pendler", speedWeight = 0.5, mobilityWeight = 0.3, quietWeight = 0.1, airWeight = 0.1),
-    FAMILY("Familien", speedWeight = 0.25, mobilityWeight = 0.2, quietWeight = 0.25, airWeight = 0.3),
-    RETIREE("Rentner", speedWeight = 0.1, mobilityWeight = 0.2, quietWeight = 0.4, airWeight = 0.3),
+    COMMUTER(translatable("Pendler"), speedWeight = 0.5, mobilityWeight = 0.3, quietWeight = 0.1, airWeight = 0.1),
+    FAMILY(translatable("Familien"), speedWeight = 0.25, mobilityWeight = 0.2, quietWeight = 0.25, airWeight = 0.3),
+    RETIREE(translatable("Rentner"), speedWeight = 0.1, mobilityWeight = 0.2, quietWeight = 0.4, airWeight = 0.3),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Stimmung eines Wohngebiets. Alle Bedürfnisse werden nur aus der *eigenen* Erfahrung bewertet. */

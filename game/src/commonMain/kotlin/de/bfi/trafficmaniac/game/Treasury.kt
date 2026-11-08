@@ -1,5 +1,7 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.tr
+
 /** Die Stadtkasse. */
 internal class Treasury(
     startBudget: Long,
@@ -57,7 +59,7 @@ internal class Treasury(
         what: String,
     ): Boolean {
         if (balance < cost) {
-            message("Zu wenig Geld für $what (${formatEuro(cost)})")
+            message(tr("Zu wenig Geld für {what} ({cost})", "what" to what, "cost" to formatEuro(cost)))
             return false
         }
         charge(cost)
@@ -66,14 +68,6 @@ internal class Treasury(
 }
 
 /** "12.345 €" */
-fun formatEuro(amount: Long): String {
-    val digits =
-        kotlin.math
-            .abs(amount)
-            .toString()
-            .reversed()
-            .chunked(3)
-            .joinToString(".")
-            .reversed()
-    return (if (amount < 0) "-" else "") + "$digits €"
-}
+fun formatEuro(amount: Long): String =
+    de.bfi.trafficmaniac.i18n
+        .formatEuro(amount)

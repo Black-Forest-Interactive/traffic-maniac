@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.NewspaperEdition
+import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.DayReport
 import de.bfi.trafficmaniac.sim.GameTime
 
@@ -54,18 +56,40 @@ fun DayReportOverlay(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             BasicText(
-                "Tagesabschluss: ${report.weekday.germanName}, Tag ${report.day - firstDay + 1}",
+                tr(
+                    "Tagesabschluss: {germanName}, Tag {firstDay}",
+                    "germanName" to report.weekday.germanName,
+                    "firstDay" to report.day - firstDay + 1,
+                ),
                 style = TextStyle(color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold),
             )
             val text = TextStyle(color = Ink, fontSize = 15.sp)
-            BasicText("Fahrten gestartet: ${report.tripsStarted} · angekommen: ${report.tripsCompleted}", style = text)
             BasicText(
-                "Ø Fahrzeit: ${"%.1f".format(report.meanTripMinutes)} min · aufgegeben: ${report.stuckRemovals}",
+                tr(
+                    "Fahrten gestartet: {tripsStarted} · angekommen: {tripsCompleted}",
+                    "tripsStarted" to report.tripsStarted,
+                    "tripsCompleted" to report.tripsCompleted,
+                ),
                 style = text,
             )
-            BasicText("Spitze: ${report.peakVehicles} Fahrzeuge gleichzeitig um ${report.peakHour} Uhr", style = text)
             BasicText(
-                "Fahrten je Stunde",
+                tr(
+                    "Ø Fahrzeit: {meanTripMinutes} min · aufgegeben: {stuckRemovals}",
+                    "meanTripMinutes" to formatDecimal(report.meanTripMinutes),
+                    "stuckRemovals" to report.stuckRemovals,
+                ),
+                style = text,
+            )
+            BasicText(
+                tr(
+                    "Spitze: {peakVehicles} Fahrzeuge gleichzeitig um {peakHour} Uhr",
+                    "peakVehicles" to report.peakVehicles,
+                    "peakHour" to report.peakHour,
+                ),
+                style = text,
+            )
+            BasicText(
+                tr("Fahrten je Stunde"),
                 style = text.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -80,7 +104,7 @@ fun DayReportOverlay(
             }
             edition?.let { ComicNewspaper(it, Modifier.padding(top = 8.dp), firstDay) }
             BasicText(
-                "Weiter zum nächsten Tag (Enter)",
+                tr("Weiter zum nächsten Tag (Enter)"),
                 style = TextStyle(color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold),
                 modifier =
                     Modifier

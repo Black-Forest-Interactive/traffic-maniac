@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.HouseholdType
 import de.bfi.trafficmaniac.game.ZoneMood
+import de.bfi.trafficmaniac.i18n.tr
 import kotlin.math.roundToInt
 
 private val PanelBackground = ComicTheme.paper
@@ -51,18 +52,31 @@ fun CitizensPanel(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        BasicText("Bürger", style = TextStyle(color = PanelText, fontSize = 16.sp, fontWeight = FontWeight.Bold))
-        BasicText("Unzufrieden: ${(state.unhappyShare * PERCENT).roundToInt()} % (Zorn ab 35 %)", style = text)
-        BasicText("Bedürfnisse im Mittel", style = text.copy(fontWeight = FontWeight.Bold))
-        Need("Schnell am Ziel", weighted(moods) { it.speedSatisfaction })
-        Need("Mobilität (Bußgelder)", weighted(moods) { it.mobilitySatisfaction })
-        Need("Ruhe", weighted(moods) { it.quietSatisfaction })
-        Need("Frische Luft", weighted(moods) { it.airSatisfaction })
-        BasicText("Zufriedenheit je Haushaltstyp", style = text.copy(fontWeight = FontWeight.Bold))
+        BasicText(tr("Bürger"), style = TextStyle(color = PanelText, fontSize = 16.sp, fontWeight = FontWeight.Bold))
+        BasicText(
+            tr(
+                "Unzufrieden: {unhappyShare} % (Zorn ab 35 %)",
+                "unhappyShare" to (state.unhappyShare * PERCENT).roundToInt(),
+            ),
+            style = text,
+        )
+        BasicText(tr("Bedürfnisse im Mittel"), style = text.copy(fontWeight = FontWeight.Bold))
+        Need(tr("Schnell am Ziel"), weighted(moods) { it.speedSatisfaction })
+        Need(tr("Mobilität (Bußgelder)"), weighted(moods) { it.mobilitySatisfaction })
+        Need(tr("Ruhe"), weighted(moods) { it.quietSatisfaction })
+        Need(tr("Frische Luft"), weighted(moods) { it.airSatisfaction })
+        BasicText(tr("Zufriedenheit je Haushaltstyp"), style = text.copy(fontWeight = FontWeight.Bold))
         for (type in HouseholdType.entries) Need(type.label, weighted(moods) { typeSatisfaction(it, type) })
-        BasicText("Hier brodelt es am meisten", style = text.copy(fontWeight = FontWeight.Bold))
+        BasicText(tr("Hier brodelt es am meisten"), style = text.copy(fontWeight = FontWeight.Bold))
         for (mood in moods.sortedBy { it.satisfaction }.take(WORST_ZONES)) {
-            BasicText("Gebiet ${mood.zoneId}: ${(mood.satisfaction * PERCENT).roundToInt()} % zufrieden", style = muted)
+            BasicText(
+                tr(
+                    "Gebiet {zoneId}: {satisfaction} % zufrieden",
+                    "zoneId" to mood.zoneId,
+                    "satisfaction" to (mood.satisfaction * PERCENT).roundToInt(),
+                ),
+                style = muted,
+            )
         }
     }
 }

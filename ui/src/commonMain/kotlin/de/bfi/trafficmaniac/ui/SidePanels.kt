@@ -23,6 +23,8 @@ import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.TrafficFrame
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.IncidentKind
 import de.bfi.trafficmaniac.sim.IncidentMarker
 import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
@@ -32,19 +34,22 @@ import kotlin.math.roundToInt
 
 /** Einblendbare Fenster rechts oben. */
 internal enum class SidePanel(
-    val label: String,
+    private val labelText: String,
 ) {
     NONE(""),
-    CAMERAS("Blitzer-Statistik"),
-    BUDGET("Haushalt & PR"),
-    OFFICE("Ordnungsamt"),
-    MAINTENANCE("Bauamt"),
-    PARKING("Parken"),
-    CITIZENS("Bürger"),
-    EVENTS("Kalender"),
-    EMERGENCIES("Einsätze"),
-    ACHIEVEMENTS("Achievements"),
-    HELP("Legende ?"),
+    CAMERAS(translatable("Blitzer-Statistik")),
+    BUDGET(translatable("Haushalt & PR")),
+    OFFICE(translatable("Ordnungsamt")),
+    MAINTENANCE(translatable("Bauamt")),
+    PARKING(translatable("Parken")),
+    CITIZENS(translatable("Bürger")),
+    EVENTS(translatable("Kalender")),
+    EMERGENCIES(translatable("Einsätze")),
+    ACHIEVEMENTS(translatable("Achievements")),
+    HELP(translatable("Legende ?")),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Einblendbare Karten-Ebenen: Umwelt, Zufriedenheit und Straßenzustand. */
@@ -78,16 +83,24 @@ internal fun SidePanels(
     Column(modifier, horizontalAlignment = Alignment.End) {
         // Bricht in eine zweite Zeile um, statt das HUD links oben zu überdecken
         FlowRow(Modifier.widthIn(max = BUTTON_ROW_WIDTH.dp), horizontalArrangement = Arrangement.End) {
-            onMenu?.let { SmallButton("Menü", it) }
-            onSave?.let { SmallButton("Speichern", it) }
+            onMenu?.let { SmallButton(tr("Menü"), it) }
+            onSave?.let { SmallButton(tr("Speichern"), it) }
             val layer = toggles.environmentLayer
-            SmallButton(if (layer == EnvironmentLayer.NONE) "Umwelt" else "Umwelt: ${layer.label}") {
+            SmallButton(
+                if (layer ==
+                    EnvironmentLayer.NONE
+                ) {
+                    tr("Umwelt")
+                } else {
+                    tr("Umwelt: {layer}", "layer" to layer.label)
+                },
+            ) {
                 toggles.nextEnvironmentLayer()
             }
-            SmallButton(if (toggles.showMoods) "Zufriedenheit ausblenden" else "Zufriedenheit") {
+            SmallButton(if (toggles.showMoods) tr("Zufriedenheit ausblenden") else tr("Zufriedenheit")) {
                 toggles.showMoods = !toggles.showMoods
             }
-            SmallButton(if (toggles.showCondition) "Zustand ausblenden" else "Zustand") {
+            SmallButton(if (toggles.showCondition) tr("Zustand ausblenden") else tr("Zustand")) {
                 toggles.showCondition = !toggles.showCondition
             }
             for (option in SidePanel.entries.drop(1)) {
@@ -198,18 +211,21 @@ private fun EmergencyPanel(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        BasicText("Einsätze (${incidents.size})", style = title)
-        if (incidents.isEmpty()) BasicText("Alles ruhig – kein Blaulicht unterwegs.", style = muted)
+        BasicText(tr("Einsätze ({incidents})", "incidents" to incidents.size), style = title)
+        if (incidents.isEmpty()) BasicText(tr("Alles ruhig – kein Blaulicht unterwegs."), style = muted)
         val sorted = incidents.sortedWith(compareBy({ it.kind != IncidentKind.ACCIDENT }, { -it.startTime }))
         for (incident in sorted.take(MAX_ROWS)) {
             val minutes = ((now - incident.startTime) / SECONDS_PER_MINUTE).roundToInt()
             val color = if (incident.kind == IncidentKind.ACCIDENT) ComicTheme.red else ComicTheme.ink
             Column(Modifier.clickable { onShow(MapPlace(incident.x, incident.y)) }) {
-                BasicText("▸ ${incident.kind.label} – seit $minutes min", style = text.copy(color = color))
+                BasicText(
+                    tr("▸ {kind} – seit {minutes} min", "kind" to incident.kind.label, "minutes" to minutes),
+                    style = text.copy(color = color),
+                )
                 val details =
                     listOfNotNull(
                         incident.onScene.takeIf { it.isNotEmpty() }?.let {
-                            "vor Ort: " +
+                            tr("vor Ort: ") +
                                 it.joinToString { r -> r.label }
                         },
                         incident.onTheWay.takeIf { it.isNotEmpty() }?.let {
@@ -220,7 +236,11 @@ private fun EmergencyPanel(
                 if (details.isNotEmpty()) BasicText(details.joinToString(" · "), style = muted)
             }
         }
-        if (incidents.size > MAX_ROWS) BasicText("… und ${incidents.size - MAX_ROWS} weitere", style = muted)
+        if (incidents.size >
+            MAX_ROWS
+        ) {
+            BasicText(tr("… und {incidents} weitere", "incidents" to incidents.size - MAX_ROWS), style = muted)
+        }
     }
 }
 

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.AchievementStatus
 import de.bfi.trafficmaniac.game.EventsState
+import de.bfi.trafficmaniac.i18n.tr
 
 private val PanelBackground = ComicTheme.paper
 private val PanelText = ComicTheme.ink
@@ -47,19 +48,20 @@ fun EventsPanel(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        BasicText("Kalender & Ereignisse", style = title)
-        BasicText("Jetzt", style = heading)
-        if (events.active.isEmpty()) BasicText("Alles ruhig.", style = muted)
+        BasicText(tr("Kalender & Ereignisse"), style = title)
+        BasicText(tr("Jetzt"), style = heading)
+        if (events.active.isEmpty()) BasicText(tr("Alles ruhig."), style = muted)
         for (event in events.active) {
             BasicText(
                 "▸ ${event.kind.label}: ${event.place} (" +
-                    (if (event.since.isNotEmpty()) "seit ${event.since}, " else "") + "${event.until})",
+                    (if (event.since.isNotEmpty()) tr("seit {since}, ", "since" to event.since) else "") +
+                    "${event.until})",
                 style = text.copy(color = Highlight),
                 modifier = Modifier.clickable { onShow(event.segments) },
             )
         }
-        BasicText("Geplant", style = heading)
-        if (events.calendar.isEmpty()) BasicText("Keine Termine mehr in dieser Amtszeit.", style = muted)
+        BasicText(tr("Geplant"), style = heading)
+        if (events.calendar.isEmpty()) BasicText(tr("Keine Termine mehr in dieser Amtszeit."), style = muted)
         for (entry in events.calendar.take(CALENDAR_ROWS)) {
             val day =
                 if (entry.day ==
@@ -67,22 +69,36 @@ fun EventsPanel(
                 ) {
                     "heute"
                 } else {
-                    "${entry.weekday.germanName} (Tag ${entry.day - firstDay + 1})"
+                    tr(
+                        "{germanName} (Tag {firstDay})",
+                        "germanName" to entry.weekday.germanName,
+                        "firstDay" to entry.day - firstDay + 1,
+                    )
                 }
             BasicText(
-                "$day ${entry.startHour}–${entry.endHour} Uhr · ${entry.kind.label}: ${entry.place}",
+                tr(
+                    "{day} {startHour}–{endHour} Uhr · {kind}: {place}",
+                    "day" to day,
+                    "startHour" to entry.startHour,
+                    "endHour" to entry.endHour,
+                    "kind" to entry.kind.label,
+                    "place" to entry.place,
+                ),
                 style = text,
                 modifier = Modifier.clickable { onShow(entry.segments) },
             )
         }
         BasicText(
-            "Dauerstau-Tage in Folge: ${events.jamStreak} – danach und am Wochenende kommen die Rad-Korsos. " +
-                "Spontandemos kommen bei hohem Bürgerzorn.",
+            tr(
+                "Dauerstau-Tage in Folge: {jamStreak} – danach und am Wochenende kommen die Rad-Korsos. " +
+                    "Spontandemos kommen bei hohem Bürgerzorn.",
+                "jamStreak" to events.jamStreak,
+            ),
             style = muted,
         )
         if (events.totals.isNotEmpty()) {
             BasicText(
-                "Bisher: " + events.totals.entries.joinToString { (kind, count) -> "$count× ${kind.label}" },
+                tr("Bisher: ") + events.totals.entries.joinToString { (kind, count) -> "$count× ${kind.label}" },
                 style = muted,
             )
         }
@@ -109,11 +125,15 @@ fun AchievementsPanel(
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         BasicText(
-            "Achievements (${achievements.count { it.unlocked }}/${achievements.size}) – zählen nicht für die Wertung",
+            tr(
+                "Achievements ({unlocked}/{achievements}) – zählen nicht für die Wertung",
+                "unlocked" to achievements.count { it.unlocked },
+                "achievements" to achievements.size,
+            ),
             style = title,
         )
         for (status in achievements) {
-            val day = status.unlockedDay?.let { " · Tag ${it - firstDay + 1}" } ?: ""
+            val day = status.unlockedDay?.let { tr(" · Tag {firstDay}", "firstDay" to it - firstDay + 1) } ?: ""
             BasicText(
                 (if (status.unlocked) "★ " else "☆ ") + status.achievement.title + day,
                 style = if (status.unlocked) unlocked else locked,

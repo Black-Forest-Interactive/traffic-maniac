@@ -32,16 +32,21 @@ import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.ui.map.MapStyle
 
 private enum class MenuTab(
-    val label: String,
+    private val labelText: String,
 ) {
-    PLAY("Spielen"),
-    LOAD("Laden"),
-    HIGHSCORES("Highscores"),
-    SETTINGS("Einstellungen"),
-    CREDITS("Credits"),
+    PLAY(translatable("Spielen")),
+    LOAD(translatable("Laden")),
+    HIGHSCORES(translatable("Highscores")),
+    SETTINGS(translatable("Einstellungen")),
+    CREDITS(translatable("Credits")),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /**
@@ -69,7 +74,7 @@ fun MainMenu(
     Box(Modifier.fillMaxSize().background(MapStyle.land)) {
         Column(Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             BasicText(
-                "TRAFFIC MANIAC",
+                tr("TRAFFIC MANIAC"),
                 style = TextStyle(color = ComicTheme.ink, fontSize = 44.sp, fontWeight = FontWeight.Black),
             )
             BasicText(
@@ -79,7 +84,7 @@ fun MainMenu(
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     for (option in MenuTab.entries) MenuButton(option.label, tab == option) { tab = option }
-                    MenuButton("Beenden", false, onQuit)
+                    MenuButton(tr("Beenden"), false, onQuit)
                 }
                 Box(Modifier.width(CONTENT_WIDTH.dp).comicPanel(shadow = 6.dp).padding(20.dp)) {
                     when (tab) {
@@ -126,7 +131,7 @@ private fun PlayTab(
     onStart: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        BasicText("Szenario wählen", style = heading())
+        BasicText(tr("Szenario wählen"), style = heading())
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -140,14 +145,14 @@ private fun PlayTab(
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BasicText("Schwierigkeit:", style = body())
+            BasicText(tr("Schwierigkeit:"), style = body())
             for (difficulty in Difficulty.entries) {
                 MenuChip(difficulty.label, settings.difficulty == difficulty) {
                     onSettings(settings.copy(difficulty = difficulty))
                 }
             }
         }
-        MenuButton("Los geht's!", active = true, onClick = onStart)
+        MenuButton(tr("Los geht's!"), active = true, onClick = onStart)
     }
 }
 
@@ -166,11 +171,24 @@ private fun ScenarioCard(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        BasicText(scenario.title, style = body().copy(fontSize = 16.sp, fontWeight = FontWeight.Bold))
-        BasicText(scenario.description, style = body())
-        val start = "${scenario.startWeekday.germanName}, ${scenario.startHour.toInt()} Uhr"
-        val record = best?.let { " · Bestwert: $it Punkte" } ?: ""
-        BasicText("${scenario.termDays} Tage · Start $start$record", style = muted())
+        BasicText(tr(scenario.title), style = body().copy(fontSize = 16.sp, fontWeight = FontWeight.Bold))
+        BasicText(tr(scenario.description), style = body())
+        val start =
+            tr(
+                "{germanName}, {startHour} Uhr",
+                "germanName" to scenario.startWeekday.germanName,
+                "startHour" to scenario.startHour.toInt(),
+            )
+        val record = best?.let { tr(" · Bestwert: {value} Punkte", "value" to it) } ?: ""
+        BasicText(
+            tr(
+                "{termDays} Tage · Start {start}{record}",
+                "termDays" to scenario.termDays,
+                "start" to start,
+                "record" to record,
+            ),
+            style = muted(),
+        )
     }
 }
 
@@ -187,7 +205,7 @@ private fun CityRow(cities: CityChoice) {
     if (cities.names.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BasicText("Stadt:", style = body())
+            BasicText(tr("Stadt:"), style = body())
             cities.names.forEachIndexed { index, name ->
                 MenuChip(name, index == cities.selected) { cities.onSelect(index) }
             }
@@ -206,10 +224,10 @@ class SaveSlots(
 @Composable
 private fun LoadTab(slots: SaveSlots) {
     Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        BasicText("Spielstand laden", style = heading())
+        BasicText(tr("Spielstand laden"), style = heading())
         if (slots.saves.isEmpty()) {
             BasicText(
-                "Noch nichts gespeichert – im Spiel: Knopf „Speichern“ oder F5 (Schnellspeichern).",
+                tr("Noch nichts gespeichert – im Spiel: Knopf „Speichern“ oder F5 (Schnellspeichern)."),
                 style = muted(),
             )
         }
@@ -218,19 +236,24 @@ private fun LoadTab(slots: SaveSlots) {
                 Modifier.fillMaxWidth().comicPanel(background = ComicTheme.paperDark, shadow = 3.dp).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                val quick = if (save.id == SaveInfo.QUICK_SAVE) "Schnellspeicher · " else ""
+                val quick = if (save.id == SaveInfo.QUICK_SAVE) tr("Schnellspeicher · ") else ""
                 BasicText(
-                    "$quick${save.cityName} · ${save.scenarioTitle} · ${save.difficulty.label}",
+                    "$quick${save.cityName} · ${tr(save.scenarioTitle)} · ${save.difficulty.label}",
                     style = body().copy(fontWeight = FontWeight.Bold),
                 )
                 BasicText(
-                    "${save.gameTime} · Kasse ${formatEuro(save.balance)} · Reputation ${save.reputation}",
+                    tr(
+                        "{gameTime} · Kasse {balance} · Reputation {reputation}",
+                        "gameTime" to save.gameTime,
+                        "balance" to formatEuro(save.balance),
+                        "reputation" to save.reputation,
+                    ),
                     style = body(),
                 )
                 BasicText("gespeichert ${save.savedAt.replace('T', ' ')}", style = muted())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MenuChip("Laden", true) { slots.onLoad(save) }
-                    MenuChip("Löschen", false) { slots.onDelete(save) }
+                    MenuChip(tr("Laden"), true) { slots.onLoad(save) }
+                    MenuChip(tr("Löschen"), false) { slots.onDelete(save) }
                 }
             }
         }
@@ -244,21 +267,30 @@ private fun HighscoreTab(
 ) {
     var difficulty by remember { mutableStateOf(Difficulty.NORMAL) }
     Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        BasicText("Bestenliste", style = heading())
+        BasicText(tr("Bestenliste"), style = heading())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (option in Difficulty.entries) MenuChip(option.label, option == difficulty) { difficulty = option }
         }
         for (scenario in scenarios) {
-            BasicText(scenario.title, style = body().copy(fontWeight = FontWeight.Bold))
+            BasicText(tr(scenario.title), style = body().copy(fontWeight = FontWeight.Bold))
             val table = highscores.of(scenario.id, difficulty)
-            if (table.isEmpty()) BasicText("Noch keine Amtszeit beendet.", style = muted())
+            if (table.isEmpty()) BasicText(tr("Noch keine Amtszeit beendet."), style = muted())
             table.forEachIndexed { index, entry ->
-                val seal = if (entry.honoraryCitizen) " · Ehrenbürger" else ""
+                val seal = if (entry.honoraryCitizen) tr(" · Ehrenbürger") else ""
                 BasicText(
-                    "${index + 1}. ${entry.points} Punkte · ${formatEuro(
-                        entry.earnings,
-                    )} · Reputation ${entry.reputation}$seal" +
-                        " · ${entry.date}",
+                    tr(
+                        "{index}. {points} Punkte · {earnings} · Reputation {reputation}{seal}" +
+                            " · {date}",
+                        "index" to index + 1,
+                        "points" to entry.points,
+                        "earnings" to
+                            formatEuro(
+                                entry.earnings,
+                            ),
+                        "reputation" to entry.reputation,
+                        "seal" to seal,
+                        "date" to entry.date,
+                    ),
                     style = body(),
                 )
             }
@@ -272,20 +304,20 @@ private fun SettingsTab(
     onSettings: (GameSettings) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        BasicText("Einstellungen", style = heading())
-        Toggle("Geräusche", settings.sound) { onSettings(settings.copy(sound = it)) }
-        Toggle("Musik", settings.music) { onSettings(settings.copy(music = it)) }
-        Toggle("Fertige Grafiken aus assets/sprites (sonst gezeichnet)", settings.sprites) {
+        BasicText(tr("Einstellungen"), style = heading())
+        Toggle(tr("Geräusche"), settings.sound) { onSettings(settings.copy(sound = it)) }
+        Toggle(tr("Musik"), settings.music) { onSettings(settings.copy(music = it)) }
+        Toggle(tr("Fertige Grafiken aus assets/sprites (sonst gezeichnet)"), settings.sprites) {
             onSettings(settings.copy(sprites = it))
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BasicText("Tempo beim Start:", style = body())
+            BasicText(tr("Tempo beim Start:"), style = body())
             for (speed in SPEEDS) {
                 MenuChip("$speed×", settings.startSpeed == speed) { onSettings(settings.copy(startSpeed = speed)) }
             }
         }
         BasicText(
-            "Im Spiel: M schaltet den Ton, N die Musik – Einstellungen werden automatisch gespeichert.",
+            tr("Im Spiel: M schaltet den Ton, N die Musik – Einstellungen werden automatisch gespeichert."),
             style = muted(),
         )
     }
@@ -294,11 +326,14 @@ private fun SettingsTab(
 @Composable
 private fun CreditsTab(attribution: String) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        BasicText("Credits", style = heading())
-        for (line in CREDITS) BasicText(line, style = body())
-        BasicText("Kartendaten: $attribution", style = body().copy(fontWeight = FontWeight.Bold))
+        BasicText(tr("Credits"), style = heading())
+        for (line in CREDITS) BasicText(tr(line), style = body())
         BasicText(
-            "Die Kartendaten stehen unter der Open Database License (ODbL) – openstreetmap.org/copyright.",
+            tr("Kartendaten: {attribution}", "attribution" to attribution),
+            style = body().copy(fontWeight = FontWeight.Bold),
+        )
+        BasicText(
+            tr("Die Kartendaten stehen unter der Open Database License (ODbL) – openstreetmap.org/copyright."),
             style = muted(),
         )
     }
@@ -306,12 +341,16 @@ private fun CreditsTab(attribution: String) {
 
 private val CREDITS =
     listOf(
-        "traffic-maniac – eine Parodie auf Verkehrssimulationen.",
-        "Spiel, Simulation, Grafik und Musik: Black Forest Interactive (Grafik und Klänge werden im Spiel erzeugt).",
-        "Programmiert in Kotlin mit Compose Multiplatform und Skia.",
-        "Alle Personen, Firmen, Vereine und Ereignisse sind frei erfunden. Ähnlichkeiten mit echten " +
-            "Verkehrspolitikern wären rein zufällig.",
-        "Lizenz: Apache License 2.0.",
+        translatable("traffic-maniac – eine Parodie auf Verkehrssimulationen."),
+        translatable(
+            "Spiel, Simulation, Grafik und Musik: Black Forest Interactive (Grafik und Klänge werden im Spiel erzeugt).",
+        ),
+        translatable("Programmiert in Kotlin mit Compose Multiplatform und Skia."),
+        translatable(
+            "Alle Personen, Firmen, Vereine und Ereignisse sind frei erfunden. Ähnlichkeiten mit echten " +
+                "Verkehrspolitikern wären rein zufällig.",
+        ),
+        translatable("Lizenz: Apache License 2.0."),
     )
 
 @Composable
@@ -368,7 +407,7 @@ private fun Toggle(
     onChange: (Boolean) -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        MenuChip(if (on) "An" else "Aus", on) { onChange(!on) }
+        MenuChip(if (on) tr("An") else tr("Aus"), on) { onChange(!on) }
         BasicText(label, style = body())
     }
 }

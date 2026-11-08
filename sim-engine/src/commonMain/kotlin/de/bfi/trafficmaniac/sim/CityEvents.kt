@@ -1,17 +1,23 @@
 package de.bfi.trafficmaniac.sim
 
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
+
 /** Art eines Ereignisses. Sperrungen haben eine feste Dauer, Korso und Schwertransport fahren eine Route ab. */
 enum class EventKind(
-    val label: String,
+    private val labelText: String,
     /** Sperrt Abschnitte für eine feste Zeit (sonst: fährt als Kolonne durchs Netz). */
     val isClosure: Boolean,
 ) {
-    BIKE_CORSO("Rad-Korso", isClosure = false),
-    DEMO("Spontandemo", isClosure = true),
-    CITY_FESTIVAL("Stadtfest", isClosure = true),
-    MARATHON("Marathon", isClosure = true),
-    MARKET("Wochenmarkt", isClosure = true),
-    HEAVY_TRANSPORT("Schwertransport", isClosure = false),
+    BIKE_CORSO(translatable("Rad-Korso"), isClosure = false),
+    DEMO(translatable("Spontandemo"), isClosure = true),
+    CITY_FESTIVAL(translatable("Stadtfest"), isClosure = true),
+    MARATHON(translatable("Marathon"), isClosure = true),
+    MARKET(translatable("Wochenmarkt"), isClosure = true),
+    HEAVY_TRANSPORT(translatable("Schwertransport"), isClosure = false),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Ein laufendes oder beendetes Ereignis. */

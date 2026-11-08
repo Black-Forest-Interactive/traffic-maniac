@@ -1,5 +1,8 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.tr
+
 /** Presse und Imagepflege für die Oberfläche. */
 data class PressState(
     /** Tonlage der Lokalzeitung: −1 Verriss … +1 Jubelpresse. */
@@ -105,10 +108,10 @@ internal class Press(
         onReopened: () -> Unit,
     ): Double {
         if (celebratedToday) {
-            message("Heute wurde schon gefeiert – morgen gibt es den nächsten Spatenstich")
+            message(tr("Heute wurde schon gefeiert – morgen gibt es den nächsten Spatenstich"))
             return 0.0
         }
-        if (!treasury.pay(rules.ceremonyCost, "Spatenstich")) return 0.0
+        if (!treasury.pay(rules.ceremonyCost, tr("Spatenstich"))) return 0.0
         val (headline, reopening) = ceremonyTopic(maintenance)
         if (reopening) onReopened()
         celebratedToday = true
@@ -117,19 +120,28 @@ internal class Press(
         val gain = rules.ceremonyReputation / (1 + ceremoniesThisWeek) * if (tone < MOCKING_TONE) HALF else 1.0
         ceremoniesThisWeek++
         todayCeremonies += headline
-        message("$headline (+${"%.1f".format(gain)} Reputation)")
+        message(tr("{headline} (+{gain} Reputation)", "headline" to headline, "gain" to formatDecimal(gain)))
         return gain
     }
 
     /** Bester Anlass: frisch Repariertes eröffnen, sonst Spatenstich für eine Planfeststellung oder ein Konzept. */
     private fun ceremonyTopic(maintenance: MaintenanceState): Pair<String, Boolean> {
         maintenance.lastRepaired?.let {
-            return "Feierliche Wiedereröffnung: $it – Bürgermeister durchschneidet Band" to
+            return tr("Feierliche Wiedereröffnung: {value} – Bürgermeister durchschneidet Band", "value" to it) to
                 true
         }
         val planning = maintenance.reports.firstOrNull { it.status == DamageStatus.PLANNING }
-        if (planning != null) return "Spatenstich ${planning.place} – ${planning.progress}" to false
-        return "Spatenstich für das Verkehrskonzept – Fertigstellung voraussichtlich 2066" to false
+        if (planning !=
+            null
+        ) {
+            return tr(
+                "Spatenstich {place} – {progress}",
+                "place" to planning.place,
+                "progress" to planning.progress,
+            ) to
+                false
+        }
+        return tr("Spatenstich für das Verkehrskonzept – Fertigstellung voraussichtlich 2066") to false
     }
 
     companion object {
@@ -142,11 +154,11 @@ internal class Press(
 
         fun toneLabel(tone: Double): String =
             when {
-                tone >= JUBILANT -> "Jubelpresse"
+                tone >= JUBILANT -> tr("Jubelpresse")
                 tone >= FRIENDLY -> "wohlwollend"
                 tone > CRITICAL_BELOW -> "neutral"
                 tone > -JUBILANT -> "kritisch"
-                else -> "Verriss"
+                else -> tr("Verriss")
             }
     }
 }
