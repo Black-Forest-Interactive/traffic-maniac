@@ -137,6 +137,28 @@ class PlanningTest {
     }
 
     @Test
+    fun roadworksArePlannedPerStretchAndCostPerStretch() {
+        val plan = Plan()
+        val works = ToolSelection(tool = Tool.ROADWORKS)
+        plan.clickMain(1, works)
+        plan.clickMain(2, works)
+
+        assertEquals(listOf(GameCommand.SetRoadworks(listOf(1, 2), true)), plan.actions.single().commands)
+        assertEquals(2 * rules.roadworksSetupCost, plan.total)
+
+        val closure = works.copy(closure = true)
+        plan.clickMain(4, closure)
+        plan.clickMain(4, closure)
+        assertEquals(
+            GameCommand.SetRoadClosure(listOf(4), true),
+            plan.actions
+                .last()
+                .commands
+                .single(),
+        )
+    }
+
+    @Test
     fun undoTakesBackTheStartFirstThenTheLastAction() {
         val plan = Plan()
         plan.clickMain(0, ToolSelection(tool = Tool.CAMERA))

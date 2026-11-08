@@ -16,6 +16,17 @@ data class GameRules(
     val signalRemovalCost: Long = 5_000,
     /** Ampelprogramm ändern (Aufteilung der Grünzeit oder grüne Welle), je Anlage. */
     val signalProgramCost: Long = 1_000,
+    /** Eigene Baustelle (Tempo 30, verengt): Einrichtung und Absicherung je Tag, je Strecke. */
+    val roadworksSetupCost: Long = 1_000,
+    val roadworksDailyCost: Long = 200,
+    /** Vollsperrung durch den Spieler, je Strecke. */
+    val closureCost: Long = 500,
+    /** Ab so vielen Tagen fällt auf, dass an einer Baustelle niemand arbeitet … */
+    val fakeRoadworksGraceDays: Int = 2,
+    /** … mit dieser Wahrscheinlichkeit je Tag … */
+    val fakeRoadworksPressChance: Double = 0.3,
+    /** … und kostet dann so viel Reputation. */
+    val fakeRoadworksReputationLoss: Double = 3.0,
     val cameraCost: Long = 90_000,
     /** Wählbare Tempolimits; 7 km/h steht für Schrittgeschwindigkeit. */
     val speedLimitOptions: List<Int> = DEFAULT_SPEED_LIMITS,
