@@ -131,4 +131,57 @@ class SignalSystemTest {
     private companion object {
         const val STEP = 0.1
     }
+
+    /**
+     * OSM-Muster großer Kreuzungen: Der Kreuzungsknoten hat keine Ampel, dafür steht an jeder Zufahrt 30 m davor ein
+     * Ampelknoten (Haltelinie). Das ist eine Anlage mit vier Ampeln – nicht zwei Anlagen mit je zwei Knoten, die auch
+     * den abfließenden Verkehr anhalten.
+     */
+    @Test
+    fun stopLineSignalsBeforeAJunctionFormOnePlantForIncomingTrafficOnly() {
+        // 0 Mitte; 1–4 Haltelinien (Westen, Osten, Norden, Süden); 5–8 Enden der Arme
+        val stopLines = listOf(-30f to 0f, 30f to 0f, 0f to 30f, 0f to -30f)
+        val nodes =
+            listOf(RoadNode(0, 0f, 0f)) +
+                stopLines.mapIndexed { i, (x, y) -> RoadNode(1 + i, x, y, trafficSignals = true) } +
+                stopLines.mapIndexed { i, (x, y) -> RoadNode(5 + i, x * 15, y * 15) }
+
+        fun road(
+            id: Int,
+            from: Int,
+            to: Int,
+        ) = RoadSegment(
+            id = id,
+            from = from,
+            to = to,
+            roadClass = RoadClass.SECONDARY,
+            geometry = Polyline(floatArrayOf(nodes[from].x, nodes[from].y, nodes[to].x, nodes[to].y)),
+            lanesForward = 1,
+            lanesBackward = 1,
+            maxSpeedKmh = 50,
+        )
+        val segments = (0 until 4).flatMap { i -> listOf(road(2 * i, 5 + i, 1 + i), road(2 * i + 1, 1 + i, 0)) }
+        val graph = RoadGraph(RoadNetwork(nodes, segments))
+        val signals = SignalSystem(graph)
+
+        assertEquals(4, signals.controlledLinks.size, "Eine Ampel je Zufahrt")
+        for (link in signals.controlledLinks) {
+            assertTrue(graph.linkFrom[link] in 5..8, "Nur die Fahrt auf die Kreuzung zu: ${graph.linkFrom[link]}")
+        }
+        // Eine Anlage: Querrichtungen sind nie gemeinsam grün
+        val west = signals.controlledLinks.single { graph.linkTo[it] == 1 }
+        val north = signals.controlledLinks.single { graph.linkTo[it] == 3 }
+        var time = 0.0
+        while (time < SignalSystem.CYCLE_SECONDS * 2) {
+            if (signals.state(west, time) ==
+                SignalState.GREEN
+            ) {
+                assertEquals(SignalState.RED, signals.state(north, time))
+            }
+            time += 0.5
+        }
+        // Zwischen Haltelinie und Kreuzungsknoten wird nicht noch einmal gewartet
+        val inside = graph.inLinks[0]
+        assertTrue(inside.all { signals.isInternal(it) && !signals.isControlled(it) })
+    }
 }

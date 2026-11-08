@@ -2,7 +2,6 @@ package de.bfi.trafficmaniac.sim
 
 import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.hypot
 
 enum class SignalState {
     NONE,
@@ -30,6 +29,9 @@ class SignalSystem(
     private val graph: RoadGraph,
 ) {
     private val linkGroup = IntArray(graph.linkCount)
+
+    /** Verbindung innerhalb einer Anlage (z. B. Haltelinie → Kreuzungsknoten): keine Ampel, aber auch kein Warten. */
+    private val linkInternal = BooleanArray(graph.linkCount)
     private val linkPhase = IntArray(graph.linkCount)
     private var groupOffset = DoubleArray(0)
     private var groupCycle = DoubleArray(0)
@@ -52,19 +54,20 @@ class SignalSystem(
     fun rebuild() {
         linkGroup.fill(NO_GROUP)
         linkPhase.fill(0)
-        val groups = clusterSignalNodes()
+        linkInternal.fill(false)
+        val plants = SignalPlants(graph).build()
         val controlled = ArrayList<Int>()
-        val twoPhase = BooleanArray(groups.size)
-        groups.forEachIndexed { index, nodes ->
-            val approaches = assignPhases(index, nodes)
+        val twoPhase = BooleanArray(plants.size)
+        plants.forEachIndexed { index, plant ->
+            val approaches = assignPhases(index, plant)
             controlled += approaches
             twoPhase[index] = approaches.any { linkPhase[it] == 1 }
         }
         controlledLinks = controlled.toIntArray()
         groupCycle =
-            DoubleArray(groups.size) { if (twoPhase[it]) CYCLE_SECONDS else PHASE_SECONDS + PEDESTRIAN_SECONDS }
-        groupOffset = DoubleArray(groups.size) { offsetFraction(groups[it].min()) * groupCycle[it] }
-        groupFailed = BooleanArray(groups.size) { group -> groups[group].any { failedNode[it] } }
+            DoubleArray(plants.size) { if (twoPhase[it]) CYCLE_SECONDS else PHASE_SECONDS + PEDESTRIAN_SECONDS }
+        groupOffset = DoubleArray(plants.size) { offsetFraction(plants[it].signalNodes.min()) * groupCycle[it] }
+        groupFailed = BooleanArray(plants.size) { group -> plants[group].signalNodes.any { failedNode[it] } }
         markers = SignalMarkers.create(graph, this)
     }
 
@@ -78,6 +81,9 @@ class SignalSystem(
     }
 
     fun isControlled(link: Int): Boolean = linkGroup[link] != NO_GROUP
+
+    /** Verbindung mitten in einer Ampelanlage – wer hier fährt, hatte an der Haltelinie Grün. */
+    fun isInternal(link: Int): Boolean = linkInternal[link]
 
     /** Ampel an [node] ausgefallen bzw. abgeschaltet – die ganze Anlage blinkt dann gelb. */
     fun setFailed(
@@ -126,39 +132,21 @@ class SignalSystem(
         }
     }
 
-    /** Fasst Ampelknoten zusammen, die näher als [CLUSTER_RADIUS] beieinander liegen (Union-Find). */
-    private fun clusterSignalNodes(): List<List<Int>> {
-        val signalNodes = (0 until graph.nodeCount).filter { graph.nodeHasSignals[it] }
-        val parent = IntArray(signalNodes.size) { it }
-
-        fun root(i: Int): Int {
-            var r = i
-            while (parent[r] != r) r = parent[r]
-            return r
-        }
-        for (a in signalNodes.indices) {
-            for (b in a + 1 until signalNodes.size) {
-                val distance =
-                    hypot(
-                        graph.nodeX[signalNodes[a]] - graph.nodeX[signalNodes[b]],
-                        graph.nodeY[signalNodes[a]] - graph.nodeY[signalNodes[b]],
-                    )
-                if (distance < CLUSTER_RADIUS) parent[root(a)] = root(b)
-            }
-        }
-        return signalNodes.indices
-            .groupBy { root(it) }
-            .values
-            .map { members -> members.map { signalNodes[it] } }
-    }
-
-    /** Ordnet die Zufahrten einer Anlage den Phasen zu. Verbindungen innerhalb der Anlage bleiben ungeregelt. */
+    /**
+     * Ordnet die Zufahrten einer Anlage den Phasen zu: Haltelinien-Ampeln regeln nur ihre Zufahrt, an den
+     * Kreuzungsknoten zählen alle Links von außerhalb. Verbindungen innerhalb der Anlage bleiben ungeregelt.
+     */
     private fun assignPhases(
         group: Int,
-        nodes: List<Int>,
+        plant: SignalPlant,
     ): List<Int> {
-        val nodeSet = junctionNodes(nodes)
-        val approaches = nodeSet.flatMap { node -> graph.inLinks[node].filter { graph.linkFrom[it] !in nodeSet } }
+        val inside = plant.core + plant.stopLines.keys
+        val fromOutside =
+            plant.core.flatMap { node -> graph.inLinks[node].filter { graph.linkFrom[it] !in inside } }
+        val approaches = (plant.stopLines.values.flatten() + fromOutside).distinct()
+        for (node in inside) {
+            for (link in graph.inLinks[node]) if (graph.linkFrom[link] in inside) linkInternal[link] = true
+        }
         if (approaches.isEmpty()) return emptyList()
         val referenceAxis = axis(graph.endHeading(approaches.first()))
         for (link in approaches) {
@@ -168,21 +156,6 @@ class SignalSystem(
             linkPhase[link] = if (sameAxis) 0 else 1
         }
         return approaches
-    }
-
-    /**
-     * Alle Knoten der Kreuzung: die Ampelknoten und jeder Knoten ohne Ampel, der innerhalb des Kreises um ihren
-     * Mittelpunkt liegt, der alle Ampeln umschließt. In OSM steht die Ampel oft nur an einigen Kreuzungsknoten;
-     * ohne diese Erweiterung würde die Verbindung von einem ampellosen Kreuzungsknoten zum nächsten Ampelknoten als
-     * Zufahrt gelten – mit einer roten Ampel mitten in der Kreuzung, auf der sich der Verkehr staut.
-     */
-    private fun junctionNodes(signalNodes: List<Int>): Set<Int> {
-        if (signalNodes.size < 2) return signalNodes.toSet()
-        val cx = signalNodes.sumOf { graph.nodeX[it].toDouble() } / signalNodes.size
-        val cy = signalNodes.sumOf { graph.nodeY[it].toDouble() } / signalNodes.size
-        val radius = signalNodes.maxOf { hypot(graph.nodeX[it] - cx, graph.nodeY[it] - cy) } + JUNCTION_MARGIN
-        return signalNodes.toSet() +
-            (0 until graph.nodeCount).filter { hypot(graph.nodeX[it] - cx, graph.nodeY[it] - cy) <= radius }
     }
 
     /** Pseudozufälliger, aber fester Anteil 0..1 je Knoten (Fibonacci-Hashing). */
@@ -204,9 +177,6 @@ class SignalSystem(
         /** Fußgängerphase an Ampeln ohne Querverkehr. */
         const val PEDESTRIAN_SECONDS = 12.0
         const val CLUSTER_RADIUS = 35f
-
-        /** So weit über die äußersten Ampeln hinaus gehören Knoten noch zur Kreuzung (Meter). */
-        private const val JUNCTION_MARGIN = 5.0
         private const val NO_GROUP = -1
         private const val GOLDEN_RATIO_FRACTION = 0.6180339887
     }

@@ -37,7 +37,8 @@ internal class JunctionRules(
 
             SignalState.GREEN -> false
 
-            SignalState.NONE -> remaining < YIELD_CHECK_DISTANCE && mustYield(link)
+            // Mitten in einer Ampelanlage: An der Haltelinie war Grün, hier wird nicht noch einmal gewartet
+            SignalState.NONE -> !signals.isInternal(link) && remaining < YIELD_CHECK_DISTANCE && mustYield(link)
 
             // Ampel aus: Jeder wartet auf jeden – bis einer die Geduld verliert
             SignalState.FLASHING -> remaining < YIELD_CHECK_DISTANCE && mustYield(link, anyone = true)
