@@ -86,7 +86,11 @@ class CityGame(
         val reportsBefore = simulation.dayReports.size
         simulation.step()
         collectFines()
-        checkLiveAchievements()
+        achievements.checkLive(
+            simulation.incidentsToday[IncidentKind.TRUCK_STUCK] ?: 0,
+            recordRatioToday,
+            simulation.gameTime.day,
+        )
         simulation.finishedTrips.drain().forEach(citizens::tripFinished)
         if (hourIndex() != currentHour) hourPassed()
         if (simulation.dayReports.size > reportsBefore) dayEnded()
@@ -154,21 +158,6 @@ class CityGame(
                 recordToday = violation.measuredKmh to violation.limitKmh
             }
         }
-    }
-
-    private var stuckSeen = 0
-
-    /**
-     * Was im Moment passiert, wird sofort gefeiert, nicht erst um Mitternacht: ein Raser über dem Doppelten des
-     * Limits und ein eingeklemmter LKW.
-     */
-    private fun checkLiveAchievements() {
-        val stuck = simulation.incidentsToday(IncidentKind.TRUCK_STUCK)
-        val ratio = recordRatioToday
-        if (stuck > stuckSeen || ratio > 2.0) {
-            achievements.check(AchievementFacts(trucksStuck = stuck, recordRatio = ratio), simulation.gameTime.day)
-        }
-        stuckSeen = stuck
     }
 
     private fun hourPassed() {

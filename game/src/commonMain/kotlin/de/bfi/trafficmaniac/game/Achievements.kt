@@ -56,7 +56,7 @@ enum class Achievement(
     SPEEDER_OF_THE_YEAR(
         translatable("Raser des Jahres"),
         translatable("Jemand fuhr mehr als doppelt so schnell wie erlaubt"),
-        { it.recordRatio > 2 },
+        { it.recordRatio > SPEEDER_RATIO },
     ),
     BIKE_CITY(translatable("Fahrradstadt wider Willen"), translatable("25 Führerscheine eingezogen"), {
         it.revocations >=
@@ -74,6 +74,9 @@ enum class Achievement(
     val title: String get() = tr(titleText)
     val description: String get() = tr(descriptionText)
 }
+
+/** „Raser des Jahres“: mehr als doppelt so schnell wie erlaubt. */
+private const val SPEEDER_RATIO = 2.0
 
 data class AchievementStatus(
     val achievement: Achievement,
@@ -111,6 +114,23 @@ internal class Achievements(
     val titles: List<String> get() = unlocked.keys.map { it.title }
 
     fun state(): List<AchievementStatus> = Achievement.entries.map { AchievementStatus(it, unlocked[it]) }
+
+    private var stuckSeen = 0
+
+    /**
+     * Jeden Simulationsschritt: Was im Moment passiert, wird sofort gefeiert, nicht erst um Mitternacht – ein Raser
+     * über dem Doppelten des Limits ([recordRatio]) und ein eingeklemmter LKW ([trucksStuck] seit Mitternacht).
+     */
+    fun checkLive(
+        trucksStuck: Int,
+        recordRatio: Double,
+        day: Int,
+    ) {
+        if (trucksStuck > stuckSeen || recordRatio > SPEEDER_RATIO) {
+            check(AchievementFacts(trucksStuck = trucksStuck, recordRatio = recordRatio), day)
+        }
+        stuckSeen = trucksStuck
+    }
 
     fun check(
         facts: AchievementFacts,
