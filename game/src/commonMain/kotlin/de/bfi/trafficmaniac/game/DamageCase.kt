@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.city.CityMap
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.DamageKind
 import de.bfi.trafficmaniac.sim.GameTime
 
@@ -81,16 +82,16 @@ internal class DamagePlaces(
         node: Int,
     ): String =
         when {
-            node >= 0 -> "Ampel an der ${streetAtNode(node)}"
-            city.roads.segments[segment].bridge -> "Brücke ${streetName(segment)}"
+            node >= 0 -> tr("Ampel an der {node}", "node" to streetAtNode(node))
+            city.roads.segments[segment].bridge -> tr("Brücke {segment}", "segment" to streetName(segment))
             else -> streetName(segment)
         }
 
-    fun streetName(segment: Int): String = city.roads.segments[segment].name ?: "Straße ohne Namen"
+    fun streetName(segment: Int): String = city.roads.segments[segment].name ?: tr("Straße ohne Namen")
 
     private fun streetAtNode(node: Int): String =
         city.roads.segments
             .firstOrNull { (it.from == node || it.to == node) && !it.passive && it.name != null }
             ?.name
-            ?: "Kreuzung ohne Namen"
+            ?: tr("Kreuzung ohne Namen")
 }

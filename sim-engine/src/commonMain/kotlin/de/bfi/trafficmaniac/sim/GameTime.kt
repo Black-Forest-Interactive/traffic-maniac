@@ -1,16 +1,21 @@
 package de.bfi.trafficmaniac.sim
 
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
+
 enum class Weekday(
-    val germanName: String,
+    private val germanNameText: String,
 ) {
-    MONDAY("Montag"),
-    TUESDAY("Dienstag"),
-    WEDNESDAY("Mittwoch"),
-    THURSDAY("Donnerstag"),
-    FRIDAY("Freitag"),
-    SATURDAY("Samstag"),
-    SUNDAY("Sonntag"),
+    MONDAY(translatable("Montag")),
+    TUESDAY(translatable("Dienstag")),
+    WEDNESDAY(translatable("Mittwoch")),
+    THURSDAY(translatable("Donnerstag")),
+    FRIDAY(translatable("Freitag")),
+    SATURDAY(translatable("Samstag")),
+    SUNDAY(translatable("Sonntag")),
     ;
+
+    val germanName: String get() = tr(germanNameText)
 
     val isWorkday: Boolean get() = this != SATURDAY && this != SUNDAY
 }

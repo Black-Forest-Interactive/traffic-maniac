@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.map.NoSprites
 import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlin.math.PI
@@ -63,7 +65,14 @@ fun ResultOverlay(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             BasicText(
-                if (recalled) "Abgewählt!" else "Abschiedsrede nach ${state.termDays} Tagen im Amt",
+                if (recalled) {
+                    tr("Abgewählt!")
+                } else {
+                    tr(
+                        "Abschiedsrede nach {termDays} Tagen im Amt",
+                        "termDays" to state.termDays,
+                    )
+                },
                 style =
                     TextStyle(
                         color = if (recalled) ComicTheme.red else ComicTheme.ink,
@@ -80,24 +89,11 @@ fun ResultOverlay(
                     BasicText(line, style = text.copy(fontStyle = FontStyle.Italic, fontSize = 15.sp))
                 }
             }
-            BasicText(
-                "Kasse: ${formatEuro(state.balance)} · selbst verdient: ${formatEuro(state.score.earnings)} · " +
-                    "Bußgelder: ${formatEuro(state.fineIncome)}",
-                style = text,
-            )
-            BasicText(
-                "Reputation: ${state.reputation.roundToInt()} / 100 (Faktor ×${"%.2f".format(
-                    state.score.reputationFactor,
-                )})",
-                style = text,
-            )
-            if (state.achievements.isNotEmpty()) {
-                BasicText("Achievements: ${state.achievements.joinToString()}", style = text)
-            }
+            ResultFigures(state, text)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (!recalled) {
                     BasicText(
-                        "Punkte: ${state.score.points}",
+                        tr("Punkte: {points}", "points" to state.score.points),
                         style = text.copy(fontSize = 24.sp, fontWeight = FontWeight.Black),
                     )
                 }
@@ -112,13 +108,46 @@ fun ResultOverlay(
     }
 }
 
+/** Kasse, Reputation und Achievements am Ende der Amtszeit. */
+@Composable
+private fun ResultFigures(
+    state: GameState,
+    text: TextStyle,
+) {
+    BasicText(
+        tr(
+            "Kasse: {balance} · selbst verdient: {earnings} · " +
+                "Bußgelder: {fineIncome}",
+            "balance" to formatEuro(state.balance),
+            "earnings" to formatEuro(state.score.earnings),
+            "fineIncome" to formatEuro(state.fineIncome),
+        ),
+        style = text,
+    )
+    BasicText(
+        tr(
+            "Reputation: {reputation} / 100 (Faktor ×{reputationFactor})",
+            "reputation" to state.reputation.roundToInt(),
+            "reputationFactor" to
+                formatDecimal(state.score.reputationFactor, 2),
+        ),
+        style = text,
+    )
+    if (state.achievements.isNotEmpty()) {
+        BasicText(
+            tr("Achievements: {achievements}", "achievements" to state.achievements.joinToString()),
+            style = text,
+        )
+    }
+}
+
 @Composable
 private fun BackToMenu(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BasicText(
-        "Zurück zum Menü",
+        tr("Zurück zum Menü"),
         style = TextStyle(color = ComicTheme.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold),
         modifier =
             modifier
@@ -140,13 +169,13 @@ private fun Certificate(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SpriteIcon(sprites, "seal_honorary", SEAL_SIZE.dp) { DrawnSeal() }
             BasicText(
-                "Ehrenbürgerschaft verliehen!",
+                tr("Ehrenbürgerschaft verliehen!"),
                 style = TextStyle(color = ComicTheme.ink, fontSize = 18.sp, fontWeight = FontWeight.Black),
             )
         }
         return
     }
-    val text = if (recalled) "ABGEWÄHLT" else "EHRENBÜRGERSCHAFT ABGELEHNT"
+    val text = if (recalled) tr("ABGEWÄHLT") else tr("EHRENBÜRGERSCHAFT ABGELEHNT")
     val style = TextStyle(color = ComicTheme.red, fontSize = 18.sp, fontWeight = FontWeight.Black)
     if (sprites.has("stamp_rejected")) {
         // Stempelrahmen als Grafik, der Text kommt vom Spiel
@@ -194,24 +223,38 @@ internal fun farewellSpeech(state: GameState): List<String> {
     lines += "„${state.city.greeting}"
     lines +=
         if (state.score.earnings > 0) {
-            "in meiner Amtszeit habe ich ${formatEuro(state.score.earnings)} für die Stadtkasse erwirtschaftet – " +
-                "jeder Euro floss in die Sicherheit unserer Kinder."
+            tr(
+                "in meiner Amtszeit habe ich {earnings} für die Stadtkasse erwirtschaftet – " +
+                    "jeder Euro floss in die Sicherheit unserer Kinder.",
+                "earnings" to formatEuro(state.score.earnings),
+            )
         } else {
-            "die Kasse ist leer, aber die Straßen sind sicher. Sehr sicher. Sie stehen still."
+            tr("die Kasse ist leer, aber die Straßen sind sicher. Sehr sicher. Sie stehen still.")
         }
     if (state.cameras.size >= MANY_CAMERAS) {
-        lines += "${state.cameras.size} Blitzer wachen heute über Ihre Geschwindigkeit. Gern geschehen."
+        lines +=
+            tr(
+                "{cameras} Blitzer wachen heute über Ihre Geschwindigkeit. Gern geschehen.",
+                "cameras" to state.cameras.size,
+            )
     }
     if (state.licenseRevocations > 0) {
-        lines += "${state.licenseRevocations} Mitbürger haben dank mir das Radfahren für sich entdeckt."
+        lines +=
+            tr(
+                "{licenseRevocations} Mitbürger haben dank mir das Radfahren für sich entdeckt.",
+                "licenseRevocations" to state.licenseRevocations,
+            )
     }
     lines +=
         when {
-            state.reputation >= PRESS_DARLING -> "Die Presse hat mich stets fair und begeistert begleitet."
-            state.reputation <= PRESS_HATED -> "Die Presse war nicht immer fair. Eigentlich nie."
-            else -> "Mit der Presse hatte ich ein professionelles Verhältnis."
+            state.reputation >= PRESS_DARLING -> tr("Die Presse hat mich stets fair und begeistert begleitet.")
+            state.reputation <= PRESS_HATED -> tr("Die Presse war nicht immer fair. Eigentlich nie.")
+            else -> tr("Mit der Presse hatte ich ein professionelles Verhältnis.")
         }
-    state.achievements.firstOrNull()?.let { lines += "Und vergessen Sie nie: „$it“ – das war ich." }
-    lines += "Ich hinterlasse diese Stadt besser, als ich sie vorgefunden habe.“"
+    state.achievements.firstOrNull()?.let {
+        lines +=
+            tr("Und vergessen Sie nie: „{value}“ – das war ich.", "value" to it)
+    }
+    lines += tr("Ich hinterlasse diese Stadt besser, als ich sie vorgefunden habe.“")
     return lines
 }

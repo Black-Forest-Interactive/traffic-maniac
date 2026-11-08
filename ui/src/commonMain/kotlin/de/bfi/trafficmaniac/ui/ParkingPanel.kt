@@ -21,6 +21,8 @@ import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.ParkingOfficeState
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.ParkingLotState
 import de.bfi.trafficmaniac.sim.ParkingSummary
 import kotlin.math.roundToInt
@@ -58,52 +60,111 @@ fun ParkingPanel(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        BasicText("Parken & Politessen", style = title)
+        BasicText(tr("Parken & Politessen"), style = title)
         BasicText(
-            "Parkplätze ${summary.lotOccupied}/${summary.lotCapacity} belegt · Straßenrand " +
-                "${summary.curbOccupied}/${summary.curbCapacity} · auf Parkplatzsuche: ${summary.searching}",
+            tr(
+                "Parkplätze {lotOccupied}/{lotCapacity} belegt · Straßenrand " +
+                    "{curbOccupied}/{curbCapacity} · auf Parkplatzsuche: {searching}",
+                "lotOccupied" to summary.lotOccupied,
+                "lotCapacity" to summary.lotCapacity,
+                "curbOccupied" to summary.curbOccupied,
+                "curbCapacity" to summary.curbCapacity,
+                "searching" to summary.searching,
+            ),
             style = text,
         )
         BasicText(
-            "Einnahmen: Gebühren ${formatEuro(office.feeIncome)} · Knöllchen ${formatEuro(office.ticketIncome)} " +
-                "(${office.tickets}) · Falschparker bisher ${office.illegalParkers}",
+            tr(
+                "Einnahmen: Gebühren {feeIncome} · Knöllchen {ticketIncome} " +
+                    "({tickets}) · Falschparker bisher {illegalParkers}",
+                "feeIncome" to formatEuro(office.feeIncome),
+                "ticketIncome" to formatEuro(office.ticketIncome),
+                "tickets" to office.tickets,
+                "illegalParkers" to office.illegalParkers,
+            ),
             style = muted,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            BasicText(
-                "Politessen: ${office.wardens}" + if (office.hiring > 0) " (+${office.hiring} kommen)" else "",
-                style = text,
-            )
-            Choice("−1", false) { onCommand(GameCommand.FireWardens(1)) }
-            Choice("+1", false) { onCommand(GameCommand.HireWardens(1)) }
-            Choice("+5", false) { onCommand(GameCommand.HireWardens(FIVE)) }
-        }
-        BasicText(
-            "${formatEuro(
-                rules.wardenWeeklySalary,
-            )}/Woche je Kopf, unterwegs ${rules.wardenStartHour}–${rules.wardenEndHour} Uhr · " +
-                "Knöllchen ab welcher Minute, regelt die Schärfe im Ordnungsamt",
-            style = muted,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Choice("Brötchentaste", office.breadButton) { onCommand(GameCommand.SetBreadButton(!office.breadButton)) }
-            Choice("Anwohnerparken", office.residentParking) {
-                onCommand(GameCommand.SetResidentParking(!office.residentParking))
-            }
-            Choice("Parkplätze → Blumenkübel (${formatEuro(rules.curbConversionCost)})", false) {
-                onCommand(GameCommand.ConvertCurbParking)
-            }
-        }
-        BasicText("Straßenrand: noch ${(summary.curbShare * PERCENT).roundToInt()} % der Parkplätze", style = muted)
-        BasicText("Parkscheinautomat am Straßenrand (€/Std.):", style = text)
+        WardenSection(office, rules, onCommand, text, muted)
+        CurbSection(office, summary, rules, onCommand, muted)
+        BasicText(tr("Parkscheinautomat am Straßenrand (€/Std.):"), style = text)
         FeeChoices(rules, { summary.curbFee == it }) { onCommand(GameCommand.SetCurbFee(it)) }
-        BasicText("Gebühr für alle Parkplätze (€/Std.):", style = text)
+        BasicText(tr("Gebühr für alle Parkplätze (€/Std.):"), style = text)
         FeeChoices(rules, { fee -> lots.isNotEmpty() && lots.all { it.feePerHour == fee } }) {
             onCommand(GameCommand.SetParkingFee(null, it))
         }
-        BasicText("Größte Parkplätze und Parkhäuser:", style = text)
+        BasicText(tr("Größte Parkplätze und Parkhäuser:"), style = text)
         for (lot in lots.sortedByDescending { it.baseCapacity }.take(VISIBLE_LOTS)) LotRow(lot, rules, onCommand, muted)
     }
+}
+
+/** Politessen: einstellen, entlassen, Gehalt und Dienstzeit. */
+@Composable
+private fun WardenSection(
+    office: ParkingOfficeState,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+    text: TextStyle,
+    muted: TextStyle,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        BasicText(
+            tr("Politessen: {wardens}", "wardens" to office.wardens) +
+                if (office.hiring > 0) tr(" (+{hiring} kommen)", "hiring" to office.hiring) else "",
+            style = text,
+        )
+        Choice("−1", false) { onCommand(GameCommand.FireWardens(1)) }
+        Choice("+1", false) { onCommand(GameCommand.HireWardens(1)) }
+        Choice("+5", false) { onCommand(GameCommand.HireWardens(FIVE)) }
+    }
+    BasicText(
+        tr(
+            "{wardenWeeklySalary}/Woche je Kopf, unterwegs {wardenStartHour}–{wardenEndHour} Uhr · " +
+                "Knöllchen ab welcher Minute, regelt die Schärfe im Ordnungsamt",
+            "wardenWeeklySalary" to
+                formatEuro(
+                    rules.wardenWeeklySalary,
+                ),
+            "wardenStartHour" to rules.wardenStartHour,
+            "wardenEndHour" to rules.wardenEndHour,
+        ),
+        style = muted,
+    )
+}
+
+/** Straßenrand: Brötchentaste, Anwohnerparken, Blumenkübel. */
+@Composable
+private fun CurbSection(
+    office: ParkingOfficeState,
+    summary: ParkingSummary,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+    muted: TextStyle,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Choice(
+            tr("Brötchentaste"),
+            office.breadButton,
+        ) { onCommand(GameCommand.SetBreadButton(!office.breadButton)) }
+        Choice(tr("Anwohnerparken"), office.residentParking) {
+            onCommand(GameCommand.SetResidentParking(!office.residentParking))
+        }
+        Choice(
+            tr(
+                "Parkplätze → Blumenkübel ({curbConversionCost})",
+                "curbConversionCost" to formatEuro(rules.curbConversionCost),
+            ),
+            false,
+        ) {
+            onCommand(GameCommand.ConvertCurbParking)
+        }
+    }
+    BasicText(
+        tr(
+            "Straßenrand: noch {curbShare} % der Parkplätze",
+            "curbShare" to (summary.curbShare * PERCENT).roundToInt(),
+        ),
+        style = muted,
+    )
 }
 
 /** Eine Reihe Gebührenstufen. */
@@ -126,14 +187,19 @@ private fun LotRow(
     muted: TextStyle,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        val name = lot.name ?: "Parkplatz ${lot.id + 1}"
+        val name = lot.name ?: tr("Parkplatz {id}", "id" to lot.id + 1)
         val state =
             if (lot.capacity ==
                 0
             ) {
                 "abgeschafft"
             } else {
-                "${lot.occupied}/${lot.capacity}, ${euro(lot.feePerHour)}/Std."
+                tr(
+                    "{occupied}/{capacity}, {feePerHour}/Std.",
+                    "occupied" to lot.occupied,
+                    "capacity" to lot.capacity,
+                    "feePerHour" to euro(lot.feePerHour),
+                )
             }
         BasicText("$name: $state", style = muted, modifier = Modifier.width(210.dp))
         val options = rules.parkingFeeOptions
@@ -148,13 +214,13 @@ private fun LotRow(
         if (lot.capacity > 0) {
             Choice("weg", false) { onCommand(GameCommand.SetParkingCapacity(lot.id, 0)) }
         } else {
-            Choice("öffnen", false) { onCommand(GameCommand.SetParkingCapacity(lot.id, lot.baseCapacity)) }
+            Choice(tr("öffnen"), false) { onCommand(GameCommand.SetParkingCapacity(lot.id, lot.baseCapacity)) }
         }
     }
 }
 
 private fun euro(amount: Double): String =
-    if (amount == amount.roundToInt().toDouble()) "${amount.roundToInt()} €" else "${"%.2f".format(amount)} €"
+    if (amount == amount.roundToInt().toDouble()) "${amount.roundToInt()} €" else "${formatDecimal(amount, 2)} €"
 
 private const val PERCENT = 100
 

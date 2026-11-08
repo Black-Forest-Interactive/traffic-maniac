@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,6 +27,7 @@ import de.bfi.trafficmaniac.game.HighscoreEntry
 import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.CityChoice
 import de.bfi.trafficmaniac.ui.MainMenu
 import de.bfi.trafficmaniac.ui.NoSound
@@ -60,6 +62,7 @@ private val speedKeys = mapOf(Key.One to 1, Key.Two to 2, Key.Three to 4, Key.Fo
  */
 fun main(args: Array<String>) {
     val options = parseOptions(args)
+    Translations.use(Translations.languageFor(UserData().settings().language))
     val packs = CityPacks.discover()
     val sound = if (packs.isNotEmpty()) SynthSoundBoard.open() else NoSound
     val sprites = loadSprites()
@@ -98,8 +101,12 @@ private class Library(
 
 private fun missingCitiesMessage(): String {
     val missing = CityPacks.missingMaps().joinToString(" ") { it.name }.ifEmpty { "pforzheim" }
-    return "Keine Stadt mit Karte gefunden (Ordner ${File(CityPacks.DIRECTORY).absolutePath}).\n\n" +
-        "Karte erzeugen mit: scripts/import-city.sh $missing"
+    return tr(
+        "Keine Stadt mit Karte gefunden (Ordner {absolutePath}).\n\n" +
+            "Karte erzeugen mit: scripts/import-city.sh {missing}",
+        "absolutePath" to File(CityPacks.DIRECTORY).absolutePath,
+        "missing" to missing,
+    )
 }
 
 /** Menü oder laufendes Spiel; nach der Wertung geht es zurück ins Menü. */
@@ -127,7 +134,7 @@ private fun Game(
         userData.save(settings)
     }
     val start: (Scenario) -> Unit = { scenario ->
-        loading = "${scenario.title}: ${pack.name} wird vorbereitet …"
+        loading = tr("{title}: {name} wird vorbereitet …", "title" to tr(scenario.title), "name" to pack.name)
         scope.launch {
             session = withContext(Dispatchers.Default) { Session.start(pack, scenario, settings, options) }
             loading = null
@@ -135,10 +142,10 @@ private fun Game(
     }
     LaunchedEffect(Unit) { options.scenario?.let { id -> library.scenarios.firstOrNull { it.id == id }?.let(start) } }
     val load: (SaveInfo) -> Unit = { info ->
-        loading = "Spielstand wird geladen …"
+        loading = tr("Spielstand wird geladen …")
         scope.launch {
             val loaded = resume(library, info)
-            loading = if (loaded == null) "Dieser Spielstand passt nicht mehr zum Spiel." else null
+            loading = if (loaded == null) tr("Dieser Spielstand passt nicht mehr zum Spiel.") else null
             session = loaded
             if (loaded == null) {
                 delay(NOTICE_MILLIS)
@@ -147,14 +154,18 @@ private fun Game(
         }
     }
     val current = session
-    if (current == null) {
-        Menu(library, pack, { pack = it }, settings, { settings = it }, highscores, start, load, loading, onQuit)
-        return
-    }
-    val shown = if (settings.sprites) sprites else NoSprites
-    Playing(current, sound, shown, library.saves, { session = null }) { entry ->
-        highscores = highscores.add(entry)
-        userData.save(highscores)
+    // Sprache wechseln: Tabelle laden und die Oberfläche neu aufbauen, damit jeder Text neu übersetzt wird
+    val language = Translations.languageFor(settings.language)
+    remember(language) { Translations.use(language) }
+    key(language) {
+        if (current == null) {
+            Menu(library, pack, { pack = it }, settings, { settings = it }, highscores, start, load, loading, onQuit)
+        } else {
+            Playing(current, sound, if (settings.sprites) sprites else NoSprites, library.saves, { session = null }) {
+                highscores = highscores.add(it)
+                userData.save(highscores)
+            }
+        }
     }
 }
 
@@ -188,9 +199,9 @@ private fun Menu(
                 saves.delete(it)
                 saveList = saves.list()
             },
-        tagline = pack.info.texts.tagline,
+        tagline = pack.texts.tagline,
         cities =
-            CityChoice(library.packs.map { it.name }, library.packs.indexOf(pack), pack.info.description) {
+            CityChoice(library.packs.map { it.name }, library.packs.indexOf(pack), pack.description) {
                 onPack(library.packs[it])
             },
     )
@@ -246,7 +257,14 @@ private fun CoroutineScope.save(
     launch(Dispatchers.IO) {
         runCatching { session.save(saves, id) }.onFailure {
             println("Speichern fehlgeschlagen: $it")
-            session.runner.paused { game -> game.announce("Speichern fehlgeschlagen: ${it.message}") }
+            session.runner.paused { game ->
+                game.announce(
+                    tr(
+                        "Speichern fehlgeschlagen: {message}",
+                        "message" to it.message,
+                    ),
+                )
+            }
         }
     }
 }

@@ -61,4 +61,6 @@ data class GameSettings(
     val difficulty: Difficulty = Difficulty.NORMAL,
     /** Zeitraffer beim Spielstart (1, 2, 4 oder 8). */
     val startSpeed: Int = 1,
+    /** Sprache als Kürzel („de“, „en“); `null` = Sprache des Systems. */
+    val language: String? = null,
 )

@@ -1,49 +1,78 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
+
 /** Achievements für Stadt-Extreme – sie gehen nicht in die Wertung ein. */
 enum class Achievement(
-    val title: String,
-    val description: String,
+    private val titleText: String,
+    private val descriptionText: String,
     internal val reached: (AchievementFacts) -> Boolean,
 ) {
     TOTAL_STANDSTILL(
-        "Totalstillstand",
-        "Mindestens 300 Autos unterwegs, im Schnitt keine 3 km/h",
+        translatable("Totalstillstand"),
+        translatable("Mindestens 300 Autos unterwegs, im Schnitt keine 3 km/h"),
         { it.activeVehicles >= 300 && it.meanSpeedKmh < 3.0 },
     ),
     ALL_BRIDGES_CLOSED(
-        "Alle Brücken gesperrt",
-        "Keine einzige Brücke über Enz und Nagold ist mehr befahrbar",
+        translatable("Alle Brücken gesperrt"),
+        translatable("Keine einzige Brücke über Enz und Nagold ist mehr befahrbar"),
         { it.bridgesOpen == 0 },
     ),
-    HALF_LATE("Die halbe Stadt kam zu spät", "Mindestens die Hälfte der Pendler eines Tages zu spät", {
-        it.lateShare >=
-            0.5
-    }),
+    HALF_LATE(
+        translatable(
+            "Die halbe Stadt kam zu spät",
+        ),
+        translatable("Mindestens die Hälfte der Pendler eines Tages zu spät"),
+        {
+            it.lateShare >=
+                0.5
+        },
+    ),
     SIGN_FOREST(
-        "Schilderwald",
-        "Tempolimit, Nachtlimit, Vorfahrt, Radweg-Querung und zwei Blitzer auf engstem Raum",
+        translatable("Schilderwald"),
+        translatable("Tempolimit, Nachtlimit, Vorfahrt, Radweg-Querung und zwei Blitzer auf engstem Raum"),
         { it.signForest },
     ),
-    LETTER_WAVE("Bescheid-Welle", "1.500 Bußgeldbescheide an einem Tag", { it.lettersToday >= 1_500 }),
-    CAMERA_CAPITAL("Blitzer-Hauptstadt", "Zehn Blitzer gleichzeitig im Einsatz", { it.cameras >= 10 }),
-    ENGINEERING("Ingenieurskunst", "Eine Brücke ist eingestürzt", { it.collapses > 0 }),
+    LETTER_WAVE(translatable("Bescheid-Welle"), translatable("1.500 Bußgeldbescheide an einem Tag"), {
+        it.lettersToday >=
+            1_500
+    }),
+    CAMERA_CAPITAL(translatable("Blitzer-Hauptstadt"), translatable("Zehn Blitzer gleichzeitig im Einsatz"), {
+        it.cameras >=
+            10
+    }),
+    ENGINEERING(translatable("Ingenieurskunst"), translatable("Eine Brücke ist eingestürzt"), { it.collapses > 0 }),
     PLANNING_CHAMPION(
-        "Planungsweltmeister",
-        "Drei Planfeststellungsverfahren laufen gleichzeitig",
+        translatable("Planungsweltmeister"),
+        translatable("Drei Planfeststellungsverfahren laufen gleichzeitig"),
         { it.plannings >= 3 },
     ),
-    CRITICAL_MASS("Kritische Masse", "Ein Rad-Korso hat eine Hauptstraße lahmgelegt", { it.corsos > 0 }),
-    DEMO_SEASON("Demo-Saison", "Drei Spontandemos an einem Tag", { it.demosToday >= 3 }),
+    CRITICAL_MASS(translatable("Kritische Masse"), translatable("Ein Rad-Korso hat eine Hauptstraße lahmgelegt"), {
+        it.corsos >
+            0
+    }),
+    DEMO_SEASON(translatable("Demo-Saison"), translatable("Drei Spontandemos an einem Tag"), { it.demosToday >= 3 }),
     SPEEDER_OF_THE_YEAR(
-        "Raser des Jahres",
-        "Jemand fuhr mehr als doppelt so schnell wie erlaubt",
+        translatable("Raser des Jahres"),
+        translatable("Jemand fuhr mehr als doppelt so schnell wie erlaubt"),
         { it.recordRatio > 2 },
     ),
-    BIKE_CITY("Fahrradstadt wider Willen", "25 Führerscheine eingezogen", { it.revocations >= 25 }),
-    CLASS_ACTION("Klagewelle", "Zehn Schadensersatzklagen", { it.lawsuits >= 10 }),
-    STUCK("Eingeklemmt", "Ein LKW steckt in einer Nebenstraße fest", { it.trucksStuck > 0 }),
-    PRESS_DARLING("Liebling der Presse", "Reputation über 90", { it.reputation > 90 }),
+    BIKE_CITY(translatable("Fahrradstadt wider Willen"), translatable("25 Führerscheine eingezogen"), {
+        it.revocations >=
+            25
+    }),
+    CLASS_ACTION(translatable("Klagewelle"), translatable("Zehn Schadensersatzklagen"), { it.lawsuits >= 10 }),
+    STUCK(
+        translatable("Eingeklemmt"),
+        translatable("Ein LKW steckt in einer Nebenstraße fest"),
+        { it.trucksStuck > 0 },
+    ),
+    PRESS_DARLING(translatable("Liebling der Presse"), translatable("Reputation über 90"), { it.reputation > 90 }),
+    ;
+
+    val title: String get() = tr(titleText)
+    val description: String get() = tr(descriptionText)
 }
 
 data class AchievementStatus(
@@ -90,7 +119,7 @@ internal class Achievements(
         for (achievement in Achievement.entries) {
             if (achievement !in unlocked && achievement.reached(facts)) {
                 unlocked[achievement] = day
-                message("Achievement freigeschaltet: ${achievement.title}!")
+                message(tr("Achievement freigeschaltet: {title}!", "title" to achievement.title))
             }
         }
     }

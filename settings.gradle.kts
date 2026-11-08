@@ -18,6 +18,7 @@ dependencyResolutionManagement {
 }
 
 include(
+    ":i18n",
     ":city",
     ":sim-engine",
     ":game",

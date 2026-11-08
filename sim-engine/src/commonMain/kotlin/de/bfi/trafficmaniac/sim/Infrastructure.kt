@@ -1,19 +1,23 @@
 package de.bfi.trafficmaniac.sim
 
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import kotlin.math.pow
 import kotlin.random.Random
 
 /** Schaden, den die Stadt gemeldet bekommt, sobald ein Zustand eine Schwelle unterschreitet. */
 enum class DamageKind(
-    val label: String,
+    private val labelText: String,
 ) {
-    POTHOLES("Schlaglöcher"),
-    CRATER("Krater"),
-    SIGNAL_FAILURE("Ampelausfall"),
-    BRIDGE_WEIGHT("Brücke marode"),
-    BRIDGE_UNSAFE("Brücke einsturzgefährdet"),
-    BRIDGE_COLLAPSE("Brücke eingestürzt"),
+    POTHOLES(translatable("Schlaglöcher")),
+    CRATER(translatable("Krater")),
+    SIGNAL_FAILURE(translatable("Ampelausfall")),
+    BRIDGE_WEIGHT(translatable("Brücke marode")),
+    BRIDGE_UNSAFE(translatable("Brücke einsturzgefährdet")),
+    BRIDGE_COLLAPSE(translatable("Brücke eingestürzt")),
     ;
+
+    val label: String get() = tr(labelText)
 
     val isBridge: Boolean get() = this == BRIDGE_WEIGHT || this == BRIDGE_UNSAFE || this == BRIDGE_COLLAPSE
 }

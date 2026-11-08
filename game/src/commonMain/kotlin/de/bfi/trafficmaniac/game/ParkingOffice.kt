@@ -1,5 +1,7 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.GameTime
 import de.bfi.trafficmaniac.sim.ParkingViolation
 import de.bfi.trafficmaniac.sim.ParkingViolationKind
@@ -78,12 +80,18 @@ internal class ParkingOffice(
         time: Double,
     ) {
         repeat(count) { hires.addLast(time + rules.wardenHireDelayHours * SECONDS_PER_HOUR) }
-        message("$count Politessen eingestellt – im Dienst in ${rules.wardenHireDelayHours} Stunden")
+        message(
+            tr(
+                "{count} Politessen eingestellt – im Dienst in {wardenHireDelayHours} Stunden",
+                "count" to count,
+                "wardenHireDelayHours" to rules.wardenHireDelayHours,
+            ),
+        )
     }
 
     fun fire(count: Int) {
         wardens = (wardens - count).coerceAtLeast(0)
-        message("Politessen: $wardens")
+        message(tr("Politessen: {wardens}", "wardens" to wardens))
     }
 
     fun weeklySalaries(): Long = wardens * rules.wardenWeeklySalary
@@ -93,17 +101,30 @@ internal class ParkingOffice(
 
     /** Straßenrand-Parkplätze in Radspuren und Blumenkübel umwandeln (ein Schritt). */
     fun convertCurb() {
-        if (curbShare() <= 0.0) return message("Es gibt keine Parkplätze am Straßenrand mehr.")
-        if (!treasury.pay(rules.curbConversionCost, "Radspuren und Blumenkübel")) return
+        if (curbShare() <= 0.0) return message(tr("Es gibt keine Parkplätze am Straßenrand mehr."))
+        if (!treasury.pay(rules.curbConversionCost, tr("Radspuren und Blumenkübel"))) return
         curbConversions++
         applyCurb()
-        message("Parkplätze weg, Blumenkübel da: noch ${(curbShare() * PERCENT).toInt()} % am Straßenrand")
+        message(
+            tr(
+                "Parkplätze weg, Blumenkübel da: noch {curbShare} % am Straßenrand",
+                "curbShare" to (curbShare() * PERCENT).toInt(),
+            ),
+        )
     }
 
     fun setResidentParking(enabled: Boolean) {
         residentParking = enabled
         applyCurb()
-        message(if (enabled) "Anwohnerparken ausgeweitet – Besucher bleiben draußen" else "Anwohnerparken aufgehoben")
+        message(
+            if (enabled) {
+                tr(
+                    "Anwohnerparken ausgeweitet – Besucher bleiben draußen",
+                )
+            } else {
+                tr("Anwohnerparken aufgehoben")
+            },
+        )
     }
 
     /** Jede Stunde: Gebühren einnehmen, Knöllchen verteilen, neue Politessen antreten lassen. */
@@ -199,14 +220,14 @@ internal class ParkingPricing(
     ) {
         val lots = if (lot == null) 0 until simulation.parking.lotCount else lot..lot
         lots.forEach { simulation.parking.setLotFee(it, euros) }
-        val where = if (lot == null) "alle Parkplätze" else lotName(lot)
-        message("Parkgebühr ${"%.2f".format(euros)} €/Std.: $where")
+        val where = if (lot == null) tr("alle Parkplätze") else lotName(lot)
+        message(tr("Parkgebühr {euros} €/Std.: {where}", "euros" to formatDecimal(euros, 2), "where" to where))
     }
 
     /** Gebühr am Parkscheinautomaten (Straßenrand in Gewerbe- und Einkaufsgebieten). */
     fun setCurbFee(euros: Double) {
         simulation.parking.curbFee = euros
-        message("Parkscheinautomat am Straßenrand: ${"%.2f".format(euros)} €/Std.")
+        message(tr("Parkscheinautomat am Straßenrand: {euros} €/Std.", "euros" to formatDecimal(euros, 2)))
     }
 
     fun setCapacity(
@@ -218,17 +239,17 @@ internal class ParkingPricing(
             if (capacity <=
                 0
             ) {
-                "Parkplatz abgeschafft: ${lotName(lot)}"
+                tr("Parkplatz abgeschafft: {lot}", "lot" to lotName(lot))
             } else {
-                "${lotName(lot)}: $capacity Stellplätze"
+                tr("{lot}: {capacity} Stellplätze", "lot" to lotName(lot), "capacity" to capacity)
             },
         )
     }
 
     fun setBreadButton(enabled: Boolean) {
         simulation.parking.breadButton = enabled
-        message(if (enabled) "Brötchentaste wieder da: 30 Minuten gratis" else "Brötchentaste abgeschafft")
+        message(if (enabled) tr("Brötchentaste wieder da: 30 Minuten gratis") else tr("Brötchentaste abgeschafft"))
     }
 
-    private fun lotName(lot: Int): String = simulation.parking.lotName(lot) ?: "Parkplatz ${lot + 1}"
+    private fun lotName(lot: Int): String = simulation.parking.lotName(lot) ?: tr("Parkplatz {lot}", "lot" to lot + 1)
 }

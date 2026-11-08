@@ -1,5 +1,6 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.translatable
 import kotlinx.serialization.Serializable
 
 /** Eckdaten eines Spielstands – was das Menü in der Liste zeigt, ohne den ganzen Spielstand zu laden. */

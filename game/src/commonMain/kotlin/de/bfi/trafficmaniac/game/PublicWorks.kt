@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.StreetStretches
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.Simulation
 
 /** Das Tiefbauamt: stellt Schilder, Ampeln und Blitzer auf – gegen Bezahlung. */
@@ -35,19 +36,19 @@ internal class PublicWorks(
         val stretch = stretches.stretchOf(segment)
         if (stretch.all { limits[it] == kmh }) return
         val street = streetName(segment)
-        val suffix = if (nightOnly) " nur nachts" else ""
+        val suffix = if (nightOnly) tr(" nur nachts") else ""
         if (kmh == null) {
             for (s in stretch) {
                 simulation.graph.setSegmentSpeedLimit(s, null, nightOnly)
                 limits.remove(s)
             }
-            message("Tempolimit$suffix aufgehoben: $street")
-        } else if (treasury.pay(rules.speedLimitSignCost, "Tempo-$kmh-Schild")) {
+            message(tr("Tempolimit{suffix} aufgehoben: {street}", "suffix" to suffix, "street" to street))
+        } else if (treasury.pay(rules.speedLimitSignCost, tr("Tempo-{kmh}-Schild", "kmh" to kmh))) {
             for (s in stretch) {
                 simulation.graph.setSegmentSpeedLimit(s, kmh, nightOnly)
                 limits[s] = kmh
             }
-            message("Tempo $kmh$suffix: $street")
+            message(tr("Tempo {kmh}{suffix}: {street}", "kmh" to kmh, "suffix" to suffix, "street" to street))
             checkSignForest(segment)
         }
     }
@@ -73,25 +74,34 @@ internal class PublicWorks(
         simulation.infrastructure.closures.setDetour(segment, enabled)
         if (enabled) detourSegments += segment else detourSegments -= segment
         val street = streetName(segment)
-        val side = if (city.roads.segments[segment].passive) " (Nebenstraße zugeschaltet)" else ""
-        message(if (enabled) "Umleitung über $street$side" else "Umleitung aufgehoben: $street")
+        val side = if (city.roads.segments[segment].passive) tr(" (Nebenstraße zugeschaltet)") else ""
+        message(
+            if (enabled) {
+                tr("Umleitung über {street}{side}", "street" to street, "side" to side)
+            } else {
+                tr(
+                    "Umleitung aufgehoben: {street}",
+                    "street" to street,
+                )
+            },
+        )
     }
 
     fun buildSignal(node: Int) {
-        if (simulation.graph.nodeHasSignals[node]) return message("Hier steht schon eine Ampel")
-        if (treasury.pay(rules.signalCost, "Ampel")) {
+        if (simulation.graph.nodeHasSignals[node]) return message(tr("Hier steht schon eine Ampel"))
+        if (treasury.pay(rules.signalCost, tr("Ampel"))) {
             simulation.signals.setSignal(node, true)
             signalNodes = signalNodesOf()
-            message("Neue Ampel in Betrieb")
+            message(tr("Neue Ampel in Betrieb"))
         }
     }
 
     fun removeSignal(node: Int) {
         if (!simulation.graph.nodeHasSignals[node]) return
-        if (treasury.pay(rules.signalRemovalCost, "Abbau der Ampel")) {
+        if (treasury.pay(rules.signalRemovalCost, tr("Abbau der Ampel"))) {
             simulation.signals.setSignal(node, false)
             signalNodes = signalNodesOf()
-            message("Ampel abgebaut")
+            message(tr("Ampel abgebaut"))
         }
     }
 
@@ -99,12 +109,18 @@ internal class PublicWorks(
         segment: Int,
         mobile: Boolean,
     ) {
-        if (cameraCounters.values.any { it.segment == segment }) return message("Hier blitzt es schon")
-        val affordable = if (mobile) true else treasury.pay(rules.cameraCost, "Blitzer")
+        if (cameraCounters.values.any { it.segment == segment }) return message(tr("Hier blitzt es schon"))
+        val affordable = if (mobile) true else treasury.pay(rules.cameraCost, tr("Blitzer"))
         if (affordable) {
             val camera = simulation.speedControl.placeCamera(segment, mobile)
             cameraCounters[camera.id] = CameraCounter(camera.id, segment, streetName(segment), mobile)
-            message("${if (mobile) "Lasermessung" else "Blitzer"} scharf geschaltet: ${streetName(segment)}")
+            message(
+                tr(
+                    "{blitzer} scharf geschaltet: {segment}",
+                    "blitzer" to if (mobile) tr("Lasermessung") else tr("Blitzer"),
+                    "segment" to streetName(segment),
+                ),
+            )
             checkSignForest(segment)
         }
     }
@@ -120,20 +136,20 @@ internal class PublicWorks(
      * gekauft. Ortskundige kennen ihn nicht – er erwischt mehr als ein fester Blitzer.
      */
     fun placeTrailer(segment: Int) {
-        if (cameraCounters.values.any { it.segment == segment }) return message("Hier blitzt es schon")
+        if (cameraCounters.values.any { it.segment == segment }) return message(tr("Hier blitzt es schon"))
         val fromDepot = idleTrailers > 0
         val paid =
             if (fromDepot) {
-                treasury.pay(rules.trailerMoveCost, "Blitzeranhänger umsetzen")
+                treasury.pay(rules.trailerMoveCost, tr("Blitzeranhänger umsetzen"))
             } else {
-                treasury.pay(rules.trailerCost, "Blitzeranhänger")
+                treasury.pay(rules.trailerCost, tr("Blitzeranhänger"))
             }
         if (!paid) return
         if (fromDepot) idleTrailers-- else trailers++
         val camera = simulation.speedControl.placeCamera(segment, mobile = true, trailer = true)
         cameraCounters[camera.id] =
             CameraCounter(camera.id, segment, streetName(segment), mobile = true, trailer = true)
-        message("Blitzeranhänger aufgestellt: ${streetName(segment)}")
+        message(tr("Blitzeranhänger aufgestellt: {segment}", "segment" to streetName(segment)))
         checkSignForest(segment)
     }
 
@@ -142,16 +158,20 @@ internal class PublicWorks(
         priority: Boolean,
     ) {
         if ((segment in priorityRoads) == priority) return
-        if (priority && !treasury.pay(rules.priorityRoadCost, "Vorfahrtsschilder")) return
+        if (priority && !treasury.pay(rules.priorityRoadCost, tr("Vorfahrtsschilder"))) return
         simulation.graph.setSegmentPriority(segment, priority)
         if (priority) priorityRoads += segment else priorityRoads -= segment
         message(
             if (priority) {
-                "Neue Vorfahrtsstraße: ${streetName(
-                    segment,
-                )}"
+                tr(
+                    "Neue Vorfahrtsstraße: {segment}",
+                    "segment" to
+                        streetName(
+                            segment,
+                        ),
+                )
             } else {
-                "Vorfahrt aufgehoben: ${streetName(segment)}"
+                tr("Vorfahrt aufgehoben: {segment}", "segment" to streetName(segment))
             },
         )
         checkSignForest(segment)
@@ -162,16 +182,20 @@ internal class PublicWorks(
         crossing: Boolean,
     ) {
         if ((segment in bikeCrossings) == crossing) return
-        if (crossing && !treasury.pay(rules.bikeCrossingCost, "Radweg-Querung")) return
+        if (crossing && !treasury.pay(rules.bikeCrossingCost, tr("Radweg-Querung"))) return
         simulation.graph.setSegmentBikeCrossing(segment, crossing)
         if (crossing) bikeCrossings += segment else bikeCrossings -= segment
         message(
             if (crossing) {
-                "Radweg-Querung markiert: ${streetName(
-                    segment,
-                )}"
+                tr(
+                    "Radweg-Querung markiert: {segment}",
+                    "segment" to
+                        streetName(
+                            segment,
+                        ),
+                )
             } else {
-                "Radweg-Querung entfernt: ${streetName(segment)}"
+                tr("Radweg-Querung entfernt: {segment}", "segment" to streetName(segment))
             },
         )
         checkSignForest(segment)
@@ -216,9 +240,9 @@ internal class PublicWorks(
         if (counter.trailer) {
             // Der Anhänger gehört weiter der Stadt und wartet im Depot auf den nächsten Einsatz
             idleTrailers++
-            message("Blitzeranhänger ins Depot: ${counter.streetName}")
+            message(tr("Blitzeranhänger ins Depot: {streetName}", "streetName" to counter.streetName))
         } else {
-            message("Blitzer abgebaut: ${counter.streetName}")
+            message(tr("Blitzer abgebaut: {streetName}", "streetName" to counter.streetName))
         }
     }
 
@@ -228,7 +252,7 @@ internal class PublicWorks(
                 simulation.graph.nodeHasSignals[it]
             }.toSet()
 
-    private fun streetName(segment: Int): String = city.roads.segments[segment].name ?: "Straße ohne Namen"
+    private fun streetName(segment: Int): String = city.roads.segments[segment].name ?: tr("Straße ohne Namen")
 
     companion object {
         const val SIGN_FOREST = "Schilderwald"

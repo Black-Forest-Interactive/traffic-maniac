@@ -1,5 +1,7 @@
 package de.bfi.trafficmaniac.sim
 
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -109,7 +111,7 @@ private const val KG_PER_TON = 1_000.0
  * ([speedingFactor] verstärkt oder dämpft diese Neigung).
  */
 enum class DriverProfile(
-    val germanName: String,
+    private val germanNameText: String,
     /** Gewünschte Zeitlücke zum Vordermann in Sekunden. */
     val timeHeadway: Double,
     /** Mindestabstand im Stand in Metern. */
@@ -127,9 +129,20 @@ enum class DriverProfile(
     /** Anteil des Tempos, mit dem sich der Fahrer Kreuzungen nähert (1 = ohne Zögern). */
     val junctionCaution: Double,
 ) {
-    NORMALO("Normalo", 1.4, 2.0, 1.0, 1.0, 1.0, 1.0, baseAttention = 0.85, reactionDelay = 0.6, junctionCaution = 1.0),
+    NORMALO(
+        translatable("Normalo"),
+        1.4,
+        2.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        baseAttention = 0.85,
+        reactionDelay = 0.6,
+        junctionCaution = 1.0,
+    ),
     DRAENGLER(
-        "Drängler",
+        translatable("Drängler"),
         0.8,
         1.0,
         1.4,
@@ -141,7 +154,7 @@ enum class DriverProfile(
         junctionCaution = 1.0,
     ),
     GEMUETLICHER(
-        "Gemütlicher",
+        translatable("Gemütlicher"),
         2.0,
         3.0,
         0.7,
@@ -153,7 +166,7 @@ enum class DriverProfile(
         junctionCaution = 0.9,
     ),
     SPAETZUENDER(
-        "Spätzünder",
+        translatable("Spätzünder"),
         1.5,
         2.0,
         0.9,
@@ -165,7 +178,7 @@ enum class DriverProfile(
         junctionCaution = 1.0,
     ),
     TRAEUMER(
-        "Träumer",
+        translatable("Träumer"),
         1.6,
         2.5,
         0.9,
@@ -177,7 +190,7 @@ enum class DriverProfile(
         junctionCaution = 1.0,
     ),
     UNSICHERER(
-        "Unsicherer",
+        translatable("Unsicherer"),
         2.2,
         3.0,
         0.7,
@@ -188,6 +201,9 @@ enum class DriverProfile(
         reactionDelay = 1.0,
         junctionCaution = 0.6,
     ),
+    ;
+
+    val germanName: String get() = tr(germanNameText)
 }
 
 enum class Drivetrain {
@@ -203,17 +219,19 @@ enum class Generation {
 }
 
 enum class VehicleRole(
-    val label: String,
+    private val labelText: String,
 ) {
-    PRIVATE("Privat"),
-    AMBULANCE("Rettungswagen"),
-    POLICE("Polizei"),
-    TOW_TRUCK("Abschleppdienst"),
-    STREET_SERVICE("Straßenmeisterei"),
-    BIKE_CORSO("Rad-Korso"),
-    FIRE_BRIGADE("Feuerwehr"),
-    HEAVY_TRANSPORT("Schwertransport"),
+    PRIVATE(translatable("Privat")),
+    AMBULANCE(translatable("Rettungswagen")),
+    POLICE(translatable("Polizei")),
+    TOW_TRUCK(translatable("Abschleppdienst")),
+    STREET_SERVICE(translatable("Straßenmeisterei")),
+    BIKE_CORSO(translatable("Rad-Korso")),
+    FIRE_BRIGADE(translatable("Feuerwehr")),
+    HEAVY_TRANSPORT(translatable("Schwertransport")),
     ;
+
+    val label: String get() = tr(labelText)
 
     /** Blaulicht: darf über Rot und bekommt eine Rettungsgasse. */
     val isEmergency: Boolean get() = this == AMBULANCE || this == POLICE || this == FIRE_BRIGADE
