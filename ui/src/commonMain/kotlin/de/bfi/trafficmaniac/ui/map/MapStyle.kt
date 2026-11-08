@@ -65,8 +65,8 @@ object MapStyle {
     val planning = Color(0xFF8D99AE)
     val parking = Color(0xFF1E6FD9)
     val stuckTruck = Color(0xFF5C6B7A)
-    val attribution = Color(0xFF555555)
-    val attributionBackground = Color(0xB3FFFFFF)
+    val attribution = Color(0xFF3D4B59)
+    val attributionBackground = Color(0xD9FFFFFF)
 
     const val WATERWAY_WIDTH_METERS = 14f
     const val MINOR_ROAD_WIDTH_METERS = 6f

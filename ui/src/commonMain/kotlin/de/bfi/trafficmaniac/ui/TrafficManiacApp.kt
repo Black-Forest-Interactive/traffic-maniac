@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
@@ -54,6 +55,7 @@ private const val MIN_PICK_RADIUS_METERS = 6f
 private const val MILLIS_PER_SECOND = 1_000.0
 private const val MONEY_RAIN_WIDTH = 360
 private const val MONEY_RAIN_HEIGHT = 260
+private const val FEED_GAP = 28
 
 /** Zustand der Spieloberfläche: Werkzeug, offenes Fenster, Tutorial-Schritt, Kartenansicht, Flug- und Zoomziel. */
 internal class HudState(
@@ -193,7 +195,11 @@ private fun MapArea(
                 },
             )
         }
-        MapViewSwitcher(hud.toggles, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
+        // Mittig über dem Teil der Karte rechts neben Verkehrslage und Meldungen – sonst überlappen sie
+        Box(
+            Modifier.fillMaxWidth().padding(start = (FEED_WIDTH + FEED_GAP).dp, top = 14.dp),
+            contentAlignment = Alignment.TopCenter,
+        ) { MapViewSwitcher(hud.toggles) }
         ZoomControls({ hud.zoom = MapZoom(it) }, Modifier.align(Alignment.CenterEnd).padding(end = 14.dp))
         hudFrame?.let { frame ->
             HudFeed(frame, hud::show, Modifier.align(Alignment.TopStart).padding(14.dp))

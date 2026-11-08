@@ -303,7 +303,8 @@ internal fun DebugOverlay(
     )
 }
 
-private const val FEED_WIDTH = 270
+/** Breite der linken Spalte über der Karte (Verkehrslage, Meldungen). */
+internal const val FEED_WIDTH = 270
 private const val VISIBLE_GROUPS = 5
 
 /** Längerer Text vor dem ersten Doppelpunkt ist kein Titel, sondern ein Satz. */
