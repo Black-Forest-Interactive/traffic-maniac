@@ -127,6 +127,16 @@ class PlanningTest {
     }
 
     @Test
+    fun greenWaveIsPlannedFromStartToEndLikeASpeedLimit() {
+        val plan = Plan()
+        val wave = ToolSelection(tool = Tool.SIGNAL_TIMING, signalPreset = SignalPreset.WAVE_50)
+        plan.clickMain(0, wave)
+        plan.clickMain(4, wave)
+
+        assertEquals(listOf(GameCommand.SetGreenWave(listOf(0, 1, 2, 3, 4), 50)), plan.actions.single().commands)
+    }
+
+    @Test
     fun undoTakesBackTheStartFirstThenTheLastAction() {
         val plan = Plan()
         plan.clickMain(0, ToolSelection(tool = Tool.CAMERA))

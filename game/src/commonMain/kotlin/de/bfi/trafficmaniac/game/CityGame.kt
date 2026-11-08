@@ -25,6 +25,7 @@ class CityGame(
     private val messages = ArrayDeque<GameMessage>()
     private val treasury = Treasury(rules.startBudget) { message(it, kind = MessageKind.PROBLEM) }
     private val works = PublicWorks(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
+    private val timing = SignalTiming(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
     private val citizens = Citizens(city.zones, rules)
     private val drivers = DriverRegistry(rules, citizens)
     private val office = FineOffice(rules, treasury, citizens, drivers) { message(it, kind = MessageKind.ACTION) }
@@ -116,6 +117,7 @@ class CityGame(
             bikeCrossings = works.bikeCrossings.toSet(),
             achievements = achievements.titles,
             signalNodes = works.signalNodes,
+            greenWaves = timing.greenWaves.toList(),
             cameras = works.cameraCounters.values.map { it.toRecord() },
             messages = messages.toList(),
             prContract = prContract,
@@ -304,6 +306,10 @@ class CityGame(
 
             is GameCommand.BuildSignal -> {
                 works.buildSignal(command.node)
+            }
+
+            is GameCommand.SetSignalProgram, is GameCommand.SetGreenWave -> {
+                timing.execute(command)
             }
 
             is GameCommand.RemoveSignal -> {
