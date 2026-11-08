@@ -58,7 +58,7 @@ fun ResultOverlay(
     sprites: SpriteSource = NoSprites,
 ) {
     val recalled = state.isGameOver
-    val text = TextStyle(color = ComicTheme.ink, fontSize = 14.sp)
+    val text = TmType.text(14.sp, color = ComicTheme.ink)
     Box(modifier.fillMaxSize().background(ComicTheme.scrim), contentAlignment = Alignment.Center) {
         Column(
             Modifier.width(620.dp).comicPanel(shadow = 8.dp).padding(24.dp),
@@ -74,11 +74,7 @@ fun ResultOverlay(
                     )
                 },
                 style =
-                    TextStyle(
-                        color = if (recalled) ComicTheme.red else ComicTheme.ink,
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Black,
-                    ),
+                    TmType.display(28.sp, if (recalled) ComicTheme.red else ComicTheme.ink),
             )
             // Die Rede als Sprechblase
             Column(
@@ -94,7 +90,7 @@ fun ResultOverlay(
                 if (!recalled) {
                     BasicText(
                         tr("Punkte: {points}", "points" to state.score.points),
-                        style = text.copy(fontSize = 24.sp, fontWeight = FontWeight.Black),
+                        style = TmType.display(24.sp),
                     )
                 }
                 Certificate(
@@ -148,7 +144,7 @@ private fun BackToMenu(
 ) {
     BasicText(
         tr("Zurück zum Menü"),
-        style = TextStyle(color = ComicTheme.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+        style = TmType.text(15.sp, FontWeight.Bold, ComicTheme.ink),
         modifier =
             modifier
                 .comicButton(
@@ -170,13 +166,13 @@ private fun Certificate(
             SpriteIcon(sprites, "seal_honorary", SEAL_SIZE.dp) { DrawnSeal() }
             BasicText(
                 tr("Ehrenbürgerschaft verliehen!"),
-                style = TextStyle(color = ComicTheme.ink, fontSize = 18.sp, fontWeight = FontWeight.Black),
+                style = TmType.display(18.sp, ComicTheme.ink),
             )
         }
         return
     }
     val text = if (recalled) tr("ABGEWÄHLT") else tr("EHRENBÜRGERSCHAFT ABGELEHNT")
-    val style = TextStyle(color = ComicTheme.red, fontSize = 18.sp, fontWeight = FontWeight.Black)
+    val style = TmType.display(18.sp, ComicTheme.red)
     if (sprites.has("stamp_rejected")) {
         // Stempelrahmen als Grafik, der Text kommt vom Spiel
         Box(Modifier.rotate(STAMP_DEGREES), contentAlignment = Alignment.Center) {

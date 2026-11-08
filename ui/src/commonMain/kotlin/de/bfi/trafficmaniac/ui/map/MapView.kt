@@ -92,6 +92,10 @@ fun MapView(
     sprites: SpriteSource = NoSprites,
     /** Zoom-Knopf: Jede neue Instanz zoomt um ihren Faktor um die Bildmitte. */
     zoom: MapZoom? = null,
+    /** Straßennetz-Modus (F4): Knoten, Abschnitte und Strecken über der Karte; `null` = aus. */
+    network: NetworkDebug? = null,
+    /** Im Straßennetz-Modus angeklickter Knoten bzw. Abschnitt. */
+    networkPick: NetworkPick? = null,
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
@@ -142,6 +146,7 @@ fun MapView(
                 }
             }
         }
+        if (network != null) NetworkCanvas(network, currentCamera, textMeasurer, networkPick, traffic)
         BasicText(
             text = city.attribution,
             style = TextStyle(color = MapStyle.attribution, fontSize = 11.sp),
@@ -151,6 +156,20 @@ fun MapView(
                     .background(MapStyle.attributionBackground)
                     .padding(horizontal = 6.dp, vertical = 2.dp),
         )
+    }
+}
+
+/** Straßennetz-Modus über allem anderen; die Ampel-Positionen kommen aus dem aktuellen Simulationsschritt. */
+@Composable
+private fun NetworkCanvas(
+    network: NetworkDebug,
+    camera: Camera?,
+    textMeasurer: TextMeasurer,
+    pick: NetworkPick?,
+    traffic: (() -> TrafficFrame?)?,
+) {
+    Canvas(Modifier.fillMaxSize()) {
+        if (camera != null) drawNetwork(network, camera, textMeasurer, pick, traffic?.invoke()?.current?.signalMarkers)
     }
 }
 

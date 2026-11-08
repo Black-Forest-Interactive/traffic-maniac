@@ -40,7 +40,8 @@ def unescape(literal: str) -> str:
 def keys() -> list[str]:
     found = []
     for module in SOURCES:
-        for path in sorted((ROOT / module / "src").glob("*Main/**/*.kt")):
+        src = ROOT / module / "src"
+        for path in sorted(list(src.glob("*Main/**/*.kt")) + list(src.glob("main/**/*.kt"))):
             source = path.read_text()
             for match in CALL.finditer(source):
                 text = "".join(unescape(lit) for lit in re.findall(STRING, match.group(1)))

@@ -63,4 +63,6 @@ data class GameSettings(
     val startSpeed: Int = 1,
     /** Sprache als Kürzel („de“, „en“); `null` = Sprache des Systems. */
     val language: String? = null,
+    /** Größe von Menü und HUD in Prozent; 0 = automatisch nach Fensterbreite. */
+    val uiScale: Int = 0,
 )

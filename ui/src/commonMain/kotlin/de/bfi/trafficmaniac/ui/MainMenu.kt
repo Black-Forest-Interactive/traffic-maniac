@@ -1,18 +1,20 @@
 package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,40 +22,58 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.game.CityTexts
-import de.bfi.trafficmaniac.game.Difficulty
 import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
-import de.bfi.trafficmaniac.game.formatEuro
-import de.bfi.trafficmaniac.i18n.I18n
-import de.bfi.trafficmaniac.i18n.Language
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
-import de.bfi.trafficmaniac.ui.map.MapStyle
+import de.bfi.trafficmaniac.ui.components.Icon
+import de.bfi.trafficmaniac.ui.components.Icons
+import de.bfi.trafficmaniac.ui.components.TmIcon
 
 private enum class MenuTab(
     private val labelText: String,
+    val icon: TmIcon,
 ) {
-    PLAY(translatable("Spielen")),
-    LOAD(translatable("Laden")),
-    HIGHSCORES(translatable("Highscores")),
-    SETTINGS(translatable("Einstellungen")),
-    CREDITS(translatable("Credits")),
+    PLAY(translatable("Spielen"), Icons.Play),
+    LOAD(translatable("Laden"), Icons.Folder),
+    HIGHSCORES(translatable("Bestenliste"), Icons.Award),
+    SETTINGS(translatable("Einstellungen"), Icons.Sliders),
+    CREDITS(translatable("Credits"), Icons.Info),
     ;
 
     val label: String get() = tr(labelText)
 }
 
+/** Stadtauswahl: Namen der Stadtpakete, die gewählte, ihre Beschreibung und ihr Spitzname. */
+class CityChoice(
+    val names: List<String> = emptyList(),
+    val selected: Int = 0,
+    val description: String = "",
+    val onSelect: (Int) -> Unit = {},
+    val nickname: String = "",
+)
+
+/** Spielstände fürs Menü: Liste, Laden und Löschen; [describeTime] macht aus dem Zeitstempel „heute, 14:29 Uhr“. */
+class SaveSlots(
+    val saves: List<SaveInfo> = emptyList(),
+    val onLoad: (SaveInfo) -> Unit = {},
+    val onDelete: (SaveInfo) -> Unit = {},
+    val describeTime: (SaveInfo) -> String = { it.savedAt.replace('T', ' ') },
+)
+
 /**
- * Startmenü: Szenario und Schwierigkeitsgrad wählen, Bestenlisten, Einstellungen und Credits.
- * [loading] zeigt eine Ladeanzeige, solange ein Szenario vorbereitet wird.
+ * Startmenü im Design „Leitstelle“: dunkle Seitenleiste mit Logo, Claim und Navigation, rechts der gewählte
+ * Bildschirm – neues Spiel, Spielstände, Bestenliste, Einstellungen, Credits. [loading] zeigt eine Ladeanzeige.
  */
 @Composable
 fun MainMenu(
@@ -67,370 +87,139 @@ fun MainMenu(
     loading: String? = null,
     /** Gespeicherte Partien; ohne Speicherfunktion leer. */
     saves: SaveSlots = SaveSlots(),
-    /** Unterzeile unter dem Titel – kommt aus dem Stadtpaket. */
+    /** Unterzeile unter dem Logo – kommt aus dem Stadtpaket. */
     tagline: String = CityTexts().tagline,
     cities: CityChoice = CityChoice(),
+    /** Karte der gewählten Stadt für die Vorschau beim Spielstand. */
+    cityMap: CityMap? = null,
 ) {
     var tab by remember { mutableStateOf(MenuTab.PLAY) }
-    var selected by remember { mutableStateOf(scenarios.firstOrNull()) }
-    Box(Modifier.fillMaxSize().background(MapStyle.land)) {
-        Column(Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            BasicText(
-                tr("TRAFFIC MANIAC"),
-                style = TextStyle(color = ComicTheme.ink, fontSize = 44.sp, fontWeight = FontWeight.Black),
-            )
-            BasicText(
-                tagline,
-                style = TextStyle(color = ComicTheme.muted, fontSize = 15.sp),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    for (option in MenuTab.entries) MenuButton(option.label, tab == option) { tab = option }
-                    MenuButton(tr("Beenden"), false, onQuit)
-                }
-                Box(Modifier.width(CONTENT_WIDTH.dp).comicPanel(shadow = 6.dp).padding(20.dp)) {
+    TmTheme {
+        Box(Modifier.fillMaxSize().background(TmColors.Ground)) {
+            Row(Modifier.fillMaxSize()) {
+                Sidebar(tab, { tab = it }, saves.saves.size, tagline, attribution, onQuit)
+                Box(Modifier.weight(1f).fillMaxHeight()) {
                     when (tab) {
-                        MenuTab.PLAY -> {
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                CityRow(cities)
-                                PlayTab(scenarios, selected, highscores, settings, { selected = it }, onSettings) {
-                                    selected?.let(onStart)
-                                }
-                            }
-                        }
-
-                        MenuTab.LOAD -> {
-                            LoadTab(saves)
-                        }
-
-                        MenuTab.HIGHSCORES -> {
-                            HighscoreTab(scenarios, highscores)
-                        }
-
-                        MenuTab.SETTINGS -> {
-                            SettingsTab(settings, onSettings)
-                        }
-
-                        MenuTab.CREDITS -> {
-                            CreditsTab(attribution)
-                        }
+                        MenuTab.PLAY -> PlayScreen(scenarios, highscores, settings, onSettings, onStart, cities)
+                        MenuTab.LOAD -> LoadScreen(saves, cityMap)
+                        MenuTab.HIGHSCORES -> HighscoreScreen(scenarios, highscores)
+                        MenuTab.SETTINGS -> SettingsScreen(settings, onSettings)
+                        MenuTab.CREDITS -> CreditsScreen(attribution)
                     }
                 }
             }
+            loading?.let { Loading(it) }
         }
-        loading?.let { Loading(it) }
     }
 }
 
 @Composable
-private fun PlayTab(
-    scenarios: List<Scenario>,
-    selected: Scenario?,
-    highscores: Highscores,
-    settings: GameSettings,
-    onSelect: (Scenario) -> Unit,
-    onSettings: (GameSettings) -> Unit,
-    onStart: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        BasicText(tr("Szenario wählen"), style = heading())
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).weight(1f, fill = false),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            for (scenario in scenarios) {
-                ScenarioCard(
-                    scenario,
-                    scenario == selected,
-                    highscores.best(scenario.id)?.points,
-                ) { onSelect(scenario) }
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BasicText(tr("Schwierigkeit:"), style = body())
-            for (difficulty in Difficulty.entries) {
-                MenuChip(difficulty.label, settings.difficulty == difficulty) {
-                    onSettings(settings.copy(difficulty = difficulty))
-                }
-            }
-        }
-        MenuButton(tr("Los geht's!"), active = true, onClick = onStart)
-    }
-}
-
-@Composable
-private fun ScenarioCard(
-    scenario: Scenario,
-    selected: Boolean,
-    best: Long?,
-    onClick: () -> Unit,
+private fun Sidebar(
+    tab: MenuTab,
+    onTab: (MenuTab) -> Unit,
+    saveCount: Int,
+    tagline: String,
+    attribution: String,
+    onQuit: () -> Unit,
 ) {
     Column(
         Modifier
-            .fillMaxWidth()
-            .comicPanel(background = if (selected) ComicTheme.button else ComicTheme.paperDark, shadow = 3.dp)
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .width(SIDEBAR_WIDTH.dp)
+            .fillMaxHeight()
+            .background(TmColors.Ink)
+            .padding(horizontal = 24.dp, vertical = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(32.dp),
     ) {
-        BasicText(tr(scenario.title), style = body().copy(fontSize = 16.sp, fontWeight = FontWeight.Bold))
-        BasicText(tr(scenario.description), style = body())
-        val start =
-            tr(
-                "{germanName}, {startHour} Uhr",
-                "germanName" to scenario.startWeekday.germanName,
-                "startHour" to scenario.startHour.toInt(),
-            )
-        val record = best?.let { tr(" · Bestwert: {value} Punkte", "value" to it) } ?: ""
-        BasicText(
-            tr(
-                "{termDays} Tage · Start {start}{record}",
-                "termDays" to scenario.termDays,
-                "start" to start,
-                "record" to record,
-            ),
-            style = muted(),
-        )
-    }
-}
-
-/** Stadtauswahl: Namen der Stadtpakete, die gewählte und ihre Beschreibung. */
-class CityChoice(
-    val names: List<String> = emptyList(),
-    val selected: Int = 0,
-    val description: String = "",
-    val onSelect: (Int) -> Unit = {},
-)
-
-@Composable
-private fun CityRow(cities: CityChoice) {
-    if (cities.names.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BasicText(tr("Stadt:"), style = body())
-            cities.names.forEachIndexed { index, name ->
-                MenuChip(name, index == cities.selected) { cities.onSelect(index) }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Logo(LOGO_SIZE)
+            BasicText(tr("TRAFFIC\nMANIAC"), style = TmType.display(24.sp, TmColors.OnDark).copy(lineHeight = 24.sp))
+        }
+        BasicText(tagline, style = TmType.text(13.sp, color = TmColors.OnDarkMuted).copy(lineHeight = 20.sp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (option in MenuTab.entries) {
+                val count = if (option == MenuTab.LOAD && saveCount > 0) "$saveCount" else null
+                NavButton(option.label, option.icon, option == tab, count) { onTab(option) }
             }
         }
-        if (cities.description.isNotEmpty()) BasicText(cities.description, style = muted())
-    }
-}
-
-/** Spielstände fürs Menü: Liste, Laden und Löschen. */
-class SaveSlots(
-    val saves: List<SaveInfo> = emptyList(),
-    val onLoad: (SaveInfo) -> Unit = {},
-    val onDelete: (SaveInfo) -> Unit = {},
-)
-
-@Composable
-private fun LoadTab(slots: SaveSlots) {
-    Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        BasicText(tr("Spielstand laden"), style = heading())
-        if (slots.saves.isEmpty()) {
+        Box(Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            NavButton(tr("Beenden"), Icons.LogOut, active = false, count = null, outlined = true, onClick = onQuit)
             BasicText(
-                tr("Noch nichts gespeichert – im Spiel: Knopf „Speichern“ oder F5 (Schnellspeichern)."),
-                style = muted(),
+                tr("Kartendaten: {attribution}", "attribution" to attribution),
+                style = TmType.text(11.sp, color = TmColors.OnDarkMuted),
             )
         }
-        for (save in slots.saves) {
-            Column(
-                Modifier.fillMaxWidth().comicPanel(background = ComicTheme.paperDark, shadow = 3.dp).padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                val quick = if (save.id == SaveInfo.QUICK_SAVE) tr("Schnellspeicher · ") else ""
-                BasicText(
-                    "$quick${save.cityName} · ${tr(save.scenarioTitle)} · ${save.difficulty.label}",
-                    style = body().copy(fontWeight = FontWeight.Bold),
-                )
-                BasicText(
-                    tr(
-                        "{gameTime} · Kasse {balance} · Reputation {reputation}",
-                        "gameTime" to save.gameTime,
-                        "balance" to formatEuro(save.balance),
-                        "reputation" to save.reputation,
-                    ),
-                    style = body(),
-                )
-                BasicText("gespeichert ${save.savedAt.replace('T', ' ')}", style = muted())
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MenuChip(tr("Laden"), true) { slots.onLoad(save) }
-                    MenuChip(tr("Löschen"), false) { slots.onDelete(save) }
-                }
-            }
-        }
     }
 }
 
 @Composable
-private fun HighscoreTab(
-    scenarios: List<Scenario>,
-    highscores: Highscores,
+private fun NavButton(
+    label: String,
+    icon: TmIcon,
+    active: Boolean,
+    count: String?,
+    outlined: Boolean = false,
+    onClick: () -> Unit,
 ) {
-    var difficulty by remember { mutableStateOf(Difficulty.NORMAL) }
-    Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        BasicText(tr("Bestenliste"), style = heading())
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (option in Difficulty.entries) MenuChip(option.label, option == difficulty) { difficulty = option }
-        }
-        for (scenario in scenarios) {
-            BasicText(tr(scenario.title), style = body().copy(fontWeight = FontWeight.Bold))
-            val table = highscores.of(scenario.id, difficulty)
-            if (table.isEmpty()) BasicText(tr("Noch keine Amtszeit beendet."), style = muted())
-            table.forEachIndexed { index, entry ->
-                val seal = if (entry.honoraryCitizen) tr(" · Ehrenbürger") else ""
-                BasicText(
-                    tr(
-                        "{index}. {points} Punkte · {earnings} · Reputation {reputation}{seal}" +
-                            " · {date}",
-                        "index" to index + 1,
-                        "points" to entry.points,
-                        "earnings" to
-                            formatEuro(
-                                entry.earnings,
-                            ),
-                        "reputation" to entry.reputation,
-                        "seal" to seal,
-                        "date" to entry.date,
-                    ),
-                    style = body(),
-                )
-            }
+    val shape = RoundedCornerShape(10.dp)
+    val color = if (active) TmColors.Surface else TmColors.OnDark
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = NAV_HEIGHT.dp)
+            .clip(shape)
+            .background(if (active) TmColors.Primary else Color.Transparent)
+            .then(if (outlined) Modifier.border(1.5.dp, TmColors.LineDark, shape) else Modifier)
+            .clickable(role = Role.Tab, onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(icon, null, tint = color, size = 20.dp)
+        BasicText(label, style = TmType.text(15.sp, FontWeight.SemiBold, color), modifier = Modifier.weight(1f))
+        count?.let {
+            BasicText(
+                it,
+                style = TmType.text(12.sp, FontWeight.SemiBold, if (active) TmColors.Surface else TmColors.OnDarkMuted),
+            )
         }
     }
 }
 
+/** Kopf eines Menübildschirms: Eyebrow in Großbuchstaben und großer Titel. */
 @Composable
-private fun SettingsTab(
-    settings: GameSettings,
-    onSettings: (GameSettings) -> Unit,
+internal fun ScreenHeader(
+    eyebrow: String,
+    title: String,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        BasicText(tr("Einstellungen"), style = heading())
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BasicText(tr("Sprache:"), style = body())
-            for (language in Language.entries) {
-                // Sprachnamen immer in der eigenen Sprache – sonst findet man nicht zurück
-                MenuChip(language.label, I18n.language == language) {
-                    onSettings(settings.copy(language = language.code))
-                }
-            }
-        }
-        Toggle(tr("Geräusche"), settings.sound) { onSettings(settings.copy(sound = it)) }
-        Toggle(tr("Musik"), settings.music) { onSettings(settings.copy(music = it)) }
-        Toggle(tr("Fertige Grafiken aus assets/sprites (sonst gezeichnet)"), settings.sprites) {
-            onSettings(settings.copy(sprites = it))
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BasicText(tr("Tempo beim Start:"), style = body())
-            for (speed in SPEEDS) {
-                MenuChip("$speed×", settings.startSpeed == speed) { onSettings(settings.copy(startSpeed = speed)) }
-            }
-        }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         BasicText(
-            tr("Im Spiel: M schaltet den Ton, N die Musik – Einstellungen werden automatisch gespeichert."),
-            style = muted(),
+            eyebrow.uppercase(),
+            style = TmType.text(13.sp, FontWeight.SemiBold, TmColors.Muted).copy(letterSpacing = 1.sp),
         )
+        BasicText(title, style = TmType.display(44.sp).copy(lineHeight = 46.sp))
     }
 }
-
-@Composable
-private fun CreditsTab(attribution: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        BasicText(tr("Credits"), style = heading())
-        for (line in CREDITS) BasicText(tr(line), style = body())
-        BasicText(
-            tr("Kartendaten: {attribution}", "attribution" to attribution),
-            style = body().copy(fontWeight = FontWeight.Bold),
-        )
-        BasicText(
-            tr("Die Kartendaten stehen unter der Open Database License (ODbL) – openstreetmap.org/copyright."),
-            style = muted(),
-        )
-    }
-}
-
-private val CREDITS =
-    listOf(
-        translatable("traffic-maniac – eine Parodie auf Verkehrssimulationen."),
-        translatable(
-            "Spiel, Simulation, Grafik und Musik: Black Forest Interactive " +
-                "(Grafik und Klänge werden im Spiel erzeugt).",
-        ),
-        translatable("Programmiert in Kotlin mit Compose Multiplatform und Skia."),
-        translatable(
-            "Alle Personen, Firmen, Vereine und Ereignisse sind frei erfunden. Ähnlichkeiten mit echten " +
-                "Verkehrspolitikern wären rein zufällig.",
-        ),
-        translatable("Lizenz: Apache License 2.0."),
-    )
 
 @Composable
 private fun Loading(text: String) {
-    Box(Modifier.fillMaxSize().background(ComicTheme.scrim), contentAlignment = Alignment.Center) {
-        BasicText(
-            text,
-            style = TextStyle(color = ComicTheme.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold),
-            modifier = Modifier.comicPanel(shadow = 6.dp).padding(horizontal = 32.dp, vertical = 20.dp),
-        )
+    Box(Modifier.fillMaxSize().background(TmColors.Scrim), contentAlignment = Alignment.Center) {
+        Row(
+            Modifier
+                .background(
+                    TmColors.Surface,
+                    RoundedCornerShape(16.dp),
+                ).padding(horizontal = 28.dp, vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Logo(LOGO_SIZE)
+            BasicText(text, style = TmType.text(18.sp, FontWeight.Bold))
+        }
     }
 }
 
-@Composable
-private fun MenuButton(
-    label: String,
-    active: Boolean,
-    onClick: () -> Unit,
-) {
-    BasicText(
-        label,
-        style = TextStyle(color = ComicTheme.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold),
-        modifier =
-            Modifier
-                .width(BUTTON_WIDTH.dp)
-                .comicButton(active)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-    )
-}
-
-@Composable
-private fun MenuChip(
-    label: String,
-    active: Boolean,
-    onClick: () -> Unit,
-) {
-    BasicText(
-        label,
-        style = body().copy(fontWeight = if (active) FontWeight.Bold else FontWeight.Normal),
-        modifier =
-            Modifier
-                .comicButton(
-                    active,
-                ).clickable(onClick = onClick)
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-    )
-}
-
-@Composable
-private fun Toggle(
-    label: String,
-    on: Boolean,
-    onChange: (Boolean) -> Unit,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        MenuChip(if (on) tr("An") else tr("Aus"), on) { onChange(!on) }
-        BasicText(label, style = body())
-    }
-}
-
-private fun heading() =
-    TextStyle(color = ComicTheme.ink, fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Serif)
-
-private fun body() = TextStyle(color = ComicTheme.ink, fontSize = 13.sp)
-
-private fun muted() = TextStyle(color = ComicTheme.muted, fontSize = 12.sp)
-
-private val SPEEDS = listOf(1, 2, 4, 8)
-private const val CONTENT_WIDTH = 640
-private const val BUTTON_WIDTH = 220
+private const val SIDEBAR_WIDTH = 280
+private const val NAV_HEIGHT = 48
+private const val LOGO_SIZE = 40

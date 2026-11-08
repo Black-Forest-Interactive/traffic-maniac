@@ -32,6 +32,7 @@ import de.bfi.trafficmaniac.ui.CityChoice
 import de.bfi.trafficmaniac.ui.MainMenu
 import de.bfi.trafficmaniac.ui.NoSound
 import de.bfi.trafficmaniac.ui.SaveSlots
+import de.bfi.trafficmaniac.ui.ScaledUi
 import de.bfi.trafficmaniac.ui.SoundBoard
 import de.bfi.trafficmaniac.ui.Tool
 import de.bfi.trafficmaniac.ui.TrafficManiacApp
@@ -43,6 +44,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -162,7 +164,8 @@ private fun Game(
         if (current == null) {
             Menu(library, pack, { pack = it }, settings, { settings = it }, highscores, start, load, loading, onQuit)
         } else {
-            Playing(current, sound, if (settings.sprites) sprites else NoSprites, library.saves, { session = null }) {
+            val shown = if (settings.sprites) sprites else NoSprites
+            Playing(current, sound, shown, library.saves, settings.uiScale, { session = null }) {
                 highscores = highscores.add(it)
                 userData.save(highscores)
             }
@@ -186,26 +189,62 @@ private fun Menu(
 ) {
     val saves = library.saves
     var saveList by remember { mutableStateOf(saves.list()) }
-    MainMenu(
-        scenarios = library.scenarios,
-        highscores = highscores,
-        settings = settings,
-        onSettings = onSettings,
-        onStart = onStart,
-        onQuit = onQuit,
-        attribution = pack.map.attribution,
-        loading = loading,
-        saves =
-            SaveSlots(saveList, onLoad) {
-                saves.delete(it)
-                saveList = saves.list()
-            },
-        tagline = pack.texts.tagline,
-        cities =
-            CityChoice(library.packs.map { it.name }, library.packs.indexOf(pack), pack.description) {
-                onPack(library.packs[it])
-            },
-    )
+    ScaledUi(settings.uiScale) {
+        MainMenu(
+            scenarios = library.scenarios,
+            highscores = highscores,
+            settings = settings,
+            onSettings = onSettings,
+            onStart = onStart,
+            onQuit = onQuit,
+            attribution = pack.map.attribution,
+            loading = loading,
+            saves =
+                SaveSlots(
+                    saveList,
+                    onLoad,
+                    onDelete = {
+                        saves.delete(it)
+                        saveList = saves.list()
+                    },
+                    describeTime = ::describeSaveTime,
+                ),
+            tagline = pack.texts.tagline,
+            cities =
+                CityChoice(
+                    library.packs.map { it.name },
+                    library.packs.indexOf(pack),
+                    pack.description,
+                    onSelect = { onPack(library.packs[it]) },
+                    nickname = pack.texts.nickname,
+                ),
+            cityMap = pack.map,
+        )
+    }
+}
+
+/** Wann gespeichert wurde, für die Spielstandliste: „heute, 14:29 Uhr“, „gestern, …“ oder mit Datum. */
+private fun describeSaveTime(save: SaveInfo): String {
+    val saved = runCatching { LocalDateTime.parse(save.savedAt) }.getOrNull() ?: return save.savedAt
+    val clock = saved.format(DateTimeFormatter.ofPattern("HH:mm"))
+    val today = LocalDate.now()
+    return when (saved.toLocalDate()) {
+        today -> {
+            tr("heute, {clock} Uhr", "clock" to clock)
+        }
+
+        today.minusDays(1) -> {
+            tr("gestern, {clock} Uhr", "clock" to clock)
+        }
+
+        else -> {
+            tr(
+                "{date}, {clock} Uhr",
+                "date" to saved.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                "clock" to clock,
+            )
+        }
+    }
 }
 
 /** Die laufende Partie: Takt, Bestenliste am Ende und die Spieloberfläche. */
@@ -215,26 +254,29 @@ private fun Playing(
     sound: SoundBoard,
     sprites: SpriteSource,
     saves: SaveGames,
+    uiScale: Int,
     onMenu: () -> Unit,
     onHighscore: (HighscoreEntry) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     LaunchedEffect(current) { current.runner.run() }
     LaunchedEffect(current) { current.result()?.let(onHighscore) }
-    TrafficManiacApp(
-        city = current.pack.map,
-        traffic = current.runner.frames,
-        rules = current.game.rules,
-        onCommand = { current.game.submit(it) },
-        onContinueDay = { current.runner.acknowledgeReport() },
-        sound = sound,
-        sprites = sprites,
-        onMenu = onMenu,
-        onSave = { scope.save(current, saves, "spiel-" + LocalDateTime.now().format(SAVE_ID_FORMAT)) },
-        tutorial = current.scenario.tutorial,
-        onSpeed = current.runner::setSpeed,
-        input = current.input,
-    )
+    ScaledUi(uiScale) {
+        TrafficManiacApp(
+            city = current.pack.map,
+            traffic = current.runner.frames,
+            rules = current.game.rules,
+            onCommand = { current.game.submit(it) },
+            onContinueDay = { current.runner.acknowledgeReport() },
+            sound = sound,
+            sprites = sprites,
+            onMenu = onMenu,
+            onSave = { scope.save(current, saves, "spiel-" + LocalDateTime.now().format(SAVE_ID_FORMAT)) },
+            tutorial = current.scenario.tutorial,
+            onSpeed = current.runner::setSpeed,
+            input = current.input,
+        )
+    }
 }
 
 /** Lädt [info] im Hintergrund; `null`, wenn der Spielstand nicht (mehr) passt. */
@@ -303,7 +345,7 @@ private fun parseOptions(args: Array<String>): Options {
 
 /**
  * Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo, M Ton, N Musik, F5 Schnellspeichern,
- * F3 Entwickler-Anzeige, Esc und Q/W/E/R/T/A/S/D/X Werkzeuge.
+ * F3 Entwickler-Anzeige, F4 Straßennetz-Modus, Esc und Q/W/E/R/T/A/S/D/X Werkzeuge.
  */
 private fun handleKey(
     event: KeyEvent,
@@ -322,6 +364,7 @@ private fun handleKey(
         event.key == Key.N -> sound.music = !sound.music
         event.key == Key.F5 -> onQuickSave()
         event.key == Key.F3 -> session.input.debug = !session.input.debug
+        event.key == Key.F4 -> session.input.network = !session.input.network
         Tool.forKey(event.key) != null -> session.input.toolRequest = Tool.forKey(event.key)
         else -> return false
     }

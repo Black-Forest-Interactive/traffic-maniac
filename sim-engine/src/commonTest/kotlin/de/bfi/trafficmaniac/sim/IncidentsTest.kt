@@ -52,6 +52,27 @@ class IncidentsTest {
     }
 
     @Test
+    fun wholeConvoyArrivesAndClearsTheAccident() {
+        // Alle Wachen am selben Knoten: Rettungswagen, Polizei, Feuerwehr und Abschlepper fahren als Kolonne –
+        // und hinter dem Unfall staut sich dichter Verkehr
+        val simulation = Simulation(crossroads(facilities = testFacilities), base.copy(peakTripsPerHour = 4_000.0))
+        val victim = simulation.firstPrivateVehicleAfter(minutes = 5)
+        simulation.forceAccident(victim)
+        val incident = simulation.incidentsForTest.active.single()
+
+        var everyone = false
+        repeat(30 * 60 * simulation.config.ticksPerSecond) {
+            simulation.step()
+            if (incident.responders.all { it.role in incident.arrived }) everyone = true
+        }
+
+        assertTrue(everyone, "Angekommen: ${incident.arrived}, unterwegs: ${incident.responders.map { it.role }}")
+        // Weit vor dem Sicherheitsnetz von drei Stunden erledigt
+        simulation.run(minutes = 60)
+        assertEquals(0, simulation.openIncidents())
+    }
+
+    @Test
     fun ambulancesReportResponseTimes() {
         val simulation = Simulation(crossroads(facilities = testFacilities), base)
         val victim = simulation.firstPrivateVehicleAfter(minutes = 5)

@@ -52,8 +52,9 @@ class TranslationsTest {
         val call = Regex("""\b(?:tr|translatable)\(\s*($string(?:\s*\+\s*$string)*)""")
         val literal = Regex(string)
         return listOf("i18n", "city", "sim-engine", "game", "ui", "desktop-app")
-            .flatMap { module -> File(root, "$module/src").walk().filter { it.path.contains("Main/") } }
-            .filter { it.extension == "kt" }
+            .flatMap { module ->
+                File(root, "$module/src").walk().filter { it.path.contains("Main/") || it.path.contains("/main/") }
+            }.filter { it.extension == "kt" }
             .flatMap { file ->
                 call.findAll(file.readText()).map { match ->
                     literal.findAll(match.groupValues[1]).joinToString("") { unescape(it.value) }

@@ -59,7 +59,10 @@ object Balancing {
         val own = load(File(directory, "scenarios.json"), ListSerializer(Scenario.serializer()), Scenario.DEFAULTS)
         // Neue Standardszenarien (z. B. das Tutorial) erscheinen auch bei einer älteren eigenen Datei
         val ids = own.map { it.id }.toSet()
-        return Scenario.DEFAULTS.filter { it.id !in ids } + own
+        val defaults = Scenario.DEFAULTS.associateBy { it.id }
+        // Etiketten für die Menü-Karten aus den Standards, solange die eigene Datei keine hat
+        val tagged = own.map { if (it.tag == null) it.copy(tag = defaults[it.id]?.tag) else it }
+        return Scenario.DEFAULTS.filter { it.id !in ids } + tagged
     }
 
     private fun <T> load(

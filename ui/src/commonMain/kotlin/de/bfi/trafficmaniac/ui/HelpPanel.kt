@@ -29,11 +29,13 @@ private val CONTROLS =
         translatable("Leertaste") to translatable("Pause"),
         "1 – 4" to translatable("Zeitraffer 1×/2×/4×/8× (nachts automatisch schneller)"),
         "Esc · Q W E R T" to translatable("Ansehen, Tempolimit, Ampel, Blitzer, Laser, Anhänger"),
+        "T" to translatable("Anhänger umsetzen: aufgestellten Anhänger anklicken, dann die neue Straße"),
         "A S D X" to translatable("Vorfahrt, Radweg-Querung, Umleitung, Abbauen"),
         "Enter" to translatable("Tagesabschluss schließen"),
         "M · N" to translatable("Ton bzw. Musik aus/an"),
         "F5" to translatable("Schnell speichern (Laden im Startmenü)"),
         "F3" to translatable("Rechenzeit und Bildrate einblenden"),
+        "F4" to translatable("Straßennetz-Modus: Knoten, Abschnitte und Strecken, Klick zeigt die Daten"),
     )
 
 /** Hilfe: Bedienung in Kürze und die Legende aller Kartensymbole. */
