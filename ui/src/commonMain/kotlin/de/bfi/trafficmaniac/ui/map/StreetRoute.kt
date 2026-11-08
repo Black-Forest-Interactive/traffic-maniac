@@ -29,15 +29,20 @@ class StreetRoute(
 
     /**
      * Abschnitte von [from] bis [to] einschließlich, oder `null`, wenn es keinen Weg gibt.
-     * [allow] lässt passive Nebenstraßen zu (z. B. zugeschaltete Umleitungen).
+     * [allow] lässt passive Nebenstraßen zu (z. B. zugeschaltete Umleitungen). Mit [directed] nur in erlaubter
+     * Fahrtrichtung – wichtig bei getrennten Richtungsfahrbahnen (zwei Einbahnstraßen), etwa für grüne Wellen.
      */
     fun between(
         from: Int,
         to: Int,
         allow: (Int) -> Boolean = { false },
+        directed: Boolean = false,
     ): List<Int>? {
         if (from == to) return listOf(from)
-        val search = Search(from, setOf(segments[to].from, segments[to].to), allow)
+        val target = segments[to]
+        // Eine Einbahnstraße am Ende wird an ihrem Anfang betreten
+        val targets = if (directed && target.isOneway) setOf(target.from) else setOf(target.from, target.to)
+        val search = Search(from, targets, allow, directed)
         val end = search.run() ?: return null
         return (listOf(from) + search.pathTo(end) + to).distinct()
     }
@@ -47,6 +52,7 @@ class StreetRoute(
         private val from: Int,
         private val targets: Set<Int>,
         private val allow: (Int) -> Boolean,
+        private val directed: Boolean,
     ) {
         private val name = segments[from].name
         private val distance = HashMap<Int, Double>()
@@ -54,7 +60,10 @@ class StreetRoute(
         private val queue = ArrayList<Pair<Int, Double>>()
 
         fun run(): Int? {
-            for (node in listOf(segments[from].from, segments[from].to)) {
+            val start = segments[from]
+            // Eine Einbahnstraße am Anfang wird an ihrem Ende verlassen
+            val starts = if (directed && start.isOneway) listOf(start.to) else listOf(start.from, start.to)
+            for (node in starts) {
                 distance[node] = 0.0
                 queue += node to 0.0
             }
@@ -76,8 +85,10 @@ class StreetRoute(
             dist: Double,
         ) {
             for (segment in neighbors(node, allow)) {
-                if (segment == from) continue
                 val s = segments[segment]
+                // Gerichtet: eine Einbahnstraße nur von ihrem Anfang aus
+                val againstOneway = directed && s.isOneway && s.from != node
+                if (segment == from || againstOneway) continue
                 val next = if (s.from == node) s.to else s.from
                 val penalty = if (s.name != null && s.name == name) 1.0 else OTHER_STREET_PENALTY
                 val candidate = dist + length(segment) * penalty

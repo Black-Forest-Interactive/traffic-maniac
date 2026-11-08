@@ -14,6 +14,8 @@ data class GameRules(
     val speedLimitSignCost: Long = 2_000,
     val signalCost: Long = 60_000,
     val signalRemovalCost: Long = 5_000,
+    /** Ampelprogramm ändern (Aufteilung der Grünzeit oder grüne Welle), je Anlage. */
+    val signalProgramCost: Long = 1_000,
     val cameraCost: Long = 90_000,
     /** Wählbare Tempolimits; 7 km/h steht für Schrittgeschwindigkeit. */
     val speedLimitOptions: List<Int> = DEFAULT_SPEED_LIMITS,

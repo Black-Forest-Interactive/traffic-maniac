@@ -62,6 +62,7 @@ enum class Tool(
     LOOK(translatable("Ansehen"), Icons.Eye, Key.Escape, "Esc"),
     SPEED_LIMIT(translatable("Tempolimit"), Icons.Gauge, Key.Q, "Q"),
     SIGNAL(translatable("Ampel"), Icons.TrafficLight, Key.W, "W"),
+    SIGNAL_TIMING(translatable("Ampelprogramm"), Icons.Timer, Key.G, "G", translatable("Programm")),
     CAMERA(translatable("Blitzer"), Icons.Camera, Key.E, "E"),
     LASER(translatable("Laser"), Icons.Zap, Key.R, "R"),
     TRAILER(translatable("Anhänger"), Icons.Trailer, Key.T, "T"),
@@ -88,6 +89,8 @@ data class ToolSelection(
     val speedLimit: Int? = DEFAULT_SPEED_LIMIT,
     /** Tempolimit nur nachts (22–6 Uhr). */
     val nightOnly: Boolean = false,
+    /** Gewähltes Ampelprogramm. */
+    val signalPreset: SignalPreset = SignalPreset.MAIN,
 ) {
     companion object {
         const val DEFAULT_SPEED_LIMIT = 30
@@ -136,6 +139,7 @@ internal fun ToolDock(
     ) {
         state.plan?.let { PlanBar(it) }
         if (state.selection.tool == Tool.SPEED_LIMIT) SpeedLimitOptions(state.selection, rules, state.onSelect)
+        if (state.selection.tool == Tool.SIGNAL_TIMING) SignalTimingOptions(state.selection, state.onSelect)
         Row(
             Modifier.shadow(12.dp, DockShape, spotColor = DockShadow).background(TmColors.Ink, DockShape).padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -277,7 +281,7 @@ private fun SpeedSign(
 }
 
 @Composable
-private fun OptionChip(
+internal fun OptionChip(
     text: String,
     active: Boolean,
     onClick: () -> Unit,
@@ -328,6 +332,10 @@ private fun price(
 
         Tool.PRIORITY -> {
             formatEuro(rules.priorityRoadCost)
+        }
+
+        Tool.SIGNAL_TIMING -> {
+            formatEuro(rules.signalProgramCost)
         }
 
         Tool.BIKE_CROSSING -> {

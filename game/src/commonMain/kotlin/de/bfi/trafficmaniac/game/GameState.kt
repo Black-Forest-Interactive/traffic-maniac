@@ -40,6 +40,8 @@ data class GameState(
     val achievements: List<String>,
     /** Knoten mit Ampel (ursprüngliche und gebaute). */
     val signalNodes: Set<Int>,
+    /** Abschnitte der grünen Wellen (je Welle in Fahrtrichtung). */
+    val greenWaves: List<List<Int>> = emptyList(),
     val cameras: List<CameraRecord>,
     val messages: List<GameMessage>,
     val prContract: PrContract,
