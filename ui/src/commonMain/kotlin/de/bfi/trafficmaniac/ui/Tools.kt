@@ -88,6 +88,9 @@ class HudInput {
     var toolRequest by mutableStateOf<Tool?>(null)
     var debug by mutableStateOf(false)
     var network by mutableStateOf(false)
+
+    /** Fenster rechts öffnen (z. B. für Screenshots); die Oberfläche übernimmt es und setzt es zurück. */
+    internal var panelRequest by mutableStateOf<SidePanel?>(null)
 }
 
 /** Was das Dock braucht: Auswahl, freigeschaltete Werkzeuge, freie Anhänger und was bei einer Auswahl passiert. */

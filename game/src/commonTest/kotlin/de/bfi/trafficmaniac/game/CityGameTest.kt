@@ -187,6 +187,19 @@ class CityGameTest {
     }
 
     @Test
+    fun speederOfTheYearUnlocksRightAway() {
+        val game = CityGame(straightRoad(), config)
+        game.submit(GameCommand.SetSpeedLimit(segment = 0, kmh = 20))
+        game.submit(GameCommand.PlaceCamera(segment = 0))
+
+        // Start um 5 Uhr: zwei Stunden später ist noch lange nicht Mitternacht
+        game.run(minutes = 2 * 60)
+
+        assertTrue(game.simulation.gameTime.day == 0, "Noch derselbe Tag")
+        assertTrue("Raser des Jahres" in game.state().achievements, "${game.state().achievements}")
+    }
+
+    @Test
     fun signForestAchievement() {
         val game = CityGame(straightRoad(), config)
         listOf(

@@ -240,7 +240,13 @@ internal class PublicWorks(
         if (counter.trailer) {
             // Der Anhänger gehört weiter der Stadt und wartet im Depot auf den nächsten Einsatz
             idleTrailers++
-            message(tr("Blitzeranhänger ins Depot: {streetName}", "streetName" to counter.streetName))
+            message(
+                tr(
+                    "Blitzeranhänger aufgeladen: {streetName} – mit dem Anhänger-Werkzeug auf eine Straße klicken, " +
+                        "um ihn dort aufzustellen",
+                    "streetName" to counter.streetName,
+                ),
+            )
         } else {
             message(tr("Blitzer abgebaut: {streetName}", "streetName" to counter.streetName))
         }

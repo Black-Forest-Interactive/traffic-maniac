@@ -48,6 +48,9 @@ class CityGame(
     private var lastBudgetRound: BudgetRound? = null
     private var finesToday = 0L
     private var recordToday: Pair<Double, Int>? = null
+
+    /** Höchstes Verhältnis gemessen/erlaubt unter den heutigen Blitzerfotos (für „Raser des Jahres“). */
+    private var recordRatioToday = 0.0
     private var latestEdition: NewspaperEdition? = null
     private var commuteYesterday = CommuteStats()
 
@@ -83,6 +86,11 @@ class CityGame(
         val reportsBefore = simulation.dayReports.size
         simulation.step()
         collectFines()
+        achievements.checkLive(
+            simulation.incidentsToday[IncidentKind.TRUCK_STUCK] ?: 0,
+            recordRatioToday,
+            simulation.gameTime.day,
+        )
         simulation.finishedTrips.drain().forEach(citizens::tripFinished)
         if (hourIndex() != currentHour) hourPassed()
         if (simulation.dayReports.size > reportsBefore) dayEnded()
@@ -142,6 +150,9 @@ class CityGame(
             works.cameraCounters[violation.cameraId]?.record(tier, violation.measuredKmh, violation.limitKmh)
             office.register(tier, violation.homeZone, violation.person, simulation.time)
             finesToday += tier.fine
+            if (violation.limitKmh > 0) {
+                recordRatioToday = maxOf(recordRatioToday, violation.measuredKmh / violation.limitKmh)
+            }
             val record = recordToday
             if (record == null || violation.measuredKmh - violation.limitKmh > record.first - record.second) {
                 recordToday = violation.measuredKmh to violation.limitKmh
@@ -210,7 +221,7 @@ class CityGame(
                 lateShare = commuteYesterday.lateShare,
                 lettersToday = officeToday.paid,
                 demosToday = eventsToday.demos.size,
-                recordRatio = recordToday?.let { (measured, limit) -> measured / limit } ?: 0.0,
+                recordRatio = recordRatioToday,
                 trucksStuck = report.incidents[IncidentKind.TRUCK_STUCK] ?: 0,
             ),
             report.day,
@@ -236,6 +247,7 @@ class CityGame(
             )
         finesToday = 0
         recordToday = null
+        recordRatioToday = 0.0
         if (works.laserCount > 0) treasury.charge(works.laserCount * rules.laserDailyCost)
         if (report.weekday == Weekday.SUNDAY) budgetRound()
         if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
