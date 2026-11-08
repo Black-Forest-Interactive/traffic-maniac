@@ -102,7 +102,7 @@ private fun PanelContent(
     val game = frame.game
     when (panel) {
         SidePanel.CAMERAS -> {
-            CameraStatsPanel(game.cameras)
+            CameraStatsPanel(game.cameras, onClose = onClose)
         }
 
         SidePanel.BUDGET -> {
@@ -112,27 +112,35 @@ private fun PanelContent(
                 onContract = { onCommand(GameCommand.SetPrContract(it)) },
                 onArguments = { onCommand(GameCommand.SetArgumentsCampaign(it)) },
                 onCeremony = { onCommand(GameCommand.HoldCeremony) },
+                onClose = onClose,
             )
         }
 
         SidePanel.OFFICE -> {
-            OfficePanel(game.fineOffice, rules, game.bannedDrivers, onCommand)
+            OfficePanel(game.fineOffice, rules, game.bannedDrivers, onCommand, onClose = onClose)
         }
 
         SidePanel.MAINTENANCE -> {
-            MaintenancePanel(game.maintenance, rules, onCommand) { report ->
+            MaintenancePanel(game.maintenance, rules, onCommand, onClose = onClose, onShow = { report ->
                 // Ampelmeldungen haben keinen Abschnitt – dann zur Ampel selbst
                 val place = if (report.node >= 0) picker.placeOfNode(report.node) else picker.place(report.segments)
                 place?.let(onShow)
-            }
+            })
         }
 
         SidePanel.PARKING -> {
-            ParkingPanel(game.parkingOffice, frame.current.parking, frame.current.parkingLots, rules, onCommand)
+            ParkingPanel(
+                game.parkingOffice,
+                frame.current.parking,
+                frame.current.parkingLots,
+                rules,
+                onCommand,
+                onClose = onClose,
+            )
         }
 
         SidePanel.CITIZENS -> {
-            CitizensPanel(game)
+            CitizensPanel(game, angerThreshold = rules.angerThreshold, onShow = onShow, onClose = onClose)
         }
 
         SidePanel.EVENTS -> {
@@ -140,6 +148,7 @@ private fun PanelContent(
                 game.events,
                 frame.current.gameTime.day,
                 firstDay = game.firstDay,
+                onClose = onClose,
             ) { picker.place(it)?.let(onShow) }
         }
 
@@ -148,11 +157,11 @@ private fun PanelContent(
         }
 
         SidePanel.ACHIEVEMENTS -> {
-            AchievementsPanel(game.achievementList, firstDay = game.firstDay)
+            AchievementsPanel(game.achievementList, firstDay = game.firstDay, onClose = onClose)
         }
 
         SidePanel.HELP -> {
-            HelpPanel(sprites = sprites)
+            HelpPanel(sprites = sprites, onClose = onClose)
         }
 
         SidePanel.NONE -> {}

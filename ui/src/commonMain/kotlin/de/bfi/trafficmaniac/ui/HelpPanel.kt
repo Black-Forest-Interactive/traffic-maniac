@@ -1,34 +1,39 @@
 package de.bfi.trafficmaniac.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
+import de.bfi.trafficmaniac.ui.components.PanelScaffold
+import de.bfi.trafficmaniac.ui.components.PanelSection
 import de.bfi.trafficmaniac.ui.map.MapLegend
 import de.bfi.trafficmaniac.ui.map.NoSprites
 import de.bfi.trafficmaniac.ui.map.SpriteSource
 
+/** Tasten und Mausbedienung: Kürzel und was sie tun. */
 private val CONTROLS =
     listOf(
-        translatable("Mausrad: zoomen · Ziehen: Karte verschieben"),
-        translatable("Werkzeug unten wählen, dann auf Straße bzw. Kreuzung klicken"),
-        translatable("Leertaste: Pause · 1–4: Tempo 1×/2×/4×/8× · Enter: Tagesabschluss schließen"),
-        translatable("M: Ton aus/an · N: Musik aus/an · F5: schnell speichern (Laden im Startmenü)"),
-        translatable(
-            "Meldungen mit ▸, Schäden im Bauamt und Ereignisse im Kalender anklicken: die Karte zeigt die Stelle",
-        ),
+        translatable("Mausrad") to translatable("Zoomen"),
+        translatable("Ziehen") to translatable("Karte verschieben"),
+        translatable("Leertaste") to translatable("Pause"),
+        "1 – 4" to translatable("Zeitraffer 1×/2×/4×/8× (nachts automatisch schneller)"),
+        "Esc · Q W E R T" to translatable("Ansehen, Tempolimit, Ampel, Blitzer, Laser, Anhänger"),
+        "A S D X" to translatable("Vorfahrt, Radweg-Querung, Umleitung, Abbauen"),
+        "Enter" to translatable("Tagesabschluss schließen"),
+        "M · N" to translatable("Ton bzw. Musik aus/an"),
+        "F5" to translatable("Schnell speichern (Laden im Startmenü)"),
+        "F3" to translatable("Rechenzeit und Bildrate einblenden"),
     )
 
 /** Hilfe: Bedienung in Kürze und die Legende aller Kartensymbole. */
@@ -36,24 +41,36 @@ private val CONTROLS =
 fun HelpPanel(
     modifier: Modifier = Modifier,
     sprites: SpriteSource = NoSprites,
+    onClose: (() -> Unit)? = null,
 ) {
-    val title = TextStyle(color = ComicTheme.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    val text = TextStyle(color = ComicTheme.ink, fontSize = 11.sp)
-    Column(
-        modifier
-            .width(PANEL_WIDTH.dp)
-            .padding(12.dp)
-            .comicPanel()
-            .heightIn(max = MAX_HEIGHT.dp)
-            .verticalScroll(rememberScrollState())
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        BasicText(tr("Hilfe & Legende"), style = title)
-        for (line in CONTROLS) BasicText("• ${tr(line)}", style = text)
-        MapLegend(ComicTheme.ink, ComicTheme.muted, Modifier.padding(top = 6.dp), sprites)
+    PanelScaffold(tr("Hilfe"), tr("Hilfe & Legende"), modifier, onClose, floating = false) {
+        PanelSection(title = tr("Bedienung")) {
+            for ((key, action) in CONTROLS) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    BasicText(
+                        tr(key),
+                        style = TmType.mono(11.sp),
+                        modifier =
+                            Modifier
+                                .width(KEY_WIDTH.dp)
+                                .background(TmColors.Ground, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 3.dp),
+                    )
+                    BasicText(tr(action), style = TmType.text(13.sp), modifier = Modifier.weight(1f))
+                }
+            }
+            BasicText(
+                tr("Meldungen, Schäden und Ereignisse anklicken: die Karte zeigt die Stelle."),
+                style = TmType.caption,
+            )
+        }
+        PanelSection(title = tr("Legende"), divider = false) {
+            MapLegend(TmColors.Ink, Modifier.fillMaxWidth(), sprites)
+        }
     }
 }
 
-private const val PANEL_WIDTH = 420
-private const val MAX_HEIGHT = 760
+private const val KEY_WIDTH = 128

@@ -201,6 +201,30 @@ private fun RadioDot(chosen: Boolean) {
     }
 }
 
+/** Weißer Wahlknopf mit Rahmen, optional mit zweiter Zeile in Mono (z. B. Preis) – für Aktionen in Fenstern. */
+@Composable
+fun OptionButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    detail: String? = null,
+) {
+    Column(
+        modifier
+            .heightIn(min = if (detail != null) OPTION_TWO_LINES.dp else 40.dp)
+            .clip(SegmentShape)
+            .background(TmColors.Surface)
+            .border(1.dp, TmColors.Line, SegmentShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        BasicText(label, style = TmType.text(12.sp, FontWeight.SemiBold).copy(textAlign = TextAlign.Center))
+        detail?.let { BasicText(it, style = TmType.mono(11.sp, bold = false, color = TmColors.Muted)) }
+    }
+}
+
 /** Art eines Knopfs: Hauptaktion (Amtsblau), zweitrangig (weiß mit Rahmen), Gefahr (Rot) oder nur Text. */
 enum class ButtonKind { PRIMARY, SECONDARY, DANGER, TEXT }
 
@@ -238,6 +262,7 @@ fun TmButton(
 }
 
 private const val SEGMENT_TWO_LINES = 50
+private const val OPTION_TWO_LINES = 48
 private const val STEP_SIZE = 40
 private const val LARGE_BUTTON = 56
 private const val DOT_SHARE = 0.45f

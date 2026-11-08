@@ -3,42 +3,51 @@ package de.bfi.trafficmaniac.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.ParkingOfficeState
 import de.bfi.trafficmaniac.game.formatEuro
-import de.bfi.trafficmaniac.i18n.formatDecimal
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.ParkingLotState
 import de.bfi.trafficmaniac.sim.ParkingSummary
+import de.bfi.trafficmaniac.ui.components.Icon
+import de.bfi.trafficmaniac.ui.components.Icons
+import de.bfi.trafficmaniac.ui.components.MinTouch
+import de.bfi.trafficmaniac.ui.components.PanelScaffold
+import de.bfi.trafficmaniac.ui.components.PanelSection
+import de.bfi.trafficmaniac.ui.components.SegmentedControl
+import de.bfi.trafficmaniac.ui.components.SettingRow
+import de.bfi.trafficmaniac.ui.components.StatTile
+import de.bfi.trafficmaniac.ui.components.Stepper
+import de.bfi.trafficmaniac.ui.components.TmButton
 import kotlin.math.roundToInt
 
-private val PanelBackground = ComicTheme.paper
-private val PanelText = ComicTheme.ink
-private val Muted = ComicTheme.muted
-private val Active = ComicTheme.red
-private val Idle = ComicTheme.button
-private const val VISIBLE_LOTS = 6
-private const val CAPACITY_STEP = 0.25
-private const val FIVE = 5
-
 /**
- * Parken: Gebühren und Stellplätze der Parkplätze/Parkhäuser, Straßenrand (Radspuren, Blumenkübel,
- * Anwohnerparken), Brötchentaste und Politessen.
+ * Parken: Belegung und Einnahmen, Politessen, Regeln am Straßenrand (Brötchentaste, Anwohnerparken, Blumenkübel),
+ * Gebühren und die größten Parkplätze und Parkhäuser.
  */
 @Composable
 fun ParkingPanel(
@@ -48,200 +57,225 @@ fun ParkingPanel(
     rules: GameRules,
     onCommand: (GameCommand) -> Unit,
     modifier: Modifier = Modifier,
+    onClose: (() -> Unit)? = null,
 ) {
-    val title = TextStyle(color = PanelText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    val text = TextStyle(color = PanelText, fontSize = 12.sp)
-    val muted = TextStyle(color = Muted, fontSize = 11.sp)
-    Column(
-        modifier
-            .width(440.dp)
-            .padding(12.dp)
-            .comicPanel()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        BasicText(tr("Parken & Politessen"), style = title)
-        BasicText(
-            tr(
-                "Parkplätze {lotOccupied}/{lotCapacity} belegt · Straßenrand " +
-                    "{curbOccupied}/{curbCapacity} · auf Parkplatzsuche: {searching}",
-                "lotOccupied" to summary.lotOccupied,
-                "lotCapacity" to summary.lotCapacity,
-                "curbOccupied" to summary.curbOccupied,
-                "curbCapacity" to summary.curbCapacity,
-                "searching" to summary.searching,
-            ),
-            style = text,
-        )
-        BasicText(
-            tr(
-                "Einnahmen: Gebühren {feeIncome} · Knöllchen {ticketIncome} " +
-                    "({tickets}) · Falschparker bisher {illegalParkers}",
-                "feeIncome" to formatEuro(office.feeIncome),
-                "ticketIncome" to formatEuro(office.ticketIncome),
-                "tickets" to office.tickets,
-                "illegalParkers" to office.illegalParkers,
-            ),
-            style = muted,
-        )
-        WardenSection(office, rules, onCommand, text, muted)
-        CurbSection(office, summary, rules, onCommand, muted)
-        BasicText(tr("Parkscheinautomat am Straßenrand (€/Std.):"), style = text)
-        FeeChoices(rules, { summary.curbFee == it }) { onCommand(GameCommand.SetCurbFee(it)) }
-        BasicText(tr("Gebühr für alle Parkplätze (€/Std.):"), style = text)
-        FeeChoices(rules, { fee -> lots.isNotEmpty() && lots.all { it.feePerHour == fee } }) {
-            onCommand(GameCommand.SetParkingFee(null, it))
-        }
-        BasicText(tr("Größte Parkplätze und Parkhäuser:"), style = text)
-        for (lot in lots.sortedByDescending { it.baseCapacity }.take(VISIBLE_LOTS)) LotRow(lot, rules, onCommand, muted)
-    }
-}
-
-/** Politessen: einstellen, entlassen, Gehalt und Dienstzeit. */
-@Composable
-private fun WardenSection(
-    office: ParkingOfficeState,
-    rules: GameRules,
-    onCommand: (GameCommand) -> Unit,
-    text: TextStyle,
-    muted: TextStyle,
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        BasicText(
-            tr("Politessen: {wardens}", "wardens" to office.wardens) +
-                if (office.hiring > 0) tr(" (+{hiring} kommen)", "hiring" to office.hiring) else "",
-            style = text,
-        )
-        Choice("−1", false) { onCommand(GameCommand.FireWardens(1)) }
-        Choice("+1", false) { onCommand(GameCommand.HireWardens(1)) }
-        Choice("+5", false) { onCommand(GameCommand.HireWardens(FIVE)) }
-    }
-    BasicText(
-        tr(
-            "{wardenWeeklySalary}/Woche je Kopf, unterwegs {wardenStartHour}–{wardenEndHour} Uhr · " +
-                "Knöllchen ab welcher Minute, regelt die Schärfe im Ordnungsamt",
-            "wardenWeeklySalary" to
-                formatEuro(
-                    rules.wardenWeeklySalary,
+    PanelScaffold(tr("Amt"), tr("Parken & Politessen"), modifier, onClose, floating = false) {
+        PanelSection(divider = false) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatTile(tr("Parkplätze"), "${summary.lotOccupied}/${summary.lotCapacity}", Modifier.weight(1f))
+                StatTile(tr("Straßenrand"), "${summary.curbOccupied}/${summary.curbCapacity}", Modifier.weight(1f))
+                StatTile(
+                    tr("Knöllchen"),
+                    "${office.tickets}",
+                    Modifier.weight(1f),
+                    footer = formatEuro(office.ticketIncome),
+                )
+            }
+            BasicText(
+                tr(
+                    "Auf Parkplatzsuche: {searching} · Gebühren bisher {fees} · Falschparker {illegal}",
+                    "searching" to summary.searching,
+                    "fees" to formatEuro(office.feeIncome),
+                    "illegal" to office.illegalParkers,
                 ),
-            "wardenStartHour" to rules.wardenStartHour,
-            "wardenEndHour" to rules.wardenEndHour,
-        ),
-        style = muted,
-    )
+                style = TmType.caption,
+            )
+        }
+        PanelSection {
+            SettingRow(
+                tr("Politessen") + if (office.hiring > 0) tr(" (+{hiring} kommen)", "hiring" to office.hiring) else "",
+                hint =
+                    tr(
+                        "{salary}/Woche je Kopf · unterwegs {start}–{end} Uhr",
+                        "salary" to formatEuro(rules.wardenWeeklySalary),
+                        "start" to rules.wardenStartHour,
+                        "end" to rules.wardenEndHour,
+                    ),
+            ) {
+                Stepper(
+                    "${office.wardens}",
+                    onMinus = { onCommand(GameCommand.FireWardens(1)) }.takeIf { office.wardens > 0 },
+                    onPlus = { onCommand(GameCommand.HireWardens(1)) },
+                    bigStep = "+$FIVE" to { onCommand(GameCommand.HireWardens(FIVE)) },
+                )
+            }
+        }
+        CurbSection(office, summary, rules, onCommand)
+        FeeSection(summary, lots, rules, onCommand)
+        LotSection(lots, rules, onCommand)
+    }
 }
 
-/** Straßenrand: Brötchentaste, Anwohnerparken, Blumenkübel. */
+/** Straßenrand: Brötchentaste und Anwohnerparken zum Umschalten, Parkplätze zu Blumenkübeln. */
 @Composable
 private fun CurbSection(
     office: ParkingOfficeState,
     summary: ParkingSummary,
     rules: GameRules,
     onCommand: (GameCommand) -> Unit,
-    muted: TextStyle,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Choice(
-            tr("Brötchentaste"),
-            office.breadButton,
-        ) { onCommand(GameCommand.SetBreadButton(!office.breadButton)) }
-        Choice(tr("Anwohnerparken"), office.residentParking) {
-            onCommand(GameCommand.SetResidentParking(!office.residentParking))
-        }
-        Choice(
-            tr(
-                "Parkplätze → Blumenkübel ({curbConversionCost})",
-                "curbConversionCost" to formatEuro(rules.curbConversionCost),
-            ),
-            false,
+    PanelSection(title = tr("Straßenrand")) {
+        Row(
+            Modifier.fillMaxWidth().background(TmColors.Ground, RoundedCornerShape(12.dp)).padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            onCommand(GameCommand.ConvertCurbParking)
+            Toggle(tr("Brötchentaste"), office.breadButton, Modifier.weight(1f)) {
+                onCommand(GameCommand.SetBreadButton(!office.breadButton))
+            }
+            Toggle(tr("Anwohnerparken"), office.residentParking, Modifier.weight(1f)) {
+                onCommand(GameCommand.SetResidentParking(!office.residentParking))
+            }
         }
-    }
-    BasicText(
-        tr(
-            "Straßenrand: noch {curbShare} % der Parkplätze",
-            "curbShare" to (summary.curbShare * PERCENT).roundToInt(),
-        ),
-        style = muted,
-    )
-}
-
-/** Eine Reihe Gebührenstufen. */
-@Composable
-private fun FeeChoices(
-    rules: GameRules,
-    isActive: (Double) -> Boolean,
-    onSelect: (Double) -> Unit,
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        for (fee in rules.parkingFeeOptions) Choice(euro(fee), isActive(fee)) { onSelect(fee) }
+        DashedButton(
+            tr("Parkplätze → Blumenkübel ({cost})", "cost" to formatEuro(rules.curbConversionCost)),
+            Modifier.fillMaxWidth(),
+        ) { onCommand(GameCommand.ConvertCurbParking) }
+        BasicText(
+            tr("Noch {share} % der Parkplätze am Straßenrand", "share" to (summary.curbShare * PERCENT).roundToInt()),
+            style = TmType.caption,
+        )
     }
 }
 
 @Composable
-private fun LotRow(
-    lot: ParkingLotState,
+private fun FeeSection(
+    summary: ParkingSummary,
+    lots: List<ParkingLotState>,
     rules: GameRules,
     onCommand: (GameCommand) -> Unit,
-    muted: TextStyle,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        val name = lot.name ?: tr("Parkplatz {id}", "id" to lot.id + 1)
-        val state =
-            if (lot.capacity ==
-                0
-            ) {
-                "abgeschafft"
-            } else {
-                tr(
-                    "{occupied}/{capacity}, {feePerHour}/Std.",
-                    "occupied" to lot.occupied,
-                    "capacity" to lot.capacity,
-                    "feePerHour" to euro(lot.feePerHour),
-                )
-            }
-        BasicText("$name: $state", style = muted, modifier = Modifier.width(210.dp))
+    PanelSection(title = tr("Gebühren (€/Std.)")) {
+        BasicText(tr("Parkscheinautomat am Straßenrand"), style = TmType.small)
+        SegmentedControl(
+            rules.parkingFeeOptions,
+            rules.parkingFeeOptions.firstOrNull { it == summary.curbFee },
+            ::euro,
+            { onCommand(GameCommand.SetCurbFee(it)) },
+            Modifier.fillMaxWidth(),
+        )
+        BasicText(tr("Alle Parkplätze und Parkhäuser"), style = TmType.small)
+        SegmentedControl(
+            rules.parkingFeeOptions,
+            rules.parkingFeeOptions.firstOrNull { fee -> lots.isNotEmpty() && lots.all { it.feePerHour == fee } },
+            ::euro,
+            { onCommand(GameCommand.SetParkingFee(null, it)) },
+            Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** Die größten Parkplätze: Belegung, Preis-Stepper, abschaffen bzw. wieder öffnen. */
+@Composable
+private fun LotSection(
+    lots: List<ParkingLotState>,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+) {
+    PanelSection(title = tr("Größte Parkplätze und Parkhäuser"), divider = false) {
         val options = rules.parkingFeeOptions
-        val index = options.indexOfFirst { it >= lot.feePerHour }.coerceAtLeast(0)
-        Choice("€−", false) { onCommand(GameCommand.SetParkingFee(lot.id, options[(index - 1).coerceAtLeast(0)])) }
-        Choice("€+", false) {
-            onCommand(GameCommand.SetParkingFee(lot.id, options[(index + 1).coerceAtMost(options.lastIndex)]))
-        }
-        val step = (lot.baseCapacity * CAPACITY_STEP).roundToInt().coerceAtLeast(1)
-        Choice("−", false) { onCommand(GameCommand.SetParkingCapacity(lot.id, lot.capacity - step)) }
-        Choice("+", false) { onCommand(GameCommand.SetParkingCapacity(lot.id, lot.capacity + step)) }
-        if (lot.capacity > 0) {
-            Choice("weg", false) { onCommand(GameCommand.SetParkingCapacity(lot.id, 0)) }
-        } else {
-            Choice(tr("öffnen"), false) { onCommand(GameCommand.SetParkingCapacity(lot.id, lot.baseCapacity)) }
+        for (lot in lots.sortedByDescending { it.baseCapacity }.take(VISIBLE_LOTS)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    BasicText(
+                        lot.name ?: tr("Parkplatz {id}", "id" to lot.id + 1),
+                        style = TmType.text(13.sp, FontWeight.SemiBold),
+                    )
+                    BasicText(
+                        if (lot.capacity == 0) tr("abgeschafft") else "${lot.occupied}/${lot.capacity}",
+                        style = TmType.mono(11.sp, bold = false, color = TmColors.Muted),
+                    )
+                }
+                if (lot.capacity > 0) {
+                    val index = options.indexOfFirst { it >= lot.feePerHour }.coerceAtLeast(0)
+                    Stepper(
+                        euro(lot.feePerHour),
+                        onMinus =
+                            { onCommand(GameCommand.SetParkingFee(lot.id, options[index - 1])) }.takeIf {
+                                index >
+                                    0
+                            },
+                        onPlus =
+                            { onCommand(GameCommand.SetParkingFee(lot.id, options[index + 1])) }.takeIf {
+                                index <
+                                    options.lastIndex
+                            },
+                    )
+                    Box(
+                        Modifier
+                            .size(MinTouch)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(role = Role.Button) { onCommand(GameCommand.SetParkingCapacity(lot.id, 0)) },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Trash, tr("Abschaffen"), tint = TmColors.DangerText, size = 20.dp) }
+                } else {
+                    TmButton(tr("öffnen"), { onCommand(GameCommand.SetParkingCapacity(lot.id, lot.baseCapacity)) })
+                }
+            }
         }
     }
+}
+
+/** Umschalter in der Wanne: an = dunkel gefüllt. */
+@Composable
+private fun Toggle(
+    label: String,
+    on: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier
+            .heightIn(min = MinTouch)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (on) TmColors.Ink else Color.Transparent)
+            .clickable(role = Role.Switch, onClick = onClick)
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            label,
+            style =
+                TmType
+                    .text(
+                        13.sp,
+                        if (on) FontWeight.Bold else FontWeight.SemiBold,
+                        if (on) TmColors.Surface else TmColors.Ink,
+                    ).copy(textAlign = TextAlign.Center),
+        )
+    }
+}
+
+/** Gestrichelter Knopf für eine einmalige Umbaumaßnahme. */
+@Composable
+private fun DashedButton(
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier
+            .heightIn(min = MinTouch)
+            .clip(RoundedCornerShape(10.dp))
+            .drawBehind {
+                val dash = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()))
+                drawRoundRect(
+                    TmColors.Muted,
+                    cornerRadius = CornerRadius(10.dp.toPx()),
+                    style = Stroke(1.5.dp.toPx(), pathEffect = dash),
+                )
+            }.clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { BasicText(label, style = TmType.text(13.sp, FontWeight.SemiBold)) }
 }
 
 private fun euro(amount: Double): String =
-    if (amount == amount.roundToInt().toDouble()) "${amount.roundToInt()} €" else "${formatDecimal(amount, 2)} €"
+    de.bfi.trafficmaniac.i18n
+        .formatEuro(amount)
 
+private const val VISIBLE_LOTS = 6
+private const val FIVE = 5
 private const val PERCENT = 100
-
-@Composable
-private fun Choice(
-    label: String,
-    active: Boolean,
-    onClick: () -> Unit,
-) {
-    BasicText(
-        label,
-        style =
-            TextStyle(
-                color = PanelText,
-                fontSize = 11.sp,
-                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-            ),
-        modifier =
-            Modifier
-                .comicButton(active)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 8.dp, vertical = 5.dp),
-    )
-}

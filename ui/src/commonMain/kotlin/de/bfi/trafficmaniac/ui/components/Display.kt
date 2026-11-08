@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.ui.TmColors
 import de.bfi.trafficmaniac.ui.TmType
 
-/** Kennzahl-Kachel: Beschriftung klein und grau, Wert in Mono, optional ein [Meter] darunter. */
+/** Kennzahl-Kachel: Beschriftung klein und grau, Wert in Mono, optional [Meter] oder [footer]-Zeile darunter. */
 @Composable
 fun StatTile(
     label: String,
@@ -31,6 +31,7 @@ fun StatTile(
     valueColor: Color = TmColors.Ink,
     meter: Float? = null,
     meterColor: Color = TmColors.Primary,
+    footer: String? = null,
 ) {
     Column(
         modifier.background(TmColors.Ground, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
@@ -39,6 +40,7 @@ fun StatTile(
         BasicText(label, style = TmType.caption)
         BasicText(value, style = TmType.mono(17.sp, color = valueColor))
         meter?.let { Meter(it, Modifier.fillMaxWidth().padding(top = 4.dp), height = 6.dp, color = meterColor) }
+        footer?.let { BasicText(it, style = TmType.caption) }
     }
 }
 
