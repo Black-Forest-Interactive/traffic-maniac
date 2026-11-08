@@ -80,12 +80,14 @@ data class ToolSelection(
 }
 
 /**
- * Eingaben aus dem Fenster an die Spieloberfläche: Werkzeug per Taste und die Entwickler-Anzeige (F3). Das Fenster
+ * Eingaben aus dem Fenster an die Spieloberfläche: Werkzeug per Taste, die Entwickler-Anzeige (F3) und der
+ * Straßennetz-Modus (F4). Das Fenster
  * setzt die Werte, die Oberfläche übernimmt sie.
  */
 class HudInput {
     var toolRequest by mutableStateOf<Tool?>(null)
     var debug by mutableStateOf(false)
+    var network by mutableStateOf(false)
 
     /** Fenster rechts öffnen (z. B. für Screenshots); die Oberfläche übernimmt es und setzt es zurück. */
     internal var panelRequest by mutableStateOf<SidePanel?>(null)
