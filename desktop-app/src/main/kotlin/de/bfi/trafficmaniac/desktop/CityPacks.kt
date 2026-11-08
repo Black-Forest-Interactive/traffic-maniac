@@ -4,6 +4,8 @@ import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.game.CityTexts
 import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.i18n.I18n
+import de.bfi.trafficmaniac.i18n.Language
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -26,6 +28,19 @@ data class CityPackInfo(
     val rules: JsonObject = JsonObject(emptyMap()),
     /** Woher die Kartendaten kommen; nur für das Import-Skript. */
     val import: CityImport? = null,
+    /** Texte und Beschreibung in weiteren Sprachen, nach Sprachkürzel („en“). Fehlt eine, gilt die deutsche. */
+    val translations: Map<String, CityTranslation> = emptyMap(),
+) {
+    /** Texte in [language]. */
+    fun texts(language: Language): CityTexts = translations[language.code]?.texts ?: texts
+
+    fun description(language: Language): String = translations[language.code]?.description ?: description
+}
+
+@Serializable
+data class CityTranslation(
+    val texts: CityTexts,
+    val description: String? = null,
 )
 
 /** OSM-Auszug (Geofabrik) und Ausschnitt `minLon,minLat,maxLon,maxLat`. */
@@ -41,7 +56,11 @@ class CityPack(
     private val mapFile: File,
 ) {
     val id: String get() = info.id
-    val name: String get() = info.texts.name
+    val name: String get() = info.texts(I18n.language).name
+
+    /** Texte und Beschreibung in der gerade eingestellten Sprache. */
+    val texts: CityTexts get() = info.texts(I18n.language)
+    val description: String get() = info.description(I18n.language)
 
     /** Die Karte; wird beim ersten Zugriff geladen. */
     val map: CityMap by lazy { CityMapCodec.decode(mapFile.readBytes()) }
@@ -50,7 +69,7 @@ class CityPack(
         Balancing.override(SimulationConfig.serializer(), base, info.simulation)
 
     fun gameRules(base: GameRules): GameRules =
-        Balancing.override(GameRules.serializer(), base, info.rules).copy(city = info.texts)
+        Balancing.override(GameRules.serializer(), base, info.rules).copy(city = texts)
 }
 
 /** Findet die Stadtpakete im Ordner `cities/`. */

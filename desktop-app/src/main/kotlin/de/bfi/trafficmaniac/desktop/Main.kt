@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,6 +62,7 @@ private val speedKeys = mapOf(Key.One to 1, Key.Two to 2, Key.Three to 4, Key.Fo
  */
 fun main(args: Array<String>) {
     val options = parseOptions(args)
+    Translations.use(Translations.languageFor(UserData().settings().language))
     val packs = CityPacks.discover()
     val sound = if (packs.isNotEmpty()) SynthSoundBoard.open() else NoSound
     val sprites = loadSprites()
@@ -152,14 +154,18 @@ private fun Game(
         }
     }
     val current = session
-    if (current == null) {
-        Menu(library, pack, { pack = it }, settings, { settings = it }, highscores, start, load, loading, onQuit)
-        return
-    }
-    val shown = if (settings.sprites) sprites else NoSprites
-    Playing(current, sound, shown, library.saves, { session = null }) { entry ->
-        highscores = highscores.add(entry)
-        userData.save(highscores)
+    // Sprache wechseln: Tabelle laden und die Oberfläche neu aufbauen, damit jeder Text neu übersetzt wird
+    val language = Translations.languageFor(settings.language)
+    remember(language) { Translations.use(language) }
+    key(language) {
+        if (current == null) {
+            Menu(library, pack, { pack = it }, settings, { settings = it }, highscores, start, load, loading, onQuit)
+        } else {
+            Playing(current, sound, if (settings.sprites) sprites else NoSprites, library.saves, { session = null }) {
+                highscores = highscores.add(it)
+                userData.save(highscores)
+            }
+        }
     }
 }
 
@@ -193,9 +199,9 @@ private fun Menu(
                 saves.delete(it)
                 saveList = saves.list()
             },
-        tagline = pack.info.texts.tagline,
+        tagline = pack.texts.tagline,
         cities =
-            CityChoice(library.packs.map { it.name }, library.packs.indexOf(pack), pack.info.description) {
+            CityChoice(library.packs.map { it.name }, library.packs.indexOf(pack), pack.description) {
                 onPack(library.packs[it])
             },
     )

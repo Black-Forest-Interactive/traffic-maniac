@@ -32,6 +32,8 @@ import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.I18n
+import de.bfi.trafficmaniac.i18n.Language
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.ui.map.MapStyle
@@ -305,6 +307,15 @@ private fun SettingsTab(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BasicText(tr("Einstellungen"), style = heading())
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BasicText(tr("Sprache:"), style = body())
+            for (language in Language.entries) {
+                // Sprachnamen immer in der eigenen Sprache – sonst findet man nicht zurück
+                MenuChip(language.label, I18n.language == language) {
+                    onSettings(settings.copy(language = language.code))
+                }
+            }
+        }
         Toggle(tr("Geräusche"), settings.sound) { onSettings(settings.copy(sound = it)) }
         Toggle(tr("Musik"), settings.music) { onSettings(settings.copy(music = it)) }
         Toggle(tr("Fertige Grafiken aus assets/sprites (sonst gezeichnet)"), settings.sprites) {
