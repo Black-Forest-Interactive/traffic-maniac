@@ -69,6 +69,7 @@ enum class Tool(
     PRIORITY(translatable("Vorfahrt"), Icons.Diamond, Key.A, "A"),
     BIKE_CROSSING(translatable("Radweg-Querung"), Icons.Bike, Key.S, "S", translatable("Radweg")),
     DETOUR(translatable("Umleitung"), Icons.Detour, Key.D, "D"),
+    ROADWORKS(translatable("Baustelle"), Icons.Barrier, Key.B, "B"),
     REMOVE(translatable("Abbauen"), Icons.Eraser, Key.X, "X"),
     ;
 
@@ -91,6 +92,8 @@ data class ToolSelection(
     val nightOnly: Boolean = false,
     /** Gewähltes Ampelprogramm. */
     val signalPreset: SignalPreset = SignalPreset.MAIN,
+    /** Baustelle mit Tempo 30 oder Vollsperrung. */
+    val closure: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_SPEED_LIMIT = 30
@@ -140,6 +143,7 @@ internal fun ToolDock(
         state.plan?.let { PlanBar(it) }
         if (state.selection.tool == Tool.SPEED_LIMIT) SpeedLimitOptions(state.selection, rules, state.onSelect)
         if (state.selection.tool == Tool.SIGNAL_TIMING) SignalTimingOptions(state.selection, state.onSelect)
+        if (state.selection.tool == Tool.ROADWORKS) RoadworksOptions(state.selection, rules, state.onSelect)
         Row(
             Modifier.shadow(12.dp, DockShape, spotColor = DockShadow).background(TmColors.Ink, DockShape).padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -332,6 +336,10 @@ private fun price(
 
         Tool.PRIORITY -> {
             formatEuro(rules.priorityRoadCost)
+        }
+
+        Tool.ROADWORKS -> {
+            formatEuro(rules.roadworksSetupCost)
         }
 
         Tool.SIGNAL_TIMING -> {

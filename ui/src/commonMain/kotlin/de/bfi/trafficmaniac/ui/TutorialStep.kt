@@ -89,7 +89,7 @@ enum class TutorialStep(
         translatable("Der ganze Werkzeugkasten"),
         translatable(
             "Jetzt ist alles frei: Ampeln und Ampelprogramme (auch grüne Wellen), mobile Blitzer, Vorfahrt, " +
-                "Radweg-Querungen und Umleitungen. " +
+                "Radweg-Querungen, Umleitungen, Baustellen und Sperrungen. " +
                 "Ampeln bremsen zuverlässig, Umleitungen ärgern alle. " +
                 "Was ein Symbol bedeutet, steht unter „Legende ?“.",
         ),

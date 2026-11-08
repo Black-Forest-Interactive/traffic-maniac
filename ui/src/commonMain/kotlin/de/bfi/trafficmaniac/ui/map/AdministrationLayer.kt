@@ -53,11 +53,13 @@ internal fun DrawScope.drawWorksAndDetours(
         )
     }
     val dash = PathEffect.dashPathEffect(floatArrayOf(width * DASH, width * DASH))
-    for (segment in infrastructure.worksSegments) {
+    // Baustellen des Spielers sehen aus wie echte – nur ohne Bagger (die kommen nur zu Reparaturen)
+    for (segment in infrastructure.worksSegments + infrastructure.playerWorksSegments) {
         drawPath(paths[segment], Color.White, style = Stroke(width, cap = StrokeCap.Butt))
         drawPath(paths[segment], MapStyle.works, style = Stroke(width, cap = StrokeCap.Butt, pathEffect = dash))
     }
-    for (segment in infrastructure.closedSegments - infrastructure.worksSegments) {
+    val closed = infrastructure.closedSegments - infrastructure.worksSegments + infrastructure.playerClosedSegments
+    for (segment in closed) {
         drawPath(paths[segment], MapStyle.trafficSignal, style = Stroke(width, pathEffect = dash))
     }
     for (segment in infrastructure.collapsedSegments) {

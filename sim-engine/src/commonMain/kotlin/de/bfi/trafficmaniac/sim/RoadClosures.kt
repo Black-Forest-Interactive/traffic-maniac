@@ -16,6 +16,13 @@ class RoadClosures internal constructor(
     internal val playerWeightLimit = BooleanArray(graph.segmentCount)
     internal val detour = BooleanArray(graph.segmentCount)
 
+    /**
+     * Baustellen und Vollsperrungen, die der Spieler selbst einrichtet – getrennt von denen des Bauamts, damit das
+     * Ende einer Reparatur sie nicht mit aufhebt.
+     */
+    internal val playerWorks = BooleanArray(graph.segmentCount)
+    internal val playerClosed = BooleanArray(graph.segmentCount)
+
     /** Sperrungen durch Ereignisse (Demo, Fest, Marathon, Markt) – gezählt, weil sie sich überlappen können. */
     internal val eventClosures = IntArray(graph.segmentCount)
 
@@ -28,7 +35,26 @@ class RoadClosures internal constructor(
 
     /** Für den Verkehr gesperrt (Vollsperrung, Brücke gesperrt oder eingestürzt). */
     internal fun isClosed(segment: Int): Boolean =
-        worksClosed[segment] || bridgeClosed[segment] || collapsed[segment] || eventClosures[segment] > 0
+        worksClosed[segment] || bridgeClosed[segment] || collapsed[segment] || eventClosures[segment] > 0 ||
+            playerClosed[segment]
+
+    /** Baustelle des Spielers: Fahrbahn verengt (langsamer), aber befahrbar. */
+    fun setPlayerWorks(
+        segment: Int,
+        active: Boolean,
+    ) {
+        playerWorks[segment] = active
+        changed(segment)
+    }
+
+    /** Vollsperrung durch den Spieler. */
+    fun setPlayerClosed(
+        segment: Int,
+        closed: Boolean,
+    ) {
+        playerClosed[segment] = closed
+        changed(segment)
+    }
 
     /** Ereignis sperrt [segment] ([closed]) oder gibt es wieder frei. */
     internal fun setEventClosed(

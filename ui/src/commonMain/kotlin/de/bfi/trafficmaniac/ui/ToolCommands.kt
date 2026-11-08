@@ -83,7 +83,22 @@ internal fun nearestCamera(
         ?.filter { accept(it) && hypot(it.x - x, it.y - y) <= radius }
         ?.minByOrNull { hypot(it.x - x, it.y - y) }
 
-/** Abbauen: zuerst Blitzer, dann Tempolimit (Tag, dann Nacht), dann Ampel. */
+/** Eigene Vollsperrung oder Baustelle an [segment] abbauen – die ganze Strecke von Kreuzung zu Kreuzung. */
+private fun playerWorksRemoval(
+    picker: MapPicker,
+    frame: TrafficFrame?,
+    segment: Int,
+): GameCommand? {
+    val game = frame?.game ?: return null
+    val stretch = picker.stretches.stretchOf(segment)
+    return when (segment) {
+        in game.roadClosures -> GameCommand.SetRoadClosure(stretch.filter { it in game.roadClosures }, closed = false)
+        in game.roadworks -> GameCommand.SetRoadworks(stretch.filter { it in game.roadworks }, active = false)
+        else -> null
+    }
+}
+
+/** Abbauen: zuerst Blitzer, dann eigene Sperren und Baustellen, Tempolimit (Tag, dann Nacht), dann Ampel. */
 private fun removeCommandFor(
     picker: MapPicker,
     frame: TrafficFrame?,
@@ -98,9 +113,15 @@ private fun removeCommandFor(
     val segment = nearest?.takeIf { it in frame?.game?.speedLimits.orEmpty() }
     val nightSegment = nearest?.takeIf { it in frame?.game?.nightLimits.orEmpty() }
     val node = picker.nearestNode(x, y, radius)?.takeIf { it in signalNodes }
+    // Eigene Baustellen und Sperren zuerst – sonst würde nur das Tempo-30-Schild der Baustelle abgebaut
+    val works = nearest?.let { playerWorksRemoval(picker, frame, it) }
     return when {
         camera != null -> {
             GameCommand.RemoveCamera(camera.id)
+        }
+
+        works != null -> {
+            works
         }
 
         segment != null -> {

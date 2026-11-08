@@ -130,6 +130,17 @@ object Icons {
             circle(12f, 12f, 1.5f),
             circle(12f, 17f, 1.5f),
         )
+    val Barrier =
+        TmIcon(
+            "M3 6h18a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z",
+            "M17 14v7",
+            "M7 14v7",
+            "M17 3v3",
+            "M7 3v3",
+            "M10 14 2.3 6.3",
+            "m14 6 7.7 7.7",
+            "m8 6 8 8",
+        )
     val Timer = TmIcon("M10 2h4", "m12 14 3-3", circle(12f, 14f, 8f))
     val Camera =
         TmIcon(

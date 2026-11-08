@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
 
@@ -74,5 +75,38 @@ internal fun SignalTimingOptions(
                 selection.signalPreset == preset,
             ) { onSelect(selection.copy(signalPreset = preset)) }
         }
+    }
+}
+
+/** Auswahl über dem Dock beim Baustellen-Werkzeug: Baustelle mit Tempo 30 oder Vollsperrung. */
+@Composable
+internal fun RoadworksOptions(
+    selection: ToolSelection,
+    rules: de.bfi.trafficmaniac.game.GameRules,
+    onSelect: (ToolSelection) -> Unit,
+) {
+    Row(
+        Modifier
+            .shadow(8.dp, OptionsShape, spotColor = OptionsShadow)
+            .background(TmColors.Surface, OptionsShape)
+            .border(1.dp, TmColors.Line, OptionsShape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OptionChip(tr("Baustelle · Tempo 30"), !selection.closure) { onSelect(selection.copy(closure = false)) }
+        OptionChip(tr("Vollsperrung"), selection.closure) { onSelect(selection.copy(closure = true)) }
+        BasicText(
+            if (selection.closure) {
+                tr("{cost} je Strecke", "cost" to formatEuro(rules.closureCost))
+            } else {
+                tr(
+                    "{cost} + {daily}/Tag je Strecke",
+                    "cost" to formatEuro(rules.roadworksSetupCost),
+                    "daily" to formatEuro(rules.roadworksDailyCost),
+                )
+            },
+            style = TmType.mono(11.sp, bold = false, color = TmColors.Muted),
+        )
     }
 }

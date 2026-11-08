@@ -47,6 +47,9 @@ class InfrastructureSnapshot(
     val detourSegments: Set<Int>,
     /** Abschnitte mit Gewichtslimit (aus OSM ausgenommen: nur die vom Spieler gesetzten). */
     val weightLimitedSegments: Set<Int>,
+    /** Baustellen des Spielers (ohne Bagger – da arbeitet keiner) und seine Vollsperrungen. */
+    val playerWorksSegments: Set<Int> = emptySet(),
+    val playerClosedSegments: Set<Int> = emptySet(),
 ) {
     companion object {
         val EMPTY =
@@ -171,6 +174,7 @@ class Infrastructure internal constructor(
                 else -> 1f
             }
         if (closures.works[segment]) factor *= WORKS_SPEED
+        if (closures.playerWorks[segment] && !closures.works[segment]) factor *= PLAYER_WORKS_SPEED
         for (link in graph.segmentLinks[segment]) graph.linkRoadFactor[link] = factor
         graph.setSegmentClosed(segment, closures.isClosed(segment))
         cached = null
@@ -282,6 +286,8 @@ class Infrastructure internal constructor(
             collapsedSegments = indicesOf(closures.collapsed),
             detourSegments = indicesOf(closures.detour),
             weightLimitedSegments = indicesOf(closures.playerWeightLimit),
+            playerWorksSegments = indicesOf(closures.playerWorks),
+            playerClosedSegments = indicesOf(closures.playerClosed),
         ).also { cached = it }
 
     companion object {
@@ -296,6 +302,9 @@ class Infrastructure internal constructor(
         private const val POTHOLE_SPEED = 0.85f
         private const val CRATER_SPEED = 0.65f
         private const val WORKS_SPEED = 0.5f
+
+        /** Baustelle des Spielers: verengte Fahrbahn, aber keine Bagger auf der Straße. */
+        private const val PLAYER_WORKS_SPEED = 0.75f
         private const val POTHOLE_HAZARD = 1.5
         private const val CRATER_HAZARD = 3.0
         private const val SECONDS_PER_DAY = 86_400.0

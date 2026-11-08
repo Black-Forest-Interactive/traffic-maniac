@@ -24,6 +24,18 @@ sealed interface GameCommand {
         val mainShare: Double,
     ) : GameCommand
 
+    /** Eigene Baustelle (Tempo 30, verengt) auf [segments] einrichten bzw. abbauen. */
+    data class SetRoadworks(
+        val segments: List<Int>,
+        val active: Boolean,
+    ) : GameCommand
+
+    /** Vollsperrung auf [segments] bzw. aufheben. */
+    data class SetRoadClosure(
+        val segments: List<Int>,
+        val closed: Boolean,
+    ) : GameCommand
+
     /** Grüne Welle entlang [segments] (zusammenhängend, vom ersten zum letzten) für [kmh]. */
     data class SetGreenWave(
         val segments: List<Int>,
