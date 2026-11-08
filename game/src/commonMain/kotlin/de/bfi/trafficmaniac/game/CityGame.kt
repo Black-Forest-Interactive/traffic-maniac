@@ -23,17 +23,26 @@ class CityGame(
     val simulation = Simulation(city, config)
     private val commands = Channel<GameCommand>(Channel.UNLIMITED)
     private val messages = ArrayDeque<GameMessage>()
-    private val treasury = Treasury(rules.startBudget, ::message)
-    private val works = PublicWorks(city, simulation, rules, treasury, ::message)
+    private val treasury = Treasury(rules.startBudget) { message(it, kind = MessageKind.PROBLEM) }
+    private val works = PublicWorks(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
     private val citizens = Citizens(city.zones, rules)
     private val drivers = DriverRegistry(rules, citizens)
-    private val office = FineOffice(rules, treasury, citizens, drivers, ::message)
-    private val maintenance = Maintenance(city, simulation, rules, treasury, works, ::message)
-    private val parkingOffice = ParkingOffice(simulation, rules, treasury, citizens, ::message)
+    private val office = FineOffice(rules, treasury, citizens, drivers) { message(it, kind = MessageKind.ACTION) }
+    private val maintenance =
+        Maintenance(
+            city,
+            simulation,
+            rules,
+            treasury,
+            works,
+        ) { text, place -> message(text, place, MessageKind.PROBLEM) }
+    private val parkingOffice =
+        ParkingOffice(simulation, rules, treasury, citizens) { message(it, kind = MessageKind.ACTION) }
     private val politics = Politics(rules)
-    private val events = EventPlanner(city, simulation, rules, ::message)
-    private val press = Press(rules, treasury, ::message)
-    private val achievements = Achievements(::message)
+    private val events =
+        EventPlanner(city, simulation, rules) { text, place -> message(text, place, MessageKind.PROBLEM) }
+    private val press = Press(rules, treasury) { message(it, kind = MessageKind.SUCCESS) }
+    private val achievements = Achievements { message(it, kind = MessageKind.SUCCESS) }
     private val firstDay = simulation.gameTime.day
     private val bridges =
         city.roads.segments
@@ -323,7 +332,7 @@ class CityGame(
 
             is GameCommand.SetPrContract -> {
                 prContract = command.contract
-                message(tr("PR-Vertrag: {contract}", "contract" to command.contract.label))
+                message(tr("PR-Vertrag: {contract}", "contract" to command.contract.label), kind = MessageKind.ACTION)
             }
 
             is GameCommand.SetArgumentsCampaign -> {
@@ -358,17 +367,26 @@ class CityGame(
             is GameCommand.SetStrictness -> {
                 office.strictness = command.strictness
                 simulation.speedControl.toleranceKmh = command.strictness.toleranceKmh
-                message(tr("Ordnungsamt: {strictness}", "strictness" to command.strictness.label))
+                message(
+                    tr("Ordnungsamt: {strictness}", "strictness" to command.strictness.label),
+                    kind = MessageKind.ACTION,
+                )
             }
 
             is GameCommand.SetUnidentifiedPolicy -> {
                 office.policy = command.policy
-                message(tr("Fahrer nicht ermittelbar: {policy}", "policy" to command.policy.label))
+                message(
+                    tr("Fahrer nicht ermittelbar: {policy}", "policy" to command.policy.label),
+                    kind = MessageKind.ACTION,
+                )
             }
 
             is GameCommand.SetDeadlineDays -> {
                 office.deadlineDays = command.days
-                message(tr("Bearbeitungsfrist: {deadlineDays} Tage", "deadlineDays" to office.deadlineDays))
+                message(
+                    tr("Bearbeitungsfrist: {deadlineDays} Tage", "deadlineDays" to office.deadlineDays),
+                    kind = MessageKind.ACTION,
+                )
             }
 
             else -> {
@@ -386,7 +404,7 @@ class CityGame(
 
             is GameCommand.SetMaintenanceBudget -> {
                 maintenance.budget = command.budget
-                message(tr("Erhaltungsbudget: {budget}", "budget" to command.budget.label))
+                message(tr("Erhaltungsbudget: {budget}", "budget" to command.budget.label), kind = MessageKind.ACTION)
             }
 
             is GameCommand.SetDetour -> {
@@ -443,13 +461,15 @@ class CityGame(
     private fun message(
         text: String,
         place: MapPlace? = null,
+        kind: MessageKind = MessageKind.SYSTEM,
     ) {
-        messages.addLast(GameMessage(simulation.gameTime, text, place))
+        messages.addLast(GameMessage(simulation.gameTime, text, place, kind))
         while (messages.size > MAX_MESSAGES) messages.removeFirst()
     }
 
     private companion object {
-        const val MAX_MESSAGES = 5
+        /** So viele Meldungen hält das Spiel vor; die Oberfläche zeigt davon die neuesten (gebündelt). */
+        const val MAX_MESSAGES = 30
         const val SECONDS_PER_HOUR = 3_600.0
         const val MAX_REPUTATION = 100.0
 

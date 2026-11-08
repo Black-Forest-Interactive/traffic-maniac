@@ -1,12 +1,17 @@
 package de.bfi.trafficmaniac.ui
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -18,6 +23,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,11 +31,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.tr
@@ -46,6 +56,8 @@ enum class Tool(
     /** Taste, die das Werkzeug wählt, und ihre Beschriftung im Dock. */
     val key: Key,
     internal val keyLabel: String,
+    /** Kürzerer Name fürs Dock, wenn der volle umbrechen würde; der volle steht dann im Tooltip. */
+    private val shortText: String? = null,
 ) {
     LOOK(translatable("Ansehen"), Icons.Eye, Key.Escape, "Esc"),
     SPEED_LIMIT(translatable("Tempolimit"), Icons.Gauge, Key.Q, "Q"),
@@ -54,12 +66,15 @@ enum class Tool(
     LASER(translatable("Laser"), Icons.Zap, Key.R, "R"),
     TRAILER(translatable("Anhänger"), Icons.Trailer, Key.T, "T"),
     PRIORITY(translatable("Vorfahrt"), Icons.Diamond, Key.A, "A"),
-    BIKE_CROSSING(translatable("Radweg-Querung"), Icons.Bike, Key.S, "S"),
+    BIKE_CROSSING(translatable("Radweg-Querung"), Icons.Bike, Key.S, "S", translatable("Radweg")),
     DETOUR(translatable("Umleitung"), Icons.Detour, Key.D, "D"),
     REMOVE(translatable("Abbauen"), Icons.Eraser, Key.X, "X"),
     ;
 
     val label: String get() = tr(labelText)
+
+    /** Name im Dock – einzeilig. */
+    internal val dockLabel: String get() = tr(shortText ?: labelText)
 
     companion object {
         /** Werkzeug zur Taste, sonst `null`. */
@@ -139,37 +154,60 @@ private fun ToolTile(
     onClick: () -> Unit,
 ) {
     val color = if (active) TmColors.Ink else TmColors.OnDark
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    // Alle Kacheln gleich hoch: Icon, Name (einzeilig), Preis – auch wenn es keinen gibt
     Box(
         Modifier
             .width(TILE_WIDTH.dp)
-            .heightIn(min = TILE_HEIGHT.dp)
+            .height(TILE_HEIGHT.dp)
             .clip(TileShape)
             .background(if (active) TmColors.Active else Color.Transparent)
-            .clickable(role = Role.RadioButton, onClick = onClick),
+            .hoverable(interaction)
+            .clickable(interaction, LocalIndication.current, role = Role.RadioButton, onClick = onClick),
     ) {
         BasicText(
             tool.keyLabel,
-            style = TmType.mono(9.sp, bold = false, color = color.copy(alpha = KEY_ALPHA)),
-            modifier = Modifier.padding(start = 6.dp, top = 4.dp),
+            style = TmType.mono(10.sp, color = color.copy(alpha = KEY_ALPHA)),
+            modifier = Modifier.padding(start = 6.dp, top = 3.dp),
         )
         Column(
-            Modifier.align(Alignment.Center).padding(start = 4.dp, end = 4.dp, top = 10.dp, bottom = 6.dp),
+            Modifier.fillMaxSize().padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Icon(tool.icon, null, tint = color, size = 22.dp)
             BasicText(
-                tool.label,
+                tool.dockLabel,
                 style = TmType.text(11.sp, FontWeight.SemiBold, color).copy(textAlign = TextAlign.Center),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            if (price.isNotEmpty()) {
-                BasicText(
-                    price,
-                    style =
-                        TmType.mono(10.sp, bold = false, color = if (active) TmColors.Ink else TmColors.OnDarkMuted),
-                )
-            }
+            BasicText(
+                price.ifEmpty { " " },
+                style = TmType.mono(10.sp, bold = false, color = if (active) TmColors.Ink else TmColors.OnDarkMuted),
+                maxLines = 1,
+            )
         }
+        if (hovered) ToolTooltip("${tool.label} (${tool.keyLabel})")
+    }
+}
+
+/** Voller Name über der Kachel, solange die Maus darauf steht. */
+@Composable
+private fun ToolTooltip(text: String) {
+    val offset = with(LocalDensity.current) { IntOffset(0, -TOOLTIP_OFFSET.dp.roundToPx()) }
+    Popup(alignment = Alignment.TopCenter, offset = offset) {
+        BasicText(
+            text,
+            style = TmType.text(12.sp, FontWeight.SemiBold, TmColors.OnDark),
+            modifier =
+                Modifier
+                    .background(
+                        TmColors.Ink,
+                        RoundedCornerShape(6.dp),
+                    ).padding(horizontal = 8.dp, vertical = 4.dp),
+        )
     }
 }
 
@@ -302,3 +340,4 @@ private const val WALKING_SPEED = 7
 private const val TILE_WIDTH = 78
 private const val TILE_HEIGHT = 68
 private const val KEY_ALPHA = 0.6f
+private const val TOOLTIP_OFFSET = 34

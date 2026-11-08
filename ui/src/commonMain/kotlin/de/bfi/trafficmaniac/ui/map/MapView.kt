@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -113,9 +115,11 @@ fun MapView(
     LaunchedEffect(focus) { focus?.let { flyTo(view, it, ping) } }
     ZoomRequests(view, zoom)
 
+    // Abschneiden am Rand: sonst malt der Verkehrs-Layer Autos über Kopfleiste und Seitenleiste
     Box(
         modifier
             .fillMaxSize()
+            .clipToBounds()
             .background(MapStyle.land)
             .onSizeChanged {
                 view.width = it.width.toFloat()
@@ -147,15 +151,7 @@ fun MapView(
             }
         }
         if (network != null) NetworkCanvas(network, currentCamera, textMeasurer, networkPick, traffic)
-        BasicText(
-            text = city.attribution,
-            style = TextStyle(color = MapStyle.attribution, fontSize = 11.sp),
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .background(MapStyle.attributionBackground)
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-        )
+        Attribution(city.attribution, Modifier.align(Alignment.BottomEnd))
     }
 }
 
@@ -171,6 +167,22 @@ private fun NetworkCanvas(
     Canvas(Modifier.fillMaxSize()) {
         if (camera != null) drawNetwork(network, camera, textMeasurer, pick, traffic?.invoke()?.current?.signalMarkers)
     }
+}
+
+/** OSM-Hinweis unten rechts, halbtransparent hinterlegt. */
+@Composable
+private fun Attribution(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    BasicText(
+        text = text,
+        style = TextStyle(color = MapStyle.attribution, fontSize = 12.sp),
+        modifier =
+            modifier
+                .background(MapStyle.attributionBackground, RoundedCornerShape(topStart = 6.dp))
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+    )
 }
 
 /** Zoomt bei jedem neuen [zoom] um die Bildmitte. */
