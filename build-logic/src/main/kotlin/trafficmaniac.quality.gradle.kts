@@ -8,11 +8,19 @@ val libs = versionCatalogs.named("libs")
 
 ktlint {
     version = libs.findVersion("ktlint").get().requiredVersion
+    filter {
+        exclude { it.file.path.contains("${File.separator}build${File.separator}generated${File.separator}") }
+    }
 }
 
 detekt {
     buildUponDefaultConfig = true
     config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+}
+
+// Erzeugter Code (z. B. die Resource-Klassen von Compose) wird nicht geprüft
+tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+    exclude { it.file.path.contains("${File.separator}build${File.separator}generated${File.separator}") }
 }
 
 // Der Standard-Task "detekt" findet in Multiplatform-Modulen keine Quellen.

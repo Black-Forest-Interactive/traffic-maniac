@@ -24,7 +24,23 @@ import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
-import de.bfi.trafficmaniac.sim.*
+import de.bfi.trafficmaniac.sim.ChargingStationState
+import de.bfi.trafficmaniac.sim.DamageKind
+import de.bfi.trafficmaniac.sim.EventKind
+import de.bfi.trafficmaniac.sim.FLAG_BRAKING
+import de.bfi.trafficmaniac.sim.FLAG_DISABLED
+import de.bfi.trafficmaniac.sim.FLAG_ELECTRIC
+import de.bfi.trafficmaniac.sim.FLAG_EMERGENCY
+import de.bfi.trafficmaniac.sim.FLAG_JAMMED
+import de.bfi.trafficmaniac.sim.GameTime
+import de.bfi.trafficmaniac.sim.IncidentKind
+import de.bfi.trafficmaniac.sim.IncidentMarker
+import de.bfi.trafficmaniac.sim.ParkingLotState
+import de.bfi.trafficmaniac.sim.SignalMarkers
+import de.bfi.trafficmaniac.sim.SignalState
+import de.bfi.trafficmaniac.sim.SpeedCamera
+import de.bfi.trafficmaniac.sim.VehicleRole
+import de.bfi.trafficmaniac.sim.VehicleType
 
 /** Ein Eintrag der Legende: Vorschau (in Weltkoordinaten um den Nullpunkt, [scale] Pixel je Meter) und Erklärung. */
 private class LegendEntry(

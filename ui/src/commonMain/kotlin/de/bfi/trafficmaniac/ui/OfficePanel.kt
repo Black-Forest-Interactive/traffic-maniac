@@ -1,7 +1,11 @@
 package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -10,7 +14,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import de.bfi.trafficmaniac.game.*
+import de.bfi.trafficmaniac.game.FineOfficeState
+import de.bfi.trafficmaniac.game.GameCommand
+import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.Strictness
+import de.bfi.trafficmaniac.game.UnidentifiedPolicy
+import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.formatDecimal
 import de.bfi.trafficmaniac.i18n.tr
 import kotlin.math.roundToInt
