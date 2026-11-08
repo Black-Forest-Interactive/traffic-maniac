@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.DamageStatus
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.ChargingStationState
 import de.bfi.trafficmaniac.sim.DamageKind
 import de.bfi.trafficmaniac.sim.EventKind
@@ -64,7 +66,7 @@ fun MapLegend(
     val text = TextStyle(color = textColor, fontSize = 11.sp)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         for ((title, entries) in SECTIONS) {
-            BasicText(title, style = heading)
+            BasicText(tr(title), style = heading)
             for (entry in entries) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -73,12 +75,12 @@ fun MapLegend(
                     Canvas(Modifier.size(PREVIEW_WIDTH.dp, PREVIEW_HEIGHT.dp)) {
                         inWorld(Camera(0f, 0f, entry.scale)) { entry.draw(this, entry.scale, measurer, sprites) }
                     }
-                    BasicText(entry.text, style = text)
+                    BasicText(tr(entry.text), style = text)
                 }
             }
         }
         BasicText(
-            "Tipp: Meldungen mit ▸ anklicken – die Karte zeigt die Stelle.",
+            tr("Tipp: Meldungen mit ▸ anklicken – die Karte zeigt die Stelle."),
             style = text.copy(color = mutedColor),
         )
     }
@@ -169,46 +171,50 @@ private const val LINE_HALF = 22f
 
 private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
     listOf(
-        "Fahrzeuge" to
+        translatable("Fahrzeuge") to
             listOf(
-                vehicle("PKW", VehicleType.CAR),
+                vehicle(translatable("PKW"), VehicleType.CAR),
                 vehicle(
-                    "Elektroauto (grüner Punkt)",
+                    translatable("Elektroauto (grüner Punkt)"),
                     VehicleType.CAR,
                     color = Color(0xFF2A9D8F),
                     flags = FLAG_ELECTRIC,
                 ),
-                vehicle("Lieferwagen – hält gern in zweiter Reihe", VehicleType.VAN, color = Color(0xFFE9ECEF)),
                 vehicle(
-                    "LKW – verschleißt die Straße wie Tausende PKW",
+                    translatable("Lieferwagen – hält gern in zweiter Reihe"),
+                    VehicleType.VAN,
+                    color = Color(0xFFE9ECEF),
+                ),
+                vehicle(
+                    translatable("LKW – verschleißt die Straße wie Tausende PKW"),
                     VehicleType.TRUCK,
                     color = Color(0xFF5C6B7A),
                     scale = 5.5f,
                 ),
                 vehicle(
-                    "Rettungswagen (Blaulicht: Vorfahrt, Rettungsgasse)",
+                    translatable("Rettungswagen (Blaulicht: Vorfahrt, Rettungsgasse)"),
                     VehicleType.CAR,
                     VehicleRole.AMBULANCE,
                     flags = FLAG_EMERGENCY,
                 ),
-                vehicle("Polizei", VehicleType.CAR, VehicleRole.POLICE, flags = FLAG_EMERGENCY),
+                vehicle(translatable("Polizei"), VehicleType.CAR, VehicleRole.POLICE, flags = FLAG_EMERGENCY),
                 vehicle(
-                    "Feuerwehr – bei Unfällen und eingeklemmten LKW",
+                    translatable("Feuerwehr – bei Unfällen und eingeklemmten LKW"),
                     VehicleType.TRUCK,
                     VehicleRole.FIRE_BRIGADE,
                     flags = FLAG_EMERGENCY,
                     scale = 5.5f,
                 ),
-                vehicle("Abschleppdienst", VehicleType.VAN, VehicleRole.TOW_TRUCK),
-                vehicle("Straßenmeisterei (Ölspuren)", VehicleType.VAN, VehicleRole.STREET_SERVICE),
+                vehicle(translatable("Abschleppdienst"), VehicleType.VAN, VehicleRole.TOW_TRUCK),
+                vehicle(translatable("Straßenmeisterei (Ölspuren)"), VehicleType.VAN, VehicleRole.STREET_SERVICE),
                 vehicle(
-                    "Rad-Korso – blockiert die Fahrbahn",
+                    translatable("Rad-Korso – blockiert die Fahrbahn"),
                     VehicleType.BIKE_CORSO,
                     VehicleRole.BIKE_CORSO,
                     scale = 5f,
                 ),
                 vehicle(
-                    "Schwertransport mit Polizeibegleitung",
+                    translatable("Schwertransport mit Polizeibegleitung"),
                     VehicleType.HEAVY_TRANSPORT,
                     VehicleRole.HEAVY_TRANSPORT,
                     Color(0xFFFFD60A),
@@ -216,80 +222,85 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
                     scale = 1.8f,
                 ),
             ),
-        "Zustände" to
+        translatable("Zustände") to
             listOf(
-                vehicle("Bremst (Bremslichter)", VehicleType.CAR, flags = FLAG_BRAKING),
-                vehicle("Liegengeblieben (Warnblinker)", VehicleType.CAR, flags = FLAG_DISABLED),
+                vehicle(translatable("Bremst (Bremslichter)"), VehicleType.CAR, flags = FLAG_BRAKING),
+                vehicle(translatable("Liegengeblieben (Warnblinker)"), VehicleType.CAR, flags = FLAG_DISABLED),
                 vehicle(
-                    "Softwarepanne – „Update wird installiert“",
+                    translatable("Softwarepanne – „Update wird installiert“"),
                     VehicleType.CAR,
                     flags = FLAG_DISABLED,
                     trouble = IncidentKind.SOFTWARE_FAILURE,
                 ),
                 vehicle(
-                    "Akku leer",
+                    translatable("Akku leer"),
                     VehicleType.CAR,
                     color = Color(0xFF2A9D8F),
                     flags = FLAG_DISABLED or FLAG_ELECTRIC,
                     trouble = IncidentKind.EMPTY_BATTERY,
                 ),
-                vehicle("Unfall", VehicleType.CAR, flags = FLAG_DISABLED, trouble = IncidentKind.ACCIDENT),
-                vehicle("Steht schon lange im Stau (Dampf)", VehicleType.CAR, flags = FLAG_JAMMED),
+                vehicle(
+                    translatable("Unfall"),
+                    VehicleType.CAR,
+                    flags = FLAG_DISABLED,
+                    trouble = IncidentKind.ACCIDENT,
+                ),
+                vehicle(translatable("Steht schon lange im Stau (Dampf)"), VehicleType.CAR, flags = FLAG_JAMMED),
             ),
-        "Ampeln" to
+        translatable("Ampeln") to
             listOf(
-                signal("Rot (oben)", SignalState.RED),
-                signal("Rot-Gelb – gleich wird es grün", SignalState.RED_YELLOW),
-                signal("Gelb (Mitte)", SignalState.YELLOW),
-                signal("Grün (unten)", SignalState.GREEN),
-                signal("Ausgefallen – blinkt gelb, rechts vor links", SignalState.FLASHING),
+                signal(translatable("Rot (oben)"), SignalState.RED),
+                signal(translatable("Rot-Gelb – gleich wird es grün"), SignalState.RED_YELLOW),
+                signal(translatable("Gelb (Mitte)"), SignalState.YELLOW),
+                signal(translatable("Grün (unten)"), SignalState.GREEN),
+                signal(translatable("Ausgefallen – blinkt gelb, rechts vor links"), SignalState.FLASHING),
             ),
-        "Schilder & Überwachung" to
+        translatable("Schilder & Überwachung") to
             listOf(
-                LegendEntry("Tempolimit (rote Zone: hier gilt es)", 1.5f) { s, m, sp ->
+                LegendEntry(translatable("Tempolimit (rote Zone: hier gilt es)"), 1.5f) { s, m, sp ->
                     drawLine(MapStyle.limitZone, Offset(-LINE_HALF, 0f), Offset(LINE_HALF, 0f), ZONE_PREVIEW)
                     drawSpeedSigns(listOf(SpeedSign(0f, 0f, "30")), s, m, sp)
                 },
-                LegendEntry("Tempolimit nur nachts (22–6 Uhr)", 1.5f) { s, m, sp ->
+                LegendEntry(translatable("Tempolimit nur nachts (22–6 Uhr)"), 1.5f) { s, m, sp ->
                     drawSpeedSigns(listOf(SpeedSign(0f, 0f, "20", night = true)), s, m, sp)
                 },
                 LegendEntry(
-                    "Blitzer (fest)",
+                    translatable("Blitzer (fest)"),
                     1.5f,
                 ) { s, _, sp -> drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f)), s, sp) },
                 LegendEntry(
-                    "Blitzeranhänger – mobil, beliebig umsetzbar, Ortskundige kennen ihn nicht",
+                    translatable("Blitzeranhänger – mobil, beliebig umsetzbar, Ortskundige kennen ihn nicht"),
                     1.5f,
                 ) { s, _, sp ->
                     drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f, mobile = true, trailer = true)), s, sp)
                 },
-                LegendEntry("Lasermessung (mobil, kostet täglich Personal)", 1.5f) { s, _, sp ->
+                LegendEntry(translatable("Lasermessung (mobil, kostet täglich Personal)"), 1.5f) { s, _, sp ->
                     drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f, mobile = true)), s, sp)
                 },
-                LegendEntry("Vorfahrtsstraße / Radweg-Querung", 1.5f) { s, _, sp ->
+                LegendEntry(translatable("Vorfahrtsstraße / Radweg-Querung"), 1.5f) { s, _, sp ->
                     drawRoadMarkers(listOf(-MARKER_GAP to 0f), listOf(MARKER_GAP to 0f), s, sp)
                 },
             ),
-        "Vorfälle" to
+        translatable("Vorfälle") to
             listOf(
-                incident("Ölspur – Tempo runter, Straßenmeisterei kommt", IncidentKind.OIL_SPILL),
-                incident("Unfallstelle", IncidentKind.ACCIDENT),
-                incident("Panne", IncidentKind.SOFTWARE_FAILURE),
-                incident("LKW in der Nebenstraße eingeklemmt", IncidentKind.TRUCK_STUCK),
+                incident(translatable("Ölspur – Tempo runter, Straßenmeisterei kommt"), IncidentKind.OIL_SPILL),
+                incident(translatable("Unfallstelle"), IncidentKind.ACCIDENT),
+                incident(translatable("Panne"), IncidentKind.SOFTWARE_FAILURE),
+                incident(translatable("LKW in der Nebenstraße eingeklemmt"), IncidentKind.TRUCK_STUCK),
             ),
-        "Bauamt" to
+        translatable("Bauamt") to
             listOf(
-                damage("Neue Schadensmeldung – Frist läuft (Ring)", DamageStatus.OPEN, 50),
-                damage("Krater", DamageStatus.IGNORED, 20),
-                damage("Warnschild steht (schief und verblasst)", DamageStatus.SIGNED, 50),
-                damage("In Planfeststellung (grauer Kasten)", DamageStatus.PLANNING, 50),
-                LegendEntry("Baustelle", 1.5f) { s, _, sp -> drawExcavators(listOf(0f to 0f), s, sp) },
-                line("Baustelle (orange gestrichelt)", MapStyle.works, 8f, dashed = true),
-                line("Gesperrt (rot gestrichelt)", MapStyle.trafficSignal, 8f, dashed = true),
-                icon("Brücke eingestürzt", "bridge_collapsed", wide = true) {
+                damage(translatable("Neue Schadensmeldung – Frist läuft (Ring)"), DamageStatus.OPEN, 50),
+                damage(translatable("Krater"), DamageStatus.IGNORED, 20),
+                damage(translatable("Warnschild steht (schief und verblasst)"), DamageStatus.SIGNED, 50),
+                damage(translatable("In Planfeststellung (grauer Kasten)"), DamageStatus.PLANNING, 50),
+                LegendEntry(translatable("Baustelle"), 1.5f) { s, _, sp -> drawExcavators(listOf(0f to 0f), s, sp) },
+                line(translatable("Baustelle (orange gestrichelt)"), MapStyle.works, 8f, dashed = true),
+                line(translatable("Gesperrt (rot gestrichelt)"), MapStyle.trafficSignal, 8f, dashed = true),
+                icon(translatable("Brücke eingestürzt"), "bridge_collapsed", wide = true) {
                     drawLine(MapStyle.collapsed, Offset(-LINE_HALF, 0f), Offset(LINE_HALF, 0f), COLLAPSED_LINE)
                 },
-                icon("Umleitung", "detour") {
+                icon(translatable("Umleitung"), "detour") {
                     drawLine(
                         MapStyle.detour.copy(alpha = 0.6f),
                         Offset(-LINE_HALF, 0f),
@@ -298,27 +309,32 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
                     )
                 },
             ),
-        "Ereignisse & Stimmung" to
+        translatable("Ereignisse & Stimmung") to
             listOf(
-                line("Demo, Stadtfest, Marathon, Markt: gesperrt", MapStyle.eventClosure, 8f, dashed = true),
-                event("Spontandemo", EventKind.DEMO),
-                event("Stadtfest", EventKind.CITY_FESTIVAL),
-                event("Marathon", EventKind.MARATHON),
-                event("Wochenmarkt", EventKind.MARKET),
-                event("Rad-Korso", EventKind.BIKE_CORSO),
-                event("Schwertransport", EventKind.HEAVY_TRANSPORT),
-                line("Route von Rad-Korso / Schwertransport", MapStyle.corso.copy(alpha = 0.35f), 14f),
-                line("Stau (Gesamtansicht): gelb zäh, rot Stillstand", MapStyle.flowJam, 10f),
-                LegendEntry("Wutwolke: hier stehen viele lange im Stau", 0.8f) { s, _, sp ->
+                line(
+                    translatable("Demo, Stadtfest, Marathon, Markt: gesperrt"),
+                    MapStyle.eventClosure,
+                    8f,
+                    dashed = true,
+                ),
+                event(translatable("Spontandemo"), EventKind.DEMO),
+                event(translatable("Stadtfest"), EventKind.CITY_FESTIVAL),
+                event(translatable("Marathon"), EventKind.MARATHON),
+                event(translatable("Wochenmarkt"), EventKind.MARKET),
+                event(translatable("Rad-Korso"), EventKind.BIKE_CORSO),
+                event(translatable("Schwertransport"), EventKind.HEAVY_TRANSPORT),
+                line(translatable("Route von Rad-Korso / Schwertransport"), MapStyle.corso.copy(alpha = 0.35f), 14f),
+                line(translatable("Stau (Gesamtansicht): gelb zäh, rot Stillstand"), MapStyle.flowJam, 10f),
+                LegendEntry(translatable("Wutwolke: hier stehen viele lange im Stau"), 0.8f) { s, _, sp ->
                     drawAngerCloud(Offset(0f, CLOUD_PREVIEW_LIFT), CLOUD_PREVIEW_SIZE, s, sp)
                 },
             ),
-        "Parken & Laden" to
+        translatable("Parken & Laden") to
             listOf(
-                LegendEntry("Parkplatz (roter Rand: voll)", 1.5f) { s, _, sp ->
+                LegendEntry(translatable("Parkplatz (roter Rand: voll)"), 1.5f) { s, _, sp ->
                     drawParkingLots(listOf(ParkingLotState(0, null, 0f, 0f, 100, 100, 100, 1.5)), s, sp)
                 },
-                LegendEntry("Ladesäule (roter Rand: Warteschlange)", 1.5f) { s, _, sp ->
+                LegendEntry(translatable("Ladesäule (roter Rand: Warteschlange)"), 1.5f) { s, _, sp ->
                     drawChargingStations(listOf(ChargingStationState(0, 0f, 0f, 2, 2, 3)), s, sp)
                 },
             ),

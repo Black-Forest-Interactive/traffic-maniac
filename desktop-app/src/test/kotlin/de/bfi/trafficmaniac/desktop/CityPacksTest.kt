@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.desktop
 
 import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.i18n.Language
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import java.io.File
 import kotlin.io.path.createTempDirectory
@@ -55,6 +56,23 @@ class CityPacksTest {
         assertEquals(120_000, rules.startBudget)
         assertEquals("MUSTERSTÄDTER BOTE", rules.city.newspaper)
         assertEquals(GameRules().cameraCost, rules.cameraCost)
+    }
+
+    @Test
+    fun textsFollowTheLanguageWithGermanAsFallback() {
+        pack(
+            "musterstadt",
+            """
+            {
+                "id": "musterstadt",
+                "texts": { "name": "Musterstadt", "newspaper": "MUSTERSTÄDTER BOTE" },
+                "translations": { "en": { "texts": { "name": "Sample Town", "newspaper": "SAMPLE TOWN HERALD" } } }
+            }
+            """.trimIndent(),
+        )
+        val info = CityPacks.discover(root).single().info
+        assertEquals("SAMPLE TOWN HERALD", info.texts(Language.EN).newspaper)
+        assertEquals("MUSTERSTÄDTER BOTE", info.texts(Language.DE).newspaper)
     }
 
     @Test

@@ -18,23 +18,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.ui.map.NoSprites
 import de.bfi.trafficmaniac.ui.map.SpriteSource
 
 /** Werkzeuge der Werkzeugleiste. */
 enum class Tool(
-    val label: String,
+    private val labelText: String,
 ) {
-    LOOK("Ansehen"),
-    SPEED_LIMIT("Tempolimit"),
-    SIGNAL("Ampel"),
-    CAMERA("Blitzer"),
-    LASER("Laser"),
-    TRAILER("Anhänger"),
-    PRIORITY("Vorfahrt"),
-    BIKE_CROSSING("Radweg-Querung"),
-    DETOUR("Umleitung"),
-    REMOVE("Abbauen"),
+    LOOK(translatable("Ansehen")),
+    SPEED_LIMIT(translatable("Tempolimit")),
+    SIGNAL(translatable("Ampel")),
+    CAMERA(translatable("Blitzer")),
+    LASER(translatable("Laser")),
+    TRAILER(translatable("Anhänger")),
+    PRIORITY(translatable("Vorfahrt")),
+    BIKE_CROSSING(translatable("Radweg-Querung")),
+    DETOUR(translatable("Umleitung")),
+    REMOVE(translatable("Abbauen")),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Gewählter Wert des Tempolimit-Werkzeugs; `null` = ursprüngliches Limit wiederherstellen. */
@@ -79,13 +84,13 @@ fun ToolBar(
         if (selection.tool == Tool.SPEED_LIMIT) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (kmh in rules.speedLimitOptions) {
-                    ToolButton(if (kmh == WALKING_SPEED) "Schritt" else "$kmh", selection.speedLimit == kmh) {
+                    ToolButton(if (kmh == WALKING_SPEED) tr("Schritt") else "$kmh", selection.speedLimit == kmh) {
                         onSelect(selection.copy(speedLimit = kmh))
                     }
                 }
-                ToolButton("Original", selection.speedLimit == null) { onSelect(selection.copy(speedLimit = null)) }
+                ToolButton(tr("Original"), selection.speedLimit == null) { onSelect(selection.copy(speedLimit = null)) }
                 ToolButton(
-                    "nur nachts",
+                    tr("nur nachts"),
                     selection.nightOnly,
                 ) { onSelect(selection.copy(nightOnly = !selection.nightOnly)) }
             }
@@ -120,7 +125,11 @@ private fun costHint(
     when (tool) {
         Tool.TRAILER -> {
             if (idleTrailers > 0) {
-                " (umsetzen ${formatEuro(rules.trailerMoveCost)}, $idleTrailers frei)"
+                tr(
+                    " (umsetzen {trailerMoveCost}, {idleTrailers} frei)",
+                    "trailerMoveCost" to formatEuro(rules.trailerMoveCost),
+                    "idleTrailers" to idleTrailers,
+                )
             } else {
                 " (${formatEuro(rules.trailerCost)})"
             }
@@ -139,7 +148,7 @@ private fun costHint(
         }
 
         Tool.LASER -> {
-            " (${formatEuro(rules.laserDailyCost)}/Tag)"
+            tr(" ({laserDailyCost}/Tag)", "laserDailyCost" to formatEuro(rules.laserDailyCost))
         }
 
         Tool.PRIORITY -> {

@@ -4,6 +4,7 @@ import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.RoadClass
 import de.bfi.trafficmaniac.city.RoadSegment
 import de.bfi.trafficmaniac.city.ZoneKind
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.Simulation
 import kotlin.math.hypot
 import kotlin.random.Random
@@ -37,7 +38,7 @@ internal class EventPlaces(
     fun centralStreets(): Pair<String, Set<Int>> {
         val central =
             mainRoads.sortedBy { distance(it, city.bounds.centerX, city.bounds.centerY) }.take(FESTIVAL_SEGMENTS)
-        return "Innenstadt (${central.first().name})" to central.mapTo(LinkedHashSet()) { it.id }
+        return tr("Innenstadt ({name})", "name" to central.first().name) to central.mapTo(LinkedHashSet()) { it.id }
     }
 
     /** Die längste Hauptstraße – über die läuft der Marathon. */
@@ -79,7 +80,7 @@ internal class EventPlaces(
             ?: city.roads.segments
                 .firstOrNull { (it.from == node || it.to == node) && it.name != null }
                 ?.name
-            ?: "Stadtrand"
+            ?: tr("Stadtrand")
 
     private fun lengthOf(segment: Int): Float =
         simulation.graph.linkLength[simulation.graph.segmentLinks[segment].first()]

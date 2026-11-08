@@ -7,6 +7,7 @@ import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.HighscoreEntry
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
+import de.bfi.trafficmaniac.i18n.tr
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -62,13 +63,19 @@ internal class Session(
                     difficulty = difficulty,
                     savedAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).toString(),
                     gameTime =
-                        "${time.weekday.germanName}, Tag ${state.termDay(time.day)}/${state.termDays}, " +
-                            "${time.clockText} Uhr",
+                        tr(
+                            "{germanName}, Tag {day}/{termDays}, " +
+                                "{clockText} Uhr",
+                            "germanName" to time.weekday.germanName,
+                            "day" to state.termDay(time.day),
+                            "termDays" to state.termDays,
+                            "clockText" to time.clockText,
+                        ),
                     balance = state.balance,
                     reputation = state.reputation.roundToInt(),
                 )
             saves.save(game, info)
-            game.announce(if (id == SaveInfo.QUICK_SAVE) "Schnell gespeichert" else "Spiel gespeichert")
+            game.announce(if (id == SaveInfo.QUICK_SAVE) tr("Schnell gespeichert") else tr("Spiel gespeichert"))
             info
         }
 
@@ -86,7 +93,7 @@ internal class Session(
             val game = saves.load(info)
             val runner = GameRunner(game)
             runner.setSpeed(0)
-            game.announce("Spielstand geladen – Leertaste setzt fort")
+            game.announce(tr("Spielstand geladen – Leertaste setzt fort"))
             return Session(pack, scenario, info.difficulty, game, runner)
         }
 

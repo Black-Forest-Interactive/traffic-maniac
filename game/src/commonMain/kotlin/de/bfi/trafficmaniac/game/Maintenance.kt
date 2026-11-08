@@ -1,6 +1,8 @@
 package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.city.CityMap
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.DamageEvent
 import de.bfi.trafficmaniac.sim.DamageKind
 import de.bfi.trafficmaniac.sim.GameTime
@@ -10,22 +12,28 @@ import kotlin.random.Random
 
 /** Wie viel Geld jede Woche in den Erhalt von Straßen, Ampeln und Brücken fließt. */
 enum class MaintenanceBudget(
-    val label: String,
+    private val labelText: String,
     /** Anteil des normalen Verfalls. */
     val decayFactor: Double,
 ) {
-    NONE("kein Erhaltungsbudget", 1.0),
-    BASIC("das Nötigste", 0.5),
-    FULL("vorbildlich", 0.2),
+    NONE(translatable("kein Erhaltungsbudget"), 1.0),
+    BASIC(translatable("das Nötigste"), 0.5),
+    FULL(translatable("vorbildlich"), 0.2),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Die drei Wege zur Reparatur. */
 enum class RepairMethod(
-    val label: String,
+    private val labelText: String,
 ) {
-    TENDER("Normale Ausschreibung"),
-    TURBO("Turbo-Baukonsortium"),
-    PLANNING("Planfeststellungsverfahren"),
+    TENDER(translatable("Normale Ausschreibung")),
+    TURBO(translatable("Turbo-Baukonsortium")),
+    PLANNING(translatable("Planfeststellungsverfahren")),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Reaktion des Spielers auf eine Schadensmeldung. */
@@ -46,17 +54,19 @@ sealed interface DamageResponse {
 }
 
 enum class DamageStatus(
-    val label: String,
+    private val labelText: String,
 ) {
-    OPEN("gemeldet"),
-    SIGNED("Warnschild"),
-    CLOSED("gesperrt"),
-    IGNORED("ignoriert"),
-    TENDER("in Ausschreibung"),
-    CONSTRUCTION("Baustelle"),
-    PLANNING("Planfeststellung"),
-    COLLAPSED("eingestürzt"),
+    OPEN(translatable("gemeldet")),
+    SIGNED(translatable("Warnschild")),
+    CLOSED(translatable("gesperrt")),
+    IGNORED(translatable("ignoriert")),
+    TENDER(translatable("in Ausschreibung")),
+    CONSTRUCTION(translatable("Baustelle")),
+    PLANNING(translatable("Planfeststellung")),
+    COLLAPSED(translatable("eingestürzt")),
     ;
+
+    val label: String get() = tr(labelText)
 
     /** Rechtlich abgesichert: keine Klagen nach Unfällen. */
     val isCovered: Boolean get() = this == SIGNED || this == CLOSED || this == PLANNING
@@ -199,7 +209,12 @@ internal class Maintenance(
             if (event.segment >= 0) case.segments += event.segment
             cases += case
             messenger.say(
-                "Schadensmeldung: ${event.kind.label} – ${case.place} (Frist ${rules.damageDeadlineHours} Std.)",
+                tr(
+                    "Schadensmeldung: {kind} – {place} (Frist {damageDeadlineHours} Std.)",
+                    "kind" to event.kind.label,
+                    "place" to case.place,
+                    "damageDeadlineHours" to rules.damageDeadlineHours,
+                ),
                 places.locate(case),
             )
             return
@@ -227,8 +242,18 @@ internal class Maintenance(
             case.status = DamageStatus.OPEN
             case.deadline = time + rules.damageDeadlineHours * SECONDS_PER_HOUR
         }
-        val hint = if (signNoLongerEnough) " – ein Schild reicht nicht mehr: sperren oder reparieren!" else ""
-        if (worse) messenger.say("Es wird schlimmer: ${event.kind.label} – ${case.place}$hint", places.locate(case))
+        val hint = if (signNoLongerEnough) tr(" – ein Schild reicht nicht mehr: sperren oder reparieren!") else ""
+        if (worse) {
+            messenger.say(
+                tr(
+                    "Es wird schlimmer: {kind} – {place}{hint}",
+                    "kind" to event.kind.label,
+                    "place" to case.place,
+                    "hint" to hint,
+                ),
+                places.locate(case),
+            )
+        }
     }
 
     private fun collapse(
@@ -254,10 +279,10 @@ internal class Maintenance(
         case.kind = DamageKind.BRIDGE_COLLAPSE
         case.status = DamageStatus.COLLAPSED
         today.collapses += place to event.victims
-        if (event.victims > 0) sue(rules.lawsuitMax * event.victims, "Einsturz der Brücke")
+        if (event.victims > 0) sue(rules.lawsuitMax * event.victims, tr("Einsturz der Brücke"))
         messenger.say(
-            "EINSTURZ: $place ist eingestürzt" +
-                if (event.victims > 0) " – ${event.victims} Fahrzeuge in der Tiefe" else "",
+            tr("EINSTURZ: {place} ist eingestürzt", "place" to place) +
+                if (event.victims > 0) tr(" – {victims} Fahrzeuge in der Tiefe", "victims" to event.victims) else "",
             city.placeOfSegment(event.segment),
         )
     }
@@ -268,7 +293,7 @@ internal class Maintenance(
         if (case != null && case.status.isCovered) return
         sue(
             random.nextLong(rules.lawsuitMin, rules.lawsuitMax + 1),
-            "Unfall durch Schlagloch, ${places.streetName(segment)}",
+            tr("Unfall durch Schlagloch, {segment}", "segment" to places.streetName(segment)),
         )
     }
 
@@ -281,7 +306,7 @@ internal class Maintenance(
         lawsuits++
         today.lawsuitCosts += cost
         today.lawsuits++
-        messenger.say("Schadensersatz: −${formatEuro(cost)} ($what)")
+        messenger.say(tr("Schadensersatz: −{cost} ({what})", "cost" to formatEuro(cost), "what" to what))
     }
 
     fun respond(
@@ -290,9 +315,9 @@ internal class Maintenance(
         time: Double,
     ) {
         val case = cases.firstOrNull { it.id == reportId } ?: return
-        if (case.status == DamageStatus.COLLAPSED) return messenger.say("Da ist nichts mehr zu retten.")
+        if (case.status == DamageStatus.COLLAPSED) return messenger.say(tr("Da ist nichts mehr zu retten."))
         val busy = case.status == DamageStatus.TENDER || case.status == DamageStatus.CONSTRUCTION
-        if (busy) return messenger.say("Hier wird schon gebaut.")
+        if (busy) return messenger.say(tr("Hier wird schon gebaut."))
         when (response) {
             is DamageResponse.Repair -> {
                 construction.order(case, response.method, time)
@@ -308,7 +333,10 @@ internal class Maintenance(
 
             DamageResponse.Ignore -> {
                 case.status = DamageStatus.IGNORED
-                messenger.say("Ignoriert: ${case.kind.label} – ${case.place}", places.locate(case))
+                messenger.say(
+                    tr("Ignoriert: {kind} – {place}", "kind" to case.kind.label, "place" to case.place),
+                    places.locate(case),
+                )
             }
         }
     }
@@ -318,8 +346,8 @@ internal class Maintenance(
         kmh: Int,
     ) {
         val report = report(case, 0.0)
-        if (!report.canSign) return messenger.say("Ein Schild reicht hier nicht mehr – sperren oder reparieren!")
-        if (!treasury.pay(rules.warningSignCost, "Warnschild")) return
+        if (!report.canSign) return messenger.say(tr("Ein Schild reicht hier nicht mehr – sperren oder reparieren!"))
+        if (!treasury.pay(rules.warningSignCost, tr("Warnschild"))) return
         case.status = DamageStatus.SIGNED
         if (case.segments.isNotEmpty()) {
             case.signKmh = kmh
@@ -334,17 +362,28 @@ internal class Maintenance(
             }
         }
         val weight = if (case.kind.isBridge) ", ${rules.bridgeWeightLimitTons} t" else ""
-        val text = if (case.node >= 0) "„Ampel ausgefallen“" else "„Vorsicht Straßenschäden“ (Tempo $kmh$weight)"
-        messenger.say("Warnschild $text: ${case.place}", places.locate(case))
+        val text =
+            if (case.node >=
+                0
+            ) {
+                tr("„Ampel ausgefallen“")
+            } else {
+                tr(
+                    "„Vorsicht Straßenschäden“ (Tempo {kmh}{weight})",
+                    "kmh" to kmh,
+                    "weight" to weight,
+                )
+            }
+        messenger.say(tr("Warnschild {text}: {place}", "text" to text, "place" to case.place), places.locate(case))
     }
 
     private fun close(case: DamageCase) {
         if (!case.kind.isBridge) return
-        if (!treasury.pay(rules.bridgeClosureCost, "Absperrung")) return
+        if (!treasury.pay(rules.bridgeClosureCost, tr("Absperrung"))) return
         case.status = DamageStatus.CLOSED
         for (segment in case.segments) simulation.infrastructure.closures.setBridgeClosed(segment, true)
         today.closedBridges += case.place
-        messenger.say("Brücke gesperrt: ${case.place}", places.locate(case))
+        messenger.say(tr("Brücke gesperrt: {place}", "place" to case.place), places.locate(case))
     }
 
     /** Jede Stunde: Fristen und Bauphasen. */
@@ -353,7 +392,11 @@ internal class Maintenance(
             if (case.status == DamageStatus.OPEN && time > case.deadline) {
                 case.status = DamageStatus.IGNORED
                 messenger.say(
-                    "Frist verstrichen: ${case.kind.label} – ${case.place} bleibt, wie es ist",
+                    tr(
+                        "Frist verstrichen: {kind} – {place} bleibt, wie es ist",
+                        "kind" to case.kind.label,
+                        "place" to case.place,
+                    ),
                     places.locate(case),
                 )
             }
@@ -376,7 +419,12 @@ internal class Maintenance(
                 val (event, years) = PLANNING_EVENTS[random.nextInt(PLANNING_EVENTS.size)]
                 case.planningYear += years
                 messenger.say(
-                    "Planfeststellung ${case.place}: $event – Fertigstellung voraussichtlich ${case.planningYear}",
+                    tr(
+                        "Planfeststellung {place}: {event} – Fertigstellung voraussichtlich {planningYear}",
+                        "place" to case.place,
+                        "event" to event,
+                        "planningYear" to case.planningYear,
+                    ),
                     places.locate(case),
                 )
             }
@@ -419,11 +467,11 @@ internal class Maintenance(
         const val PLANNING_EVENT_CHANCE = 0.3
         val PLANNING_EVENTS =
             listOf(
-                "Gutachten zu Fledermäusen angefordert" to 3,
-                "Einspruch eines Anwohners" to 2,
-                "Neuplanung nach Kostenexplosion" to 5,
-                "Zuständigkeit ungeklärt" to 1,
-                "Akten im Keller wiedergefunden" to 1,
+                translatable("Gutachten zu Fledermäusen angefordert") to 3,
+                translatable("Einspruch eines Anwohners") to 2,
+                translatable("Neuplanung nach Kostenexplosion") to 5,
+                translatable("Zuständigkeit ungeklärt") to 1,
+                translatable("Akten im Keller wiedergefunden") to 1,
             )
     }
 }

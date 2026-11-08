@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.NewspaperEdition
+import de.bfi.trafficmaniac.i18n.tr
 
 private val Newsprint = Color(0xFFF5EEDC)
 
@@ -75,7 +76,7 @@ fun ComicNewspaper(
                 Box(Modifier.width(1.5.dp).fillMaxHeight().background(ink))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     BasicText(
-                        "LESERBRIEFE",
+                        tr("LESERBRIEFE"),
                         style = TextStyle(color = ink, fontSize = 11.sp, fontWeight = FontWeight.Black),
                     )
                     for (letter in edition.letters) {
@@ -112,10 +113,13 @@ private fun Masthead(
     DoubleRule()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         val small = TextStyle(color = ink, fontSize = 11.sp, fontFamily = FontFamily.Serif)
-        BasicText("Ausgabe Tag ${edition.day - firstDay + 1} · Preis: Ihr Vertrauen", style = small)
+        BasicText(
+            tr("Ausgabe Tag {firstDay} · Preis: Ihr Vertrauen", "firstDay" to edition.day - firstDay + 1),
+            style = small,
+        )
         if (edition.tone.isNotEmpty()) {
             BasicText(
-                "Tonlage: ${edition.tone}",
+                tr("Tonlage: {tone}", "tone" to edition.tone),
                 style = small.copy(fontWeight = FontWeight.Bold),
             )
         }

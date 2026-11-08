@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.CameraRecord
 import de.bfi.trafficmaniac.game.FineTier
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.tr
 import kotlin.math.roundToInt
 
 private val PanelBackground = ComicTheme.paper
@@ -51,14 +52,17 @@ fun CameraStatsPanel(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        BasicText("Blitzer-Statistik", style = title)
+        BasicText(tr("Blitzer-Statistik"), style = title)
         if (cameras.isEmpty()) {
-            BasicText("Noch kein Blitzer aufgestellt.", style = muted)
+            BasicText(tr("Noch kein Blitzer aufgestellt."), style = muted)
             return@Column
         }
         val totalRevenue = cameras.sumOf { it.totalRevenue }
         val revenueByTier = FineTier.entries.map { tier -> cameras.sumOf { it.revenuePerTier[tier.ordinal] } }
-        BasicText("Einnahmen gesamt: ${formatEuro(totalRevenue)}", style = text.copy(fontWeight = FontWeight.Bold))
+        BasicText(
+            tr("Einnahmen gesamt: {totalRevenue}", "totalRevenue" to formatEuro(totalRevenue)),
+            style = text.copy(fontWeight = FontWeight.Bold),
+        )
         TierBar(revenueByTier, Modifier.fillMaxWidth().height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FineTier.entries.forEach { tier ->
@@ -68,17 +72,26 @@ fun CameraStatsPanel(
         }
         for (camera in cameras) {
             BasicText(
-                "${camera.streetName}: ${camera.totalCount}× geblitzt · ${formatEuro(camera.totalRevenue)}",
+                tr(
+                    "{streetName}: {totalCount}× geblitzt · {totalRevenue}",
+                    "streetName" to camera.streetName,
+                    "totalCount" to camera.totalCount,
+                    "totalRevenue" to formatEuro(camera.totalRevenue),
+                ),
                 style = text,
             )
             BasicText(
-                "km/h zu schnell: " +
+                tr("km/h zu schnell: ") +
                     FineTier.entries.joinToString(" · ") { "${it.shortLabel}: ${camera.countPerTier[it.ordinal]}" },
                 style = muted,
             )
             if (camera.totalCount > 0) {
                 BasicText(
-                    "Rekord: ${camera.fastestMeasuredKmh.roundToInt()} km/h bei Tempo ${camera.fastestLimitKmh}",
+                    tr(
+                        "Rekord: {fastestMeasuredKmh} km/h bei Tempo {fastestLimitKmh}",
+                        "fastestMeasuredKmh" to camera.fastestMeasuredKmh.roundToInt(),
+                        "fastestLimitKmh" to camera.fastestLimitKmh,
+                    ),
                     style = muted,
                 )
             }

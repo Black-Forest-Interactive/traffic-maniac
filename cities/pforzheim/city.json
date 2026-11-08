@@ -14,5 +14,18 @@
     "import": {
         "extract": "https://download.geofabrik.de/europe/germany/baden-wuerttemberg/karlsruhe-regbez-latest.osm.pbf",
         "bbox": "8.60,48.83,8.80,48.94"
+    },
+    "translations": {
+        "en": {
+            "texts": {
+                "name": "Pforzheim",
+                "genitive": "Pforzheim's",
+                "nickname": "Gold City",
+                "newspaper": "PFORZHEIM MORNING POST",
+                "greeting": "Dear people of Pforzheim,",
+                "tagline": "Traffic \"calming\" for Pforzheim – get rich, look good, don't get recalled."
+            },
+            "description": "Gold City on the northern edge of the Black Forest: the B 10 and B 294 run right through town, the A 8 is on the doorstep, narrow valleys leave few alternative routes."
+        }
     }
 }

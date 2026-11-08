@@ -2,17 +2,22 @@ package de.bfi.trafficmaniac.sim
 
 import de.bfi.trafficmaniac.city.Facility
 import de.bfi.trafficmaniac.city.FacilityKind
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import kotlin.math.hypot
 import kotlin.random.Random
 
 enum class IncidentKind(
-    val label: String,
+    private val labelText: String,
 ) {
-    SOFTWARE_FAILURE("Softwarepanne"),
-    EMPTY_BATTERY("Akku leer"),
-    OIL_SPILL("Ölspur"),
-    ACCIDENT("Unfall"),
-    TRUCK_STUCK("LKW eingeklemmt"),
+    SOFTWARE_FAILURE(translatable("Softwarepanne")),
+    EMPTY_BATTERY(translatable("Akku leer")),
+    OIL_SPILL(translatable("Ölspur")),
+    ACCIDENT(translatable("Unfall")),
+    TRUCK_STUCK(translatable("LKW eingeklemmt")),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Ein Vorfall auf der Straße und die Einsatzkräfte, die dafür ausrücken. */

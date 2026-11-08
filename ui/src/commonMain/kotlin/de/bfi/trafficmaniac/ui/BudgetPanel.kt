@@ -23,6 +23,7 @@ import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.PrContract
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.tr
 import kotlin.math.roundToInt
 
 private val PanelBackground = ComicTheme.paper
@@ -52,51 +53,17 @@ fun BudgetPanel(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        BasicText("Haushalt & PR", style = title)
+        BasicText(tr("Haushalt & PR"), style = title)
         BasicText(
-            "Wöchentlicher Haushalt: +${formatEuro(rules.weeklyAllowance)} (sonntags um Mitternacht)",
+            tr(
+                "Wöchentlicher Haushalt: +{weeklyAllowance} (sonntags um Mitternacht)",
+                "weeklyAllowance" to formatEuro(rules.weeklyAllowance),
+            ),
             style = muted,
         )
-        BasicText(
-            "PR-Agentur (Kosten je Woche) – solange bezahlt wird, schreibt die Lokalzeitung Jubel-Stories:",
-            style = text,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (contract in PrContract.entries) {
-                val price = if (contract.weeklyCost > 0) " ${formatEuro(contract.weeklyCost)}" else ""
-                Choice("${contract.label}$price", state.prContract == contract) {
-                    onContract(contract)
-                }
-            }
-        }
-        BasicText("Kampagne „Totschlagargumente“ (${formatEuro(rules.argumentsWeeklyCost)}/Woche):", style = text)
-        BasicText("„Wer sich an die Geschwindigkeit hält, muss sich um Blitzer keine Sorgen machen.“", style = muted)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Choice("An", state.argumentsCampaign) { onArguments(true) }
-            Choice("Aus", !state.argumentsCampaign) { onArguments(false) }
-        }
+        PrSection(state, rules, onContract, onArguments)
         PressSection(state, rules, onCeremony)
-        BasicText(
-            "Unzufrieden: ${(state.unhappyShare * PERCENT).roundToInt()} % der Bürger · " +
-                "Zorn ${state.anger.roundToInt()} · Abwahlindex ${state.recallIndex.roundToInt()}/100",
-            style = text,
-        )
-        BasicText(
-            "Einnahmen bisher: Bußgelder ${formatEuro(state.fineIncome)} · Parkgebühren " +
-                "${formatEuro(
-                    state.parkingOffice.feeIncome,
-                )} · Knöllchen ${formatEuro(state.parkingOffice.ticketIncome)}",
-            style = text,
-        )
-        state.lastBudgetRound?.let {
-            BasicText(
-                "Letzte Haushaltsrunde (${it.time.weekday.germanName}): +${formatEuro(it.allowance)}, " +
-                    "PR −${formatEuro(it.prCost)}, Kampagne −${formatEuro(it.argumentsCost)}, " +
-                    "Gehälter −${formatEuro(it.salaries)}, Erhalt −${formatEuro(it.maintenance)}" +
-                    if (it.permits > 0) ", Anwohnerausweise +${formatEuro(it.permits)}" else "",
-                style = muted,
-            )
-        }
+        BudgetSummary(state)
     }
 }
 
@@ -111,23 +78,34 @@ private fun PressSection(
     val muted = TextStyle(color = Muted, fontSize = 11.sp)
     val press = state.press
     BasicText(
-        "Lokalzeitung: ${press.toneLabel} · Reputation ${state.reputation.roundToInt()}/100",
+        tr(
+            "Lokalzeitung: {toneLabel} · Reputation {reputation}/100",
+            "toneLabel" to press.toneLabel,
+            "reputation" to state.reputation.roundToInt(),
+        ),
         style = text.copy(fontWeight = FontWeight.Bold),
     )
     val effect = (press.prEffect * PERCENT).roundToInt()
     BasicText(
-        "Die Story wirkt zu $effect %" +
-            (if (effect < PERCENT) " – bei so viel Leid glaubt der Agentur keiner mehr" else "") +
-            ". Aufschlag für die Lücke zwischen Story und Realität: " +
-            "+${(press.prGapSurcharge * PERCENT).roundToInt()} %",
+        tr("Die Story wirkt zu {effect} %", "effect" to effect) +
+            (if (effect < PERCENT) tr(" – bei so viel Leid glaubt der Agentur keiner mehr") else "") +
+            tr(
+                ". Aufschlag für die Lücke zwischen Story und Realität: " +
+                    "+{prGapSurcharge} %",
+                "prGapSurcharge" to (press.prGapSurcharge * PERCENT).roundToInt(),
+            ),
         style = muted,
     )
     val next = press.nextCeremony
     if (next != null) {
-        Choice("Spatenstich / Eröffnung (${formatEuro(rules.ceremonyCost)})", active = false, onClick = onCeremony)
-        BasicText("Nächster Anlass: $next", style = muted)
+        Choice(
+            tr("Spatenstich / Eröffnung ({ceremonyCost})", "ceremonyCost" to formatEuro(rules.ceremonyCost)),
+            active = false,
+            onClick = onCeremony,
+        )
+        BasicText(tr("Nächster Anlass: {next}", "next" to next), style = muted)
     } else {
-        BasicText("Heute wurde schon gefeiert – morgen gibt es die nächste Schaufel.", style = muted)
+        BasicText(tr("Heute wurde schon gefeiert – morgen gibt es die nächste Schaufel."), style = muted)
     }
 }
 
@@ -154,3 +132,95 @@ private fun Choice(
 }
 
 private const val PERCENT = 100
+
+/** PR-Agentur und Kampagne „Totschlagargumente“. */
+@Composable
+private fun PrSection(
+    state: GameState,
+    rules: GameRules,
+    onContract: (PrContract) -> Unit,
+    onArguments: (Boolean) -> Unit,
+) {
+    val text = TextStyle(color = PanelText, fontSize = 12.sp)
+    val muted = TextStyle(color = Muted, fontSize = 11.sp)
+    BasicText(
+        tr("PR-Agentur (Kosten je Woche) – solange bezahlt wird, schreibt die Lokalzeitung Jubel-Stories:"),
+        style = text,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (contract in PrContract.entries) {
+            val price = if (contract.weeklyCost > 0) " ${formatEuro(contract.weeklyCost)}" else ""
+            Choice("${contract.label}$price", state.prContract == contract) {
+                onContract(contract)
+            }
+        }
+    }
+    BasicText(
+        tr(
+            "Kampagne „Totschlagargumente“ ({argumentsWeeklyCost}/Woche):",
+            "argumentsWeeklyCost" to formatEuro(rules.argumentsWeeklyCost),
+        ),
+        style = text,
+    )
+    BasicText(
+        tr("„Wer sich an die Geschwindigkeit hält, muss sich um Blitzer keine Sorgen machen.“"),
+        style = muted,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Choice(tr("An"), state.argumentsCampaign) { onArguments(true) }
+        Choice(tr("Aus"), !state.argumentsCampaign) { onArguments(false) }
+    }
+}
+
+/** Stimmung, Einnahmen und die letzte Haushaltsrunde. */
+@Composable
+private fun BudgetSummary(state: GameState) {
+    val text = TextStyle(color = PanelText, fontSize = 12.sp)
+    val muted = TextStyle(color = Muted, fontSize = 11.sp)
+    BasicText(
+        tr(
+            "Unzufrieden: {unhappyShare} % der Bürger · " +
+                "Zorn {anger} · Abwahlindex {recallIndex}/100",
+            "unhappyShare" to (state.unhappyShare * PERCENT).roundToInt(),
+            "anger" to state.anger.roundToInt(),
+            "recallIndex" to state.recallIndex.roundToInt(),
+        ),
+        style = text,
+    )
+    BasicText(
+        tr(
+            "Einnahmen bisher: Bußgelder {fineIncome} · Parkgebühren " +
+                "{feeIncome} · Knöllchen {ticketIncome}",
+            "fineIncome" to formatEuro(state.fineIncome),
+            "feeIncome" to
+                formatEuro(
+                    state.parkingOffice.feeIncome,
+                ),
+            "ticketIncome" to formatEuro(state.parkingOffice.ticketIncome),
+        ),
+        style = text,
+    )
+    state.lastBudgetRound?.let {
+        BasicText(
+            tr(
+                "Letzte Haushaltsrunde ({germanName}): +{allowance}, " +
+                    "PR −{prCost}, Kampagne −{argumentsCost}, " +
+                    "Gehälter −{salaries}, Erhalt −{maintenance}",
+                "germanName" to it.time.weekday.germanName,
+                "allowance" to formatEuro(it.allowance),
+                "prCost" to formatEuro(it.prCost),
+                "argumentsCost" to formatEuro(it.argumentsCost),
+                "salaries" to formatEuro(it.salaries),
+                "maintenance" to formatEuro(it.maintenance),
+            ) +
+                if (it.permits >
+                    0
+                ) {
+                    tr(", Anwohnerausweise +{permits}", "permits" to formatEuro(it.permits))
+                } else {
+                    ""
+                },
+            style = muted,
+        )
+    }
+}

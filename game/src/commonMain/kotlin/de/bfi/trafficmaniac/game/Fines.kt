@@ -1,12 +1,15 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
+
 /**
  * Stufen für Geschwindigkeitsverstöße (angelehnt an einen Bußgeldkatalog, Beträge fiktiv).
  * Die kleinen Fische der ersten Stufe sind zahlreich – dort wird das Geld verdient.
  */
 enum class FineTier(
-    val label: String,
-    val shortLabel: String,
+    private val labelText: String,
+    private val shortLabelText: String,
     /** Obergrenze der Überschreitung in km/h (einschließlich). */
     val maxExcessKmh: Double,
     /** Bußgeld in Euro. */
@@ -16,11 +19,11 @@ enum class FineTier(
     /** Fahrverbot in Spieltagen. */
     val drivingBanDays: Int,
 ) {
-    UP_TO_10("bis 10 km/h", "≤ 10", maxExcessKmh = 10.0, fine = 30, points = 0, drivingBanDays = 0),
-    UP_TO_20("11–20 km/h", "11–20", maxExcessKmh = 20.0, fine = 70, points = 0, drivingBanDays = 0),
-    UP_TO_30("21–30 km/h", "21–30", maxExcessKmh = 30.0, fine = 150, points = 1, drivingBanDays = 0),
+    UP_TO_10(translatable("bis 10 km/h"), "≤ 10", maxExcessKmh = 10.0, fine = 30, points = 0, drivingBanDays = 0),
+    UP_TO_20(translatable("11–20 km/h"), "11–20", maxExcessKmh = 20.0, fine = 70, points = 0, drivingBanDays = 0),
+    UP_TO_30(translatable("21–30 km/h"), "21–30", maxExcessKmh = 30.0, fine = 150, points = 1, drivingBanDays = 0),
     OVER_30(
-        "über 30 km/h",
+        translatable("über 30 km/h"),
         "> 30",
         maxExcessKmh = Double.POSITIVE_INFINITY,
         fine = 400,
@@ -28,6 +31,9 @@ enum class FineTier(
         drivingBanDays = 2,
     ),
     ;
+
+    val label: String get() = tr(labelText)
+    val shortLabel: String get() = tr(shortLabelText)
 
     companion object {
         fun of(excessKmh: Double): FineTier = entries.first { excessKmh <= it.maxExcessKmh }

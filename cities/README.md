@@ -10,6 +10,12 @@ Jede Stadt ist ein Ordner `cities/<id>/`:
 
 Das Spiel bietet alle Pakete mit Karte im Startmenü zur Auswahl an.
 
+## Sprachen
+
+`texts` und `description` sind deutsch. Für weitere Sprachen gibt es unter `translations` je Sprachkürzel einen
+Block mit eigenen `texts` (alle Felder) und `description` – siehe Pforzheim. Fehlt eine Sprache, zeigt das Spiel die
+deutschen Texte.
+
 ## Feinabstimmung
 
 `simulation` und `rules` überschreiben einzelne Werte aus `balancing/simulation.json` bzw.

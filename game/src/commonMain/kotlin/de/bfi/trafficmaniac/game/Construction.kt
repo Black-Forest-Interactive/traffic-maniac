@@ -1,5 +1,7 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.Simulation
 import kotlin.math.roundToInt
 
@@ -42,7 +44,7 @@ internal class Construction(
             RepairMethod.TENDER -> {
                 case.status = DamageStatus.TENDER
                 case.phaseUntil = time + rules.tenderDays * SECONDS_PER_DAY
-                messenger.say("Ausschreibung läuft: ${case.place}", locate(case))
+                messenger.say(tr("Ausschreibung läuft: {place}", "place" to case.place), locate(case))
             }
 
             RepairMethod.TURBO -> {
@@ -53,7 +55,10 @@ internal class Construction(
                 case.phaseUntil = if (night) time else time + secondsUntil(NIGHT_START_HOUR)
                 if (night) start(case, time)
                 messenger.say(
-                    "Turbo-Baukonsortium „Nachtschicht & Söhne“ beauftragt: ${case.place} – gebaut wird nachts",
+                    tr(
+                        "Turbo-Baukonsortium „Nachtschicht & Söhne“ beauftragt: {place} – gebaut wird nachts",
+                        "place" to case.place,
+                    ),
                     locate(case),
                 )
             }
@@ -63,7 +68,11 @@ internal class Construction(
                 case.planningYear = rules.planningStartYear
                 news().plannings += case.place to case.planningYear
                 messenger.say(
-                    "Planfeststellung eröffnet: ${case.place} – Fertigstellung voraussichtlich ${case.planningYear}",
+                    tr(
+                        "Planfeststellung eröffnet: {place} – Fertigstellung voraussichtlich {planningYear}",
+                        "place" to case.place,
+                        "planningYear" to case.planningYear,
+                    ),
                     locate(case),
                 )
             }
@@ -86,10 +95,24 @@ internal class Construction(
         time: Double,
     ): String? =
         when (case.status) {
-            DamageStatus.TENDER -> "Baubeginn in ${hours(case.phaseUntil - time)}"
-            DamageStatus.CONSTRUCTION -> "fertig in ${hours(case.phaseUntil - time)}"
-            DamageStatus.PLANNING -> "Fertigstellung voraussichtlich ${case.planningYear}"
-            else -> null
+            DamageStatus.TENDER -> {
+                tr("Baubeginn in {time}", "time" to hours(case.phaseUntil - time))
+            }
+
+            DamageStatus.CONSTRUCTION -> {
+                tr("fertig in {time}", "time" to hours(case.phaseUntil - time))
+            }
+
+            DamageStatus.PLANNING -> {
+                tr(
+                    "Fertigstellung voraussichtlich {planningYear}",
+                    "planningYear" to case.planningYear,
+                )
+            }
+
+            else -> {
+                null
+            }
         }
 
     private fun start(
@@ -103,7 +126,7 @@ internal class Construction(
         // Vollsperrung: Jetzt ist eine Umleitung gefragt
         for (segment in case.segments) simulation.infrastructure.closures.setWorks(segment, true, closed = true)
         if (case.node >= 0) simulation.infrastructure.trafficLights.setOff(case.node, true)
-        messenger.say("Baustelle eingerichtet (Vollsperrung): ${case.place}", locate(case))
+        messenger.say(tr("Baustelle eingerichtet (Vollsperrung): {place}", "place" to case.place), locate(case))
     }
 
     private fun finish(case: DamageCase) {
@@ -125,9 +148,16 @@ internal class Construction(
             turboContracts++
             news().turboRepairs += case.place
             val fee = formatEuro(rules.turboWeeklyMaintenance)
-            messenger.say("Über Nacht repariert: ${case.place} – Wartungsvertrag läuft ($fee/Woche)", locate(case))
+            messenger.say(
+                tr(
+                    "Über Nacht repariert: {place} – Wartungsvertrag läuft ({fee}/Woche)",
+                    "place" to case.place,
+                    "fee" to fee,
+                ),
+                locate(case),
+            )
         } else {
-            messenger.say("Repariert: ${case.place}", locate(case))
+            messenger.say(tr("Repariert: {place}", "place" to case.place), locate(case))
         }
         repaired++
         lastRepaired = case.place
@@ -142,7 +172,16 @@ internal class Construction(
 
     private fun hours(seconds: Double): String {
         val h = (seconds / SECONDS_PER_HOUR).coerceAtLeast(0.0)
-        return if (h < HOURS_PER_DAY) "${h.roundToInt()} Std." else "${"%.1f".format(h / HOURS_PER_DAY)} Tagen"
+        return if (h <
+            HOURS_PER_DAY
+        ) {
+            tr("{h} Std.", "h" to h.roundToInt())
+        } else {
+            tr(
+                "{h} Tagen",
+                "h" to formatDecimal(h / HOURS_PER_DAY),
+            )
+        }
     }
 
     private companion object {

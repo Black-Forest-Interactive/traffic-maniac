@@ -1,5 +1,7 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.tr
+
 /**
  * Die Verkehrssünderkartei: Punkte, Fahrverbote und Führerscheinentzug je Fahrer.
  * Wer nicht fahren darf, dessen Fahrten fallen weg – und sein Wohngebiet ist entsprechend sauer.
@@ -40,7 +42,10 @@ internal class DriverRegistry(
         ban(person, homeZone, time + rules.revocationDays * SECONDS_PER_DAY)
         revocations++
         revocationsToday++
-        return "Führerschein weg: Ein Fahrer hat ${rules.revocationPoints} Punkte gesammelt"
+        return tr(
+            "Führerschein weg: Ein Fahrer hat {revocationPoints} Punkte gesammelt",
+            "revocationPoints" to rules.revocationPoints,
+        )
     }
 
     /** Abgelaufene Fahrverbote aufräumen; liefert die Entzüge des Tages und setzt den Zähler zurück. */

@@ -1,10 +1,12 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.GameTime
 
 /** PR-Vertrag mit einer Agentur: Solange er läuft, ist die Lokalzeitung freundlich. */
 enum class PrContract(
-    val label: String,
+    private val labelText: String,
     val weeklyCost: Long,
     /** Um diesen Anteil wird der wahrgenommene Bürgerzorn gedämpft. */
     val angerDamping: Double,
@@ -12,9 +14,24 @@ enum class PrContract(
     /** Tonlage, die die Zeitung mit diesem Vertrag anstrebt (−1 kritisch … +1 Jubel). */
     val pressTone: Double,
 ) {
-    NONE("Keiner", weeklyCost = 0, angerDamping = 0.0, reputationPerHour = 0.0, pressTone = -1.0),
-    STANDARD("Standard", weeklyCost = 15_000, angerDamping = 0.25, reputationPerHour = 0.06, pressTone = 0.6),
-    PREMIUM("Premium", weeklyCost = 40_000, angerDamping = 0.4, reputationPerHour = 0.12, pressTone = 1.0),
+    NONE(translatable("Keiner"), weeklyCost = 0, angerDamping = 0.0, reputationPerHour = 0.0, pressTone = -1.0),
+    STANDARD(
+        translatable("Standard"),
+        weeklyCost = 15_000,
+        angerDamping = 0.25,
+        reputationPerHour = 0.06,
+        pressTone = 0.6,
+    ),
+    PREMIUM(
+        translatable("Premium"),
+        weeklyCost = 40_000,
+        angerDamping = 0.4,
+        reputationPerHour = 0.12,
+        pressTone = 1.0,
+    ),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /**
@@ -69,11 +86,11 @@ internal class Politics(
             ).coerceIn(0.0, MAX_INDEX)
 
         val messages = ArrayList<String>()
-        if (criticalPress) messages += "Lokalzeitung: „Abzocke mit Blitzern?“"
+        if (criticalPress) messages += tr("Lokalzeitung: „Abzocke mit Blitzern?“")
         WARNINGS.forEachIndexed { level, (threshold, text) ->
             if (recallIndex >= threshold && warningsGiven <= level) {
                 warningsGiven = level + 1
-                messages += text
+                messages += tr(text)
             }
         }
         if (recallIndex < WARNINGS.first().first) warningsGiven = 0
@@ -84,8 +101,8 @@ internal class Politics(
         const val MAX_INDEX = 100.0
         val WARNINGS =
             listOf(
-                60.0 to "Erste Rücktrittsforderungen im Gemeinderat (Abwahlindex 60)",
-                80.0 to "Misstrauensantrag angekündigt! (Abwahlindex 80)",
+                60.0 to translatable("Erste Rücktrittsforderungen im Gemeinderat (Abwahlindex 60)"),
+                80.0 to translatable("Misstrauensantrag angekündigt! (Abwahlindex 80)"),
             )
     }
 }

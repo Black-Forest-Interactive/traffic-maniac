@@ -25,6 +25,7 @@ import de.bfi.trafficmaniac.game.MaintenanceBudget
 import de.bfi.trafficmaniac.game.MaintenanceState
 import de.bfi.trafficmaniac.game.RepairMethod
 import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.DamageKind
 import kotlin.math.roundToInt
 
@@ -62,15 +63,23 @@ fun MaintenancePanel(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        BasicText("Bauamt", style = title)
+        BasicText(tr("Bauamt"), style = title)
         BasicText(
-            "Straßenzustand im Mittel: ${state.meanConditionPercent} % · repariert ${state.repaired} · " +
-                "Klagen ${state.lawsuits} (${formatEuro(
-                    state.lawsuitCosts,
-                )}) · Turbo-Wartungsverträge ${state.turboContracts}",
+            tr(
+                "Straßenzustand im Mittel: {meanConditionPercent} % · repariert {repaired} · " +
+                    "Klagen {lawsuits} ({lawsuitCosts}) · Turbo-Wartungsverträge {turboContracts}",
+                "meanConditionPercent" to state.meanConditionPercent,
+                "repaired" to state.repaired,
+                "lawsuits" to state.lawsuits,
+                "lawsuitCosts" to
+                    formatEuro(
+                        state.lawsuitCosts,
+                    ),
+                "turboContracts" to state.turboContracts,
+            ),
             style = muted,
         )
-        BasicText("Erhaltungsbudget pro Woche:", style = text)
+        BasicText(tr("Erhaltungsbudget pro Woche:"), style = text)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (budget in MaintenanceBudget.entries) {
                 val cost =
@@ -88,12 +97,12 @@ fun MaintenancePanel(
             state.reports
                 .sortedWith(compareBy({ it.status != DamageStatus.OPEN }, { it.hoursLeft }))
                 .take(MAX_REPORTS)
-        if (reports.isEmpty()) BasicText("Keine Schadensmeldungen – noch.", style = muted)
+        if (reports.isEmpty()) BasicText(tr("Keine Schadensmeldungen – noch."), style = muted)
         for (report in reports) ReportRow(report, rules, onCommand, text, muted, onShow)
         if (state.reports.size >
             MAX_REPORTS
         ) {
-            BasicText("… und ${state.reports.size - MAX_REPORTS} weitere", style = muted)
+            BasicText(tr("… und {reports} weitere", "reports" to state.reports.size - MAX_REPORTS), style = muted)
         }
     }
 }
@@ -123,7 +132,14 @@ private fun ReportRow(
 }
 
 private fun headline(report: DamageReport): String {
-    val sections = if (report.segments.size > 1) ", ${report.segments.size} Abschnitte" else ""
+    val sections =
+        if (report.segments.size >
+            1
+        ) {
+            tr(", {segments} Abschnitte", "segments" to report.segments.size)
+        } else {
+            ""
+        }
     return "${report.kind.label}: ${report.place} (${report.conditionPercent} %$sections)"
 }
 
@@ -139,9 +155,20 @@ private fun colorOf(report: DamageReport): Color {
 private fun statusText(report: DamageReport): String {
     val status =
         when (report.status) {
-            DamageStatus.OPEN -> "Frist: noch ${report.hoursLeft.coerceAtLeast(0.0).roundToInt()} Std."
-            DamageStatus.SIGNED -> "Warnschild, Tempo ${report.signKmh ?: "–"}"
-            else -> report.status.label
+            DamageStatus.OPEN -> {
+                tr(
+                    "Frist: noch {hoursLeft} Std.",
+                    "hoursLeft" to report.hoursLeft.coerceAtLeast(0.0).roundToInt(),
+                )
+            }
+
+            DamageStatus.SIGNED -> {
+                tr("Warnschild, Tempo {signKmh}", "signKmh" to (report.signKmh ?: "–"))
+            }
+
+            else -> {
+                report.status.label
+            }
         }
     return status + (report.progress?.let { " · $it" } ?: "")
 }
@@ -155,12 +182,17 @@ private fun RepairActions(
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         val base = report.repairCost
-        Choice("Ausschreibung ${formatEuro(base)}", false) { respond(DamageResponse.Repair(RepairMethod.TENDER)) }
-        Choice("Turbo ${formatEuro((base * rules.turboCostFactor).toLong())}", false) {
+        Choice(tr("Ausschreibung {base}", "base" to formatEuro(base)), false) {
+            respond(DamageResponse.Repair(RepairMethod.TENDER))
+        }
+        Choice(
+            tr("Turbo {turboCostFactor}", "turboCostFactor" to formatEuro((base * rules.turboCostFactor).toLong())),
+            false,
+        ) {
             respond(DamageResponse.Repair(RepairMethod.TURBO))
         }
         if (report.status != DamageStatus.PLANNING) {
-            Choice("Planfeststellung ${formatEuro(rules.planningCost)}", false) {
+            Choice(tr("Planfeststellung {planningCost}", "planningCost" to formatEuro(rules.planningCost)), false) {
                 respond(DamageResponse.Repair(RepairMethod.PLANNING))
             }
         }
@@ -178,23 +210,23 @@ private fun OtherActions(
         when {
             unsigned && report.node >= 0 -> {
                 Choice(
-                    "Schild „Ampel ausgefallen“",
+                    tr("Schild „Ampel ausgefallen“"),
                     false,
                 ) { respond(DamageResponse.WarningSign(0)) }
             }
 
             unsigned -> {
                 SIGN_LIMITS.forEach { kmh ->
-                    Choice("Schild $kmh", false) { respond(DamageResponse.WarningSign(kmh)) }
+                    Choice(tr("Schild {kmh}", "kmh" to kmh), false) { respond(DamageResponse.WarningSign(kmh)) }
                 }
             }
         }
         if (report.canClose &&
             report.status != DamageStatus.CLOSED
         ) {
-            Choice("Sperren", false) { respond(DamageResponse.Close) }
+            Choice(tr("Sperren"), false) { respond(DamageResponse.Close) }
         }
-        if (report.status == DamageStatus.OPEN) Choice("Nichts tun", false) { respond(DamageResponse.Ignore) }
+        if (report.status == DamageStatus.OPEN) Choice(tr("Nichts tun"), false) { respond(DamageResponse.Ignore) }
     }
 }
 

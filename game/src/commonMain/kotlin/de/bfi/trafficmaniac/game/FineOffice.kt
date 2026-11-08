@@ -1,12 +1,14 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.GameTime
 import kotlin.math.exp
 import kotlin.random.Random
 
 /** Wie streng das Ordnungsamt ist. */
 enum class Strictness(
-    val label: String,
+    private val labelText: String,
     /** Messtoleranz in km/h. */
     val toleranceKmh: Double,
     /** Anteil erfolgreicher Einsprüche. */
@@ -16,18 +18,42 @@ enum class Strictness(
     /** Knöllchen erst nach so vielen Minuten Falschparken. */
     val parkingGraceMinutes: Double,
 ) {
-    LENIENT("kulant", toleranceKmh = 5.0, appealSuccess = 0.15, painFactor = 0.8, parkingGraceMinutes = 15.0),
-    NORMAL("normal", toleranceKmh = 3.0, appealSuccess = 0.05, painFactor = 1.0, parkingGraceMinutes = 5.0),
-    RUTHLESS("gnadenlos", toleranceKmh = 1.0, appealSuccess = 0.0, painFactor = 1.3, parkingGraceMinutes = 0.0),
+    LENIENT(
+        translatable("kulant"),
+        toleranceKmh = 5.0,
+        appealSuccess = 0.15,
+        painFactor = 0.8,
+        parkingGraceMinutes = 15.0,
+    ),
+    NORMAL(
+        translatable("normal"),
+        toleranceKmh = 3.0,
+        appealSuccess = 0.05,
+        painFactor = 1.0,
+        parkingGraceMinutes = 5.0,
+    ),
+    RUTHLESS(
+        translatable("gnadenlos"),
+        toleranceKmh = 1.0,
+        appealSuccess = 0.0,
+        painFactor = 1.3,
+        parkingGraceMinutes = 0.0,
+    ),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Was passiert, wenn auf dem Foto niemand zu erkennen ist. */
 enum class UnidentifiedPolicy(
-    val label: String,
+    private val labelText: String,
 ) {
-    DROP("Verfahren einstellen"),
-    QUESTIONNAIRE("Zeugenfragebogen"),
-    LOGBOOK("Fahrtenbuch androhen"),
+    DROP(translatable("Verfahren einstellen")),
+    QUESTIONNAIRE(translatable("Zeugenfragebogen")),
+    LOGBOOK(translatable("Fahrtenbuch androhen")),
+    ;
+
+    val label: String get() = tr(labelText)
 }
 
 /** Zustand der Bußgeldstelle für die Oberfläche. */
@@ -111,12 +137,18 @@ internal class FineOffice(
         time: Double,
     ) {
         repeat(count) { hires.addLast(time + rules.hireDelayHours * SECONDS_PER_HOUR) }
-        message("$count neue Sachbearbeiter eingestellt – Arbeitsbeginn in ${rules.hireDelayHours} Stunden")
+        message(
+            tr(
+                "{count} neue Sachbearbeiter eingestellt – Arbeitsbeginn in {hireDelayHours} Stunden",
+                "count" to count,
+                "hireDelayHours" to rules.hireDelayHours,
+            ),
+        )
     }
 
     fun fire(count: Int) {
         staff = (staff - count).coerceAtLeast(0)
-        message("Personal der Bußgeldstelle: $staff")
+        message(tr("Personal der Bußgeldstelle: {staff}", "staff" to staff))
     }
 
     /** Eine Spielstunde Büroarbeit. */

@@ -14,17 +14,21 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.ui.map.MapLegend
 import de.bfi.trafficmaniac.ui.map.NoSprites
 import de.bfi.trafficmaniac.ui.map.SpriteSource
 
 private val CONTROLS =
     listOf(
-        "Mausrad: zoomen · Ziehen: Karte verschieben",
-        "Werkzeug unten wählen, dann auf Straße bzw. Kreuzung klicken",
-        "Leertaste: Pause · 1–4: Tempo 1×/2×/4×/8× · Enter: Tagesabschluss schließen",
-        "M: Ton aus/an · N: Musik aus/an · F5: schnell speichern (Laden im Startmenü)",
-        "Meldungen mit ▸, Schäden im Bauamt und Ereignisse im Kalender anklicken: die Karte zeigt die Stelle",
+        translatable("Mausrad: zoomen · Ziehen: Karte verschieben"),
+        translatable("Werkzeug unten wählen, dann auf Straße bzw. Kreuzung klicken"),
+        translatable("Leertaste: Pause · 1–4: Tempo 1×/2×/4×/8× · Enter: Tagesabschluss schließen"),
+        translatable("M: Ton aus/an · N: Musik aus/an · F5: schnell speichern (Laden im Startmenü)"),
+        translatable(
+            "Meldungen mit ▸, Schäden im Bauamt und Ereignisse im Kalender anklicken: die Karte zeigt die Stelle",
+        ),
     )
 
 /** Hilfe: Bedienung in Kürze und die Legende aller Kartensymbole. */
@@ -45,8 +49,8 @@ fun HelpPanel(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        BasicText("Hilfe & Legende", style = title)
-        for (line in CONTROLS) BasicText("• $line", style = text)
+        BasicText(tr("Hilfe & Legende"), style = title)
+        for (line in CONTROLS) BasicText("• ${tr(line)}", style = text)
         MapLegend(ComicTheme.ink, ComicTheme.muted, Modifier.padding(top = 6.dp), sprites)
     }
 }
