@@ -34,6 +34,27 @@ class CityEvent internal constructor(
 ) {
     internal val vehicles = ArrayList<Vehicle>()
 
+    /**
+     * Wie weit das Ereignis ist (0..1): bei Sperrungen die verstrichene Zeit, bei Kolonnen der zurückgelegte Teil
+     * der Route.
+     */
+    fun progress(time: Double): Float =
+        if (!endTime.isNaN()) {
+            ((time - startTime) / (endTime - startTime)).toFloat().coerceIn(0f, 1f)
+        } else if (vehicles.isEmpty()) {
+            0f
+        } else {
+            vehicles
+                .map {
+                    it.routeIndex.toFloat() /
+                        it.route.size.coerceAtLeast(
+                            1,
+                        )
+                }.average()
+                .toFloat()
+                .coerceIn(0f, 1f)
+        }
+
     /** Ende des Ereignisses in Sekunden Simulationszeit (NaN, solange es läuft). */
     var finishedAt = Double.NaN
         internal set

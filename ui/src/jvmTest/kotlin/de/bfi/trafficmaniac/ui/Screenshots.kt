@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.Density
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.game.CityGame
+import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.Scenario
@@ -96,6 +97,14 @@ class Screenshots {
 
     private fun frame(city: CityMap): TrafficFrame {
         val game = CityGame(city)
+        // Ein paar typische Meldungen: dreimal Tempo 30 (gebündelt), ein Blitzer, eine Einstellung im Amt
+        val main =
+            city.roads.segments
+                .filter { !it.passive && it.name != null }
+                .map { it.id }
+        main.take(3).forEach { game.submit(GameCommand.SetSpeedLimit(it, 30)) }
+        game.submit(GameCommand.PlaceCamera(main[3]))
+        game.submit(GameCommand.SetDeadlineDays(5))
         repeat(WARMUP_TICKS) { game.step() }
         val snapshot = game.simulation.snapshot()
         return TrafficFrame(

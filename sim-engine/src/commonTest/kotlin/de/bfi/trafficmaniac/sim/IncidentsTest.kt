@@ -61,12 +61,23 @@ class IncidentsTest {
         val incident = simulation.incidentsForTest.active.single()
 
         var everyone = false
+        var progress: Float? = null
         repeat(30 * 60 * simulation.config.ticksPerSecond) {
             simulation.step()
-            if (incident.responders.all { it.role in incident.arrived }) everyone = true
+            if (!everyone && incident.responders.all { it.role in incident.arrived }) {
+                everyone = true
+                // Sobald alle da sind, zeigt der Einsatz den Fortschritt der Arbeit vor Ort
+                progress =
+                    simulation
+                        .snapshot()
+                        .incidents
+                        .single()
+                        .workProgress
+            }
         }
 
         assertTrue(everyone, "Angekommen: ${incident.arrived}, unterwegs: ${incident.responders.map { it.role }}")
+        assertTrue(progress.let { it != null && it in 0f..1f }, "Arbeit vor Ort läuft: $progress")
         // Weit vor dem Sicherheitsnetz von drei Stunden erledigt
         simulation.run(minutes = 60)
         assertEquals(0, simulation.openIncidents())

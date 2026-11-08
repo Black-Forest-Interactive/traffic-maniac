@@ -435,7 +435,7 @@ class Simulation(
             signalStates = Array(signals.markers.links.size) { signals.state(signals.markers.links[it], time) },
             cameras = speedControl.cameras.toList(),
             environment = environment.snapshot,
-            incidents = incidents.active.map { it.toMarker() },
+            incidents = incidents.active.map { it.toMarker(time) },
             events = events.markers(),
             chargingStations = charging.states(),
             infrastructure = infrastructure.snapshot(),

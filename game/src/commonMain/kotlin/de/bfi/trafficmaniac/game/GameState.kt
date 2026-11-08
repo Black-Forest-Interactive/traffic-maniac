@@ -2,12 +2,28 @@ package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.sim.GameTime
 
+/** Art einer Meldung – bestimmt die Farbe in der Meldungsliste. */
+enum class MessageKind {
+    /** Schaden, Unfall, Demo, zu wenig Geld: hier brennt es. */
+    PROBLEM,
+
+    /** Eigene Maßnahme: Schild, Blitzer, Einstellung im Amt. */
+    ACTION,
+
+    /** Gutes: Reputation, Achievement. */
+    SUCCESS,
+
+    /** Spielstand, Amtszeit, Hinweise. */
+    SYSTEM,
+}
+
 /** Meldung für den Spieler, z. B. "Zu wenig Geld" oder "Blitzer aufgestellt". */
 data class GameMessage(
     val time: GameTime,
     val text: String,
     /** Wohin ein Klick auf die Meldung führt; `null`, wenn sie keinen Ort hat. */
     val place: MapPlace? = null,
+    val kind: MessageKind = MessageKind.SYSTEM,
 )
 
 /** Unveränderlicher Spielstand für die Oberfläche. */

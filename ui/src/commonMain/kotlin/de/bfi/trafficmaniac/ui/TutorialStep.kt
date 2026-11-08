@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,9 @@ import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.PrContract
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
+import de.bfi.trafficmaniac.ui.components.ButtonKind
+import de.bfi.trafficmaniac.ui.components.Meter
+import de.bfi.trafficmaniac.ui.components.TmButton
 
 /**
  * Die Schritte des Tutorials. Jeder Schritt schaltet Werkzeuge frei ([tools]) und ist entweder erledigt, sobald
@@ -42,8 +46,9 @@ enum class TutorialStep(
     SPEED_LIMIT(
         translatable("Erst die Schilder"),
         translatable(
-            "Wählen Sie unten das Werkzeug „Tempolimit“ – 30 ist schon eingestellt – und klicken Sie auf eine große " +
-                "Straße mit viel Verkehr. Das Limit gilt von Kreuzung zu Kreuzung.",
+            "Wählen Sie unten das Werkzeug „Tempolimit“ – 30 ist schon eingestellt. Klicken Sie auf den Anfang und " +
+                "dann auf das Ende eines Stücks einer großen Straße (zweimal dieselbe Stelle: bis zur nächsten " +
+                "Kreuzung). Alles ist erst geplant – gebaut und bezahlt wird mit „Bauen“ über dem Werkzeugkasten.",
         ),
         setOf(Tool.SPEED_LIMIT, Tool.REMOVE),
         { it.speedLimits.isNotEmpty() },
@@ -51,8 +56,8 @@ enum class TutorialStep(
     CAMERA(
         translatable("Dann der Blitzer"),
         translatable(
-            "Wo ein Limit ist, darf geblitzt werden. Nehmen Sie „Blitzer“ und klicken Sie auf dieselbe Straße. " +
-                "Ein fester Blitzer ist teuer, verdient aber Tag und Nacht.",
+            "Wo ein Limit ist, darf geblitzt werden. Nehmen Sie „Blitzer“, klicken Sie auf dieselbe Straße und " +
+                "dann auf „Bauen“. Ein fester Blitzer ist teuer, verdient aber Tag und Nacht.",
         ),
         setOf(Tool.CAMERA),
         { it.cameras.isNotEmpty() },
@@ -134,38 +139,28 @@ internal fun TutorialPanel(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        BasicText(
-            tr("Tutorial {ordinal}/{entries}", "ordinal" to step.ordinal + 1, "entries" to TutorialStep.entries.size),
-            style = TmType.caption,
-        )
+        // Fortschritt als Balken wie im Entwurf
+        val total = TutorialStep.entries.size
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BasicText(
+                tr("Tutorial {ordinal}/{entries}", "ordinal" to step.ordinal + 1, "entries" to total),
+                style = TmType.caption,
+            )
+            Meter((step.ordinal + 1f) / total, Modifier.weight(1f), height = 6.dp)
+        }
         BasicText(step.title, style = TmType.display(17.sp, ink))
         BasicText(step.text, style = TmType.text(13.sp, color = ink))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (step.done == null) {
-                TutorialButton(if (step.next == null) tr("Los geht's") else tr("Weiter"), true) { onStep(step.next) }
+                val label = if (step.next == null) tr("Los geht's") else tr("Weiter")
+                TmButton(label, { onStep(step.next) }, kind = ButtonKind.PRIMARY)
             } else {
                 BasicText(tr("Aufgabe läuft …"), style = TmType.small)
             }
-            TutorialButton(tr("Tutorial beenden"), false) { onStep(null) }
+            Box(Modifier.weight(1f))
+            TmButton(tr("Tutorial beenden"), { onStep(null) }, kind = ButtonKind.TEXT)
         }
     }
-}
-
-@Composable
-private fun TutorialButton(
-    label: String,
-    active: Boolean,
-    onClick: () -> Unit,
-) {
-    BasicText(
-        label,
-        style = TmType.text(13.sp, FontWeight.Bold, ComicTheme.ink),
-        modifier =
-            Modifier
-                .comicButton(active)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-    )
 }
 
 private const val PANEL_WIDTH = 340

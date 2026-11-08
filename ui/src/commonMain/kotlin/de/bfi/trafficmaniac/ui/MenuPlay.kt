@@ -1,8 +1,12 @@
 package de.bfi.trafficmaniac.ui
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -87,8 +91,7 @@ internal fun PlayScreen(
             ) {
                 items(scenarios, key = { it.id }) { scenario ->
                     ScenarioCard(scenario, scenario == selected, highscores.best(scenario.id)?.points) {
-                        selected =
-                            scenario
+                        selected = scenario
                     }
                 }
             }
@@ -144,14 +147,18 @@ private fun ScenarioCard(
     best: Long?,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    // Gewählt: kräftiger blauer Rahmen, Häkchen und Schatten; sonst nur ein feiner Rahmen
     Column(
         Modifier
             .fillMaxWidth()
             .heightIn(min = CARD_MIN_HEIGHT.dp)
-            .hardShadow(if (selected) 5.dp else 3.dp, if (selected) TmColors.Ink else TmColors.OnDarkMuted)
-            .background(TmColors.Surface, CardShape)
-            .border(if (selected) 3.dp else 2.dp, if (selected) TmColors.Primary else TmColors.Ink, CardShape)
-            .clickable(role = Role.RadioButton, onClick = onClick)
+            .then(if (selected) Modifier.hardShadow(5.dp, TmColors.Ink) else Modifier)
+            .background(if (hovered && !selected) TmColors.Ground else TmColors.Surface, CardShape)
+            .border(if (selected) 3.dp else 1.dp, if (selected) TmColors.Primary else TmColors.Line, CardShape)
+            .hoverable(interaction)
+            .clickable(interaction, LocalIndication.current, role = Role.RadioButton, onClick = onClick)
             .padding(22.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -171,7 +178,6 @@ private fun ScenarioCard(
         BasicText(
             tr(scenario.description),
             style = TmType.text(14.sp, color = TmColors.Muted).copy(lineHeight = 21.sp),
-            modifier = Modifier.weight(1f, fill = false),
         )
         DashedLine()
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {

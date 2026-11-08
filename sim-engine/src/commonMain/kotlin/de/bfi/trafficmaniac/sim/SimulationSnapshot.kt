@@ -70,11 +70,15 @@ class IncidentMarker(
     val onTheWay: List<VehicleRole> = emptyList(),
     /** Einsatzkräfte vor Ort. */
     val onScene: List<VehicleRole> = emptyList(),
+    /** Fortschritt der Arbeit vor Ort (0..1), sobald alle da sind; `null` während der Anfahrt. */
+    val workProgress: Float? = null,
 )
 
 /** Marker für Karte und Einsatzliste: wer schon vor Ort ist und wer noch unterwegs. */
-internal fun Incident.toMarker(): IncidentMarker {
+internal fun Incident.toMarker(time: Double): IncidentMarker {
     val roles = responders.map { it.role }
+    val progress =
+        if (workUntil.isNaN()) null else ((time - workStart) / (workUntil - workStart)).toFloat().coerceIn(0f, 1f)
     return IncidentMarker(
         kind,
         x,
@@ -82,6 +86,7 @@ internal fun Incident.toMarker(): IncidentMarker {
         startTime,
         onTheWay = roles.filter { it !in arrived },
         onScene = roles.filter { it in arrived },
+        workProgress = progress,
     )
 }
 

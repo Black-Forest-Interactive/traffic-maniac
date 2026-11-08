@@ -25,11 +25,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameMessage
 import de.bfi.trafficmaniac.game.GameRunner
 import de.bfi.trafficmaniac.game.MapPlace
+import de.bfi.trafficmaniac.game.MessageKind
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.i18n.formatDecimal
 import de.bfi.trafficmaniac.i18n.formatNumber
@@ -126,13 +128,48 @@ private fun Figure(
     }
 }
 
-/** Die letzten Meldungen, die neueste oben; mit Ort anklickbar – die Karte springt hin. */
+/** Meldung, aufgeteilt in Was (Titel) und Wo bzw. Näheres (Unterzeile) – am Muster „Was: Wo“. */
+private class MessageParts(
+    val title: String,
+    val detail: String?,
+)
+
+private fun parts(message: GameMessage): MessageParts {
+    val colon = message.text.indexOf(": ")
+    return if (colon in 1..MAX_TITLE_LENGTH) {
+        MessageParts(message.text.substring(0, colon), message.text.substring(colon + 2))
+    } else {
+        MessageParts(message.text, null)
+    }
+}
+
+/** Gleichartige Meldungen (gleicher Titel) zusammen, die neueste zuerst. */
+private class MessageGroup(
+    val title: String,
+    val messages: List<GameMessage>,
+) {
+    val latest: GameMessage get() = messages.first()
+}
+
+private fun group(messages: List<GameMessage>): List<MessageGroup> =
+    messages
+        .asReversed()
+        .groupBy { parts(it).title }
+        .map { (title, items) -> MessageGroup(title, items) }
+
+/**
+ * Die Meldungen, die neueste oben; gleichartige gebündelt („3× Tempo 30“, aufklappbar). Höchstens fünf sichtbar,
+ * der Rest hinter „Alle anzeigen“. Mit Ort anklickbar – die Karte springt hin.
+ */
 @Composable
 private fun Messages(
     messages: List<GameMessage>,
     openDamage: Int,
     onShow: (MapPlace) -> Unit,
 ) {
+    var showAll by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf<String?>(null) }
+    val groups = group(messages)
     Column(Modifier.fillMaxWidth().card()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
@@ -143,14 +180,59 @@ private fun Messages(
                 Badge(tr("{count} Schäden offen", "count" to openDamage), tone = BadgeTone.DANGER)
             }
         }
-        if (messages.isEmpty()) {
+        if (groups.isEmpty()) {
             Divider()
             BasicText(tr("Noch keine Meldungen."), style = TmType.small, modifier = Modifier.padding(14.dp))
         }
-        for (message in messages.asReversed()) {
+        for (entry in if (showAll) groups else groups.take(VISIBLE_GROUPS)) {
             Divider()
-            MessageRow(message, onShow)
+            val open = expanded == entry.title
+            GroupRow(entry, open, onShow) { expanded = if (open) null else entry.title }
+            if (open) entry.messages.forEach { MessageRow(it, onShow, nested = true) }
         }
+        if (groups.size > VISIBLE_GROUPS) {
+            Divider()
+            BasicText(
+                if (showAll) tr("Weniger anzeigen") else tr("Alle anzeigen ({count})", "count" to groups.size),
+                style = TmType.text(12.sp, FontWeight.SemiBold, TmColors.Primary),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(role = Role.Button) { showAll = !showAll }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+            )
+        }
+    }
+}
+
+/** Eine Gruppe: einzeln wie eine Meldung, mehrfach als „3× Titel“ zum Aufklappen. */
+@Composable
+private fun GroupRow(
+    group: MessageGroup,
+    open: Boolean,
+    onShow: (MapPlace) -> Unit,
+    onToggle: () -> Unit,
+) {
+    if (group.messages.size == 1) return MessageRow(group.latest, onShow)
+    val latest = group.latest
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onToggle)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        KindDot(latest.kind)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            BasicText(
+                "${group.messages.size}× ${group.title}",
+                style = TmType.text(13.sp, FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            BasicText(tr("zuletzt {time}", "time" to latest.time.clockText), style = TmType.caption)
+        }
+        Icon(if (open) Icons.ChevronUp else Icons.ChevronDown, null, tint = TmColors.Muted, size = 16.dp)
     }
 }
 
@@ -158,27 +240,49 @@ private fun Messages(
 private fun MessageRow(
     message: GameMessage,
     onShow: (MapPlace) -> Unit,
+    nested: Boolean = false,
 ) {
     val place = message.place
+    val parts = parts(message)
     Row(
         Modifier
             .fillMaxWidth()
             .then(if (place != null) Modifier.clickable(role = Role.Button) { onShow(place) } else Modifier)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(start = if (nested) 32.dp else 14.dp, end = 14.dp, top = 9.dp, bottom = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(
-            Modifier
-                .padding(top = 5.dp)
-                .size(8.dp)
-                .background(if (place != null) TmColors.Primary else TmColors.Line, CircleShape),
-        )
+        if (!nested) KindDot(message.kind)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            BasicText(message.text, style = TmType.text(13.sp, FontWeight.SemiBold))
-            BasicText(message.time.clockText, style = TmType.caption)
+            if (!nested) {
+                BasicText(
+                    parts.title,
+                    style = TmType.text(13.sp, FontWeight.SemiBold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            BasicText(
+                listOfNotNull(parts.detail, message.time.clockText).joinToString(" · "),
+                style = TmType.caption,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         if (place != null) Icon(Icons.ChevronRight, tr("Auf Karte zeigen"), tint = TmColors.Muted, size = 16.dp)
     }
+}
+
+/** Farbe nach Art: Problem rot, eigene Maßnahme blau, Gutes grün, System grau. */
+@Composable
+private fun KindDot(kind: MessageKind) {
+    val color =
+        when (kind) {
+            MessageKind.PROBLEM -> TmColors.Danger
+            MessageKind.ACTION -> TmColors.Primary
+            MessageKind.SUCCESS -> TmColors.Success
+            MessageKind.SYSTEM -> TmColors.Muted
+        }
+    Box(Modifier.padding(top = 5.dp).size(8.dp).background(color, CircleShape))
 }
 
 /** Entwickler-Anzeige (F3): Rechenzeit je Simulationsschritt und Bildrate. */
@@ -199,4 +303,9 @@ internal fun DebugOverlay(
     )
 }
 
-private const val FEED_WIDTH = 270
+/** Breite der linken Spalte über der Karte (Verkehrslage, Meldungen). */
+internal const val FEED_WIDTH = 270
+private const val VISIBLE_GROUPS = 5
+
+/** Längerer Text vor dem ersten Doppelpunkt ist kein Titel, sondern ein Satz. */
+private const val MAX_TITLE_LENGTH = 40

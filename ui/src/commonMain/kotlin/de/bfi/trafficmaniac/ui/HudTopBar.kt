@@ -42,6 +42,14 @@ import kotlin.math.roundToInt
 private val ChipShape = RoundedCornerShape(10.dp)
 private val RecallFill = Color(0xFFFF8A8F)
 
+/** Icon-Farben der Kennzahlen wie im Entwurf: Kasse gelb, Reputation hellblau, Zorn und Abwahl hellrot. */
+private val MoneyIcon = TmColors.Active
+private val ReputationIcon = Color(0xFF8DB8F2)
+private val AlarmIcon = RecallFill
+
+/** Ab diesem Abwahlindex wird der Chip rot hinterlegt. */
+private const val RECALL_DANGER = 50.0
+
 /** Was die Kopfleiste auslösen kann; `null` blendet den jeweiligen Knopf aus. */
 internal class TopBarActions(
     val onSpeed: ((Int) -> Unit)?,
@@ -143,15 +151,22 @@ private fun SpeedSegments(
 @Composable
 private fun RowScope.KpiChips(frame: TrafficFrame) {
     val game = frame.game
-    KpiChip(Icons.Wallet) {
+    KpiChip(Icons.Wallet, MoneyIcon) {
         KpiValue(tr("Kasse"), formatEuro(game.balance))
         Box(Modifier.width(1.dp).height(28.dp).background(TmColors.LineDark))
         BasicText(tr("Bußgelder"), style = TmType.text(12.sp, color = TmColors.OnDarkMuted))
         BasicText(formatEuro(game.fineIncome), style = TmType.mono(12.sp, color = TmColors.OnDark))
     }
-    KpiChip(Icons.Award) { KpiValue(tr("Reputation"), "${game.reputation.roundToInt()}", "/100") }
-    KpiChip(Icons.Siren) { KpiValue(tr("Bürgerzorn"), "${game.anger.roundToInt()}") }
-    KpiChip(Icons.Users, Modifier.widthIn(min = 170.dp)) {
+    KpiChip(Icons.Award, ReputationIcon) { KpiValue(tr("Reputation"), "${game.reputation.roundToInt()}", "/100") }
+    KpiChip(Icons.Siren, AlarmIcon) { KpiValue(tr("Bürgerzorn"), "${game.anger.roundToInt()}") }
+    // Feste Breite: der Meter bleibt im Chip, statt die Kopfleiste zu füllen; ab 50 rot hinterlegt
+    val danger = game.recallIndex > RECALL_DANGER
+    KpiChip(
+        Icons.Users,
+        AlarmIcon,
+        Modifier.width(RECALL_CHIP_WIDTH.dp),
+        background = if (danger) TmColors.Danger.copy(alpha = DANGER_ALPHA) else TmColors.Ink3,
+    ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 BasicText(tr("Abwahlindex"), style = TmType.text(11.sp, color = TmColors.OnDarkMuted))
@@ -171,15 +186,17 @@ private fun RowScope.KpiChips(frame: TrafficFrame) {
 @Composable
 private fun KpiChip(
     icon: de.bfi.trafficmaniac.ui.components.TmIcon,
+    iconTint: Color,
     modifier: Modifier = Modifier,
+    background: Color = TmColors.Ink3,
     content: @Composable RowScope.() -> Unit,
 ) {
     Row(
-        modifier.background(TmColors.Ink3, ChipShape).padding(horizontal = 14.dp, vertical = 6.dp),
+        modifier.background(background, ChipShape).padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(icon, null, tint = TmColors.OnDarkMuted, size = 18.dp)
+        Icon(icon, null, tint = iconTint, size = 18.dp)
         content()
     }
 }
@@ -225,6 +242,8 @@ private fun DarkButton(
 
 private val SPEEDS = listOf(1, 2, 4, GameRunner.MAX_SPEED)
 private const val MAX_INDEX = 100.0
+private const val RECALL_CHIP_WIDTH = 180
+private const val DANGER_ALPHA = 0.55f
 private const val LOGO_HEIGHT = 34
 private const val LOGO_ASPECT = 0.5f
 private const val LOGO_CORNER = 0.7f

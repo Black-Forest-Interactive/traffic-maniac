@@ -35,6 +35,9 @@ class Incident internal constructor(
     internal val arrived = HashSet<VehicleRole>()
     internal var workUntil = Double.NaN
 
+    /** Seit wann vor Ort gearbeitet wird (alle Einsatzkräfte da), sonst NaN. */
+    internal var workStart = Double.NaN
+
     /** Anfahrtszeit des Rettungswagens in Sekunden (nur bei Unfällen, sobald er da ist). */
     var ambulanceResponseSeconds: Double? = null
         internal set
@@ -249,7 +252,10 @@ internal class Incidents(
                 }
             }
             val everyoneThere = incident.responders.all { it.role in incident.arrived }
-            if (everyoneThere && incident.workUntil.isNaN()) incident.workUntil = time + workSeconds(incident.kind)
+            if (everyoneThere && incident.workUntil.isNaN()) {
+                incident.workStart = time
+                incident.workUntil = time + workSeconds(incident.kind)
+            }
             if (time >= incident.workUntil || time - incident.startTime > GIVE_UP_SECONDS) finished += incident
         }
         finished.forEach { resolve(it) }
