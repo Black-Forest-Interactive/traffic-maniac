@@ -74,6 +74,9 @@ internal class DayStatistics {
         incidents[kind] = (incidents[kind] ?: 0) + 1
     }
 
+    /** Vorfälle dieser Art seit Mitternacht. */
+    fun incidentsSoFar(kind: IncidentKind): Int = incidents[kind] ?: 0
+
     fun ambulanceArrived(seconds: Double) {
         ambulance += seconds / SECONDS_PER_MINUTE
     }

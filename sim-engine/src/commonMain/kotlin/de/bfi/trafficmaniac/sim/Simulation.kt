@@ -101,6 +101,9 @@ class Simulation(
     /** Bilanzen aller abgeschlossenen Tage, ältester zuerst. */
     val dayReports: List<DayReport> get() = reports
 
+    /** Vorfälle dieser Art im laufenden Tag (z. B. eingeklemmte LKW) – nicht erst im Tagesbericht. */
+    fun incidentsToday(kind: IncidentKind): Int = dayStatistics.incidentsSoFar(kind)
+
     fun step() {
         if (clock.tick % ENVIRONMENT_TICKS == 0L) {
             updateEnvironment()
