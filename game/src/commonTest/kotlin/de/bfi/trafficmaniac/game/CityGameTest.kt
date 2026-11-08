@@ -92,28 +92,29 @@ class CityGameTest {
         val strict =
             CityGame(straightRoad(), config).apply {
                 submit(GameCommand.SetSpeedLimit(segment = 0, kmh = 20))
-                submit(GameCommand.PlaceCamera(segment = 0))
-                run(minutes = 20)
+                submit(GameCommand.PlaceCamera(segment = 0, mobile = true))
+                run(minutes = 60)
             }
         val normal =
             CityGame(straightRoad(), config).apply {
-                submit(GameCommand.PlaceCamera(segment = 0))
-                run(minutes = 20)
+                submit(GameCommand.PlaceCamera(segment = 0, mobile = true))
+                run(minutes = 60)
             }
 
         // Gemessene Bußgelder (bezahlt wird erst, wenn die Bußgeldstelle arbeitet)
-        assertTrue(
+        val strictRevenue =
             strict
                 .state()
                 .cameras
                 .single()
-                .totalRevenue > 3 *
-                normal
-                    .state()
-                    .cameras
-                    .single()
-                    .totalRevenue,
-        )
+                .totalRevenue
+        val normalRevenue =
+            normal
+                .state()
+                .cameras
+                .single()
+                .totalRevenue
+        assertTrue(strictRevenue > 3 * normalRevenue, "Tempo 20: $strictRevenue €, Tempo 50: $normalRevenue €")
     }
 
     @Test

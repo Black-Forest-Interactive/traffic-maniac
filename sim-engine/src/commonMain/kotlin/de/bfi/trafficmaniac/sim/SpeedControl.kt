@@ -83,8 +83,8 @@ class SpeedControl internal constructor(
             }
     }
 
-    private fun excess(gap: Double) =
-        random.nextDouble(MIN_EXCESS_KMH, MAX_BASE_EXCESS_KMH) + gap * random.nextDouble(MIN_GAP_SHARE, MAX_GAP_SHARE)
+    /** Überschreitung nach echten Messungen ([SpeedingProfile]); breite Straßen verleiten zu etwas mehr. */
+    private fun excess(gap: Double) = SpeedingProfile.sample(random) + gap * random.nextDouble(0.0, MAX_GAP_SHARE)
 
     /**
      * Reizdichte beim Einfahren in [link] (von [previous] kommend): Ampel, Tempowechsel, Nachtlimit und
@@ -167,12 +167,12 @@ class SpeedControl internal constructor(
         const val DEFAULT_TOLERANCE_KMH = 3.0
 
         private const val GAP_SCALE_KMH = 40.0
-        private const val GAP_WEIGHT = 0.8
-        private const val MAX_PROBABILITY = 0.92
-        private const val MIN_EXCESS_KMH = 3.0
+
+        /** Tempo 30 auf einer Straße, die nach 50 aussieht: +15 Prozentpunkte (Höhrenbergstraße, Hegne: 25–30 %). */
+        private const val GAP_WEIGHT = 0.3
+        private const val MAX_PROBABILITY = 0.6
         private const val MAX_BASE_EXCESS_KMH = 10.0
-        private const val MIN_GAP_SHARE = 0.2
-        private const val MAX_GAP_SHARE = 0.5
+        private const val MAX_GAP_SHARE = 0.25
 
         /** So weit vor dem Blitzer bremsen Ortskundige ab ... */
         private const val CAMERA_BRAKE_ZONE = 120.0

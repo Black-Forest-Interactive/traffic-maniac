@@ -23,6 +23,9 @@ class RoadClosures internal constructor(
 
     fun isDetour(segment: Int): Boolean = detour[segment]
 
+    /** Wegen einer Baustelle voll gesperrt (nicht wegen eines Ereignisses). */
+    fun isWorksClosed(segment: Int): Boolean = worksClosed[segment]
+
     /** Für den Verkehr gesperrt (Vollsperrung, Brücke gesperrt oder eingestürzt). */
     internal fun isClosed(segment: Int): Boolean =
         worksClosed[segment] || bridgeClosed[segment] || collapsed[segment] || eventClosures[segment] > 0

@@ -110,7 +110,7 @@
     },
     "rerouteIntervalSeconds": 120.0,
     "stuckTimeoutSeconds": 300.0,
-    "speedingBaseProbability": 0.08,
+    "speedingBaseProbability": 0.15,
     "overlookProbability": 0.5,
     "cameraAwareShare": 0.7,
     "maxPendingVehicles": 2000,
