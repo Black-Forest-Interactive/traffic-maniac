@@ -43,6 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -196,16 +197,50 @@ private fun Menu(
         attribution = pack.map.attribution,
         loading = loading,
         saves =
-            SaveSlots(saveList, onLoad) {
-                saves.delete(it)
-                saveList = saves.list()
-            },
+            SaveSlots(
+                saveList,
+                onLoad,
+                onDelete = {
+                    saves.delete(it)
+                    saveList = saves.list()
+                },
+                describeTime = ::describeSaveTime,
+            ),
         tagline = pack.texts.tagline,
         cities =
-            CityChoice(library.packs.map { it.name }, library.packs.indexOf(pack), pack.description) {
-                onPack(library.packs[it])
-            },
+            CityChoice(
+                library.packs.map { it.name },
+                library.packs.indexOf(pack),
+                pack.description,
+                onSelect = { onPack(library.packs[it]) },
+                nickname = pack.texts.nickname,
+            ),
+        cityMap = pack.map,
     )
+}
+
+/** Wann gespeichert wurde, für die Spielstandliste: „heute, 14:29 Uhr“, „gestern, …“ oder mit Datum. */
+private fun describeSaveTime(save: SaveInfo): String {
+    val saved = runCatching { LocalDateTime.parse(save.savedAt) }.getOrNull() ?: return save.savedAt
+    val clock = saved.format(DateTimeFormatter.ofPattern("HH:mm"))
+    val today = LocalDate.now()
+    return when (saved.toLocalDate()) {
+        today -> {
+            tr("heute, {clock} Uhr", "clock" to clock)
+        }
+
+        today.minusDays(1) -> {
+            tr("gestern, {clock} Uhr", "clock" to clock)
+        }
+
+        else -> {
+            tr(
+                "{date}, {clock} Uhr",
+                "date" to saved.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                "clock" to clock,
+            )
+        }
+    }
 }
 
 /** Die laufende Partie: Takt, Bestenliste am Ende und die Spieloberfläche. */

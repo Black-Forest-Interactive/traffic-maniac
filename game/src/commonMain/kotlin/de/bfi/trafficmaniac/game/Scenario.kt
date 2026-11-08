@@ -34,6 +34,8 @@ data class Scenario(
     val corsoChanceWeekend: Double? = null,
     /** Mit geführten Schritten, die die Werkzeuge nach und nach freischalten; zählt nicht für die Bestenliste. */
     val tutorial: Boolean = false,
+    /** Kurzes Etikett auf der Szenario-Karte im Menü („Empfohlen“, „Knappe Kasse“ …). */
+    val tag: String? = null,
 ) {
     /** Simulation und Spielregeln für dieses Szenario auf [difficulty]. */
     fun apply(
@@ -68,6 +70,7 @@ data class Scenario(
             listOf(
                 Scenario(
                     id = "tutorial",
+                    tag = translatable("Empfohlen"),
                     title = translatable("Tutorial: Der erste Tag im Amt"),
                     description =
                         translatable(
@@ -81,6 +84,7 @@ data class Scenario(
                 ),
                 Scenario(
                     id = "erste-amtszeit",
+                    tag = translatable("Klassisch"),
                     title = translatable("Erste Amtszeit"),
                     description =
                         translatable(
@@ -90,6 +94,7 @@ data class Scenario(
                 ),
                 Scenario(
                     id = "berufsverkehr",
+                    tag = translatable("Knappe Kasse"),
                     title = translatable("Berufsverkehr Montagmorgen"),
                     description =
                         translatable(
@@ -104,6 +109,7 @@ data class Scenario(
                 ),
                 Scenario(
                     id = "adventssamstag",
+                    tag = translatable("Einkaufstrubel"),
                     title = translatable("Adventssamstag"),
                     description =
                         translatable(
@@ -119,6 +125,7 @@ data class Scenario(
                 ),
                 Scenario(
                     id = "ferienbeginn",
+                    tag = translatable("Freizeit"),
                     title = translatable("Ferienbeginn"),
                     description =
                         translatable(
@@ -135,6 +142,7 @@ data class Scenario(
                 ),
                 Scenario(
                     id = "brueckensanierung",
+                    tag = translatable("Baustellen"),
                     title = translatable("Brückensanierung"),
                     description =
                         translatable(
