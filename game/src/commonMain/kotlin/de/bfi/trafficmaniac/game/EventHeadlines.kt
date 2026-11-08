@@ -102,7 +102,8 @@ internal object EventHeadlines {
             letters +=
                 if (friendly) {
                     tr(
-                        "„Ich stand zwei Stunden im Stau. Aber in der Zeitung steht, alles ist super – dann wird es stimmen.“",
+                        "„Ich stand zwei Stunden im Stau. Aber in der Zeitung steht, alles ist super – " +
+                            "dann wird es stimmen.“",
                     )
                 } else {
                     tr("„Zwei Stunden für fünf Kilometer. Wer regiert hier eigentlich?“ – M., Brötzingen")

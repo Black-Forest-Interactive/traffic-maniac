@@ -89,31 +89,7 @@ fun ResultOverlay(
                     BasicText(line, style = text.copy(fontStyle = FontStyle.Italic, fontSize = 15.sp))
                 }
             }
-            BasicText(
-                tr(
-                    "Kasse: {balance} · selbst verdient: {earnings} · " +
-                        "Bußgelder: {fineIncome}",
-                    "balance" to formatEuro(state.balance),
-                    "earnings" to formatEuro(state.score.earnings),
-                    "fineIncome" to formatEuro(state.fineIncome),
-                ),
-                style = text,
-            )
-            BasicText(
-                tr(
-                    "Reputation: {reputation} / 100 (Faktor ×{reputationFactor})",
-                    "reputation" to state.reputation.roundToInt(),
-                    "reputationFactor" to
-                        formatDecimal(state.score.reputationFactor, 2),
-                ),
-                style = text,
-            )
-            if (state.achievements.isNotEmpty()) {
-                BasicText(
-                    tr("Achievements: {achievements}", "achievements" to state.achievements.joinToString()),
-                    style = text,
-                )
-            }
+            ResultFigures(state, text)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (!recalled) {
                     BasicText(
@@ -129,6 +105,39 @@ fun ResultOverlay(
             }
             onMenu?.let { BackToMenu(it, Modifier.align(Alignment.End)) }
         }
+    }
+}
+
+/** Kasse, Reputation und Achievements am Ende der Amtszeit. */
+@Composable
+private fun ResultFigures(
+    state: GameState,
+    text: TextStyle,
+) {
+    BasicText(
+        tr(
+            "Kasse: {balance} · selbst verdient: {earnings} · " +
+                "Bußgelder: {fineIncome}",
+            "balance" to formatEuro(state.balance),
+            "earnings" to formatEuro(state.score.earnings),
+            "fineIncome" to formatEuro(state.fineIncome),
+        ),
+        style = text,
+    )
+    BasicText(
+        tr(
+            "Reputation: {reputation} / 100 (Faktor ×{reputationFactor})",
+            "reputation" to state.reputation.roundToInt(),
+            "reputationFactor" to
+                formatDecimal(state.score.reputationFactor, 2),
+        ),
+        style = text,
+    )
+    if (state.achievements.isNotEmpty()) {
+        BasicText(
+            tr("Achievements: {achievements}", "achievements" to state.achievements.joinToString()),
+            style = text,
+        )
     }
 }
 

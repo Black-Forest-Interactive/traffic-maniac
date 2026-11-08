@@ -73,40 +73,6 @@ private fun hudLines(
     fps: Int,
 ): List<List<Pair<String?, String>>> {
     val snapshot = frame.current
-    val stats = snapshot.stats
-    val time = snapshot.gameTime
-    val tempo =
-        when {
-            frame.speed == 0 -> {
-                tr("Pause")
-            }
-
-            frame.effectiveSpeed > frame.speed -> {
-                tr(
-                    "{speed}x (Nacht: {effectiveSpeed}x)",
-                    "speed" to frame.speed,
-                    "effectiveSpeed" to frame.effectiveSpeed,
-                )
-            }
-
-            else -> {
-                "${frame.speed}x"
-            }
-        }
-    val vehicles =
-        tr(
-            "Fahrzeuge {activeVehicles} (+{pendingVehicles} wartend)",
-            "activeVehicles" to stats.activeVehicles,
-            "pendingVehicles" to stats.pendingVehicles,
-        )
-    val tripMinutes = formatDecimal(stats.meanTripMinutes)
-    val day =
-        tr(
-            "{germanName}, Tag {day}/{termDays}",
-            "germanName" to time.weekday.germanName,
-            "day" to frame.game.termDay(time.day),
-            "termDays" to frame.game.termDays,
-        )
     // Zeilen mit Symbol: (Grafikname oder null, Text); die Politik-Zeile hat drei Symbole
     val politics =
         listOf(
@@ -115,15 +81,7 @@ private fun hudLines(
             "hud_reputation" to tr("Reputation {reputation}", "reputation" to frame.game.reputation.roundToInt()),
         )
     return listOf(
-        listOf(
-            "hud_time" to
-                tr(
-                    "{day} · {clockText} Uhr · Tempo {tempo}",
-                    "day" to day,
-                    "clockText" to time.clockText,
-                    "tempo" to tempo,
-                ),
-        ),
+        listOf("hud_time" to clockLine(frame)),
         listOf(
             "hud_money" to
                 tr(
@@ -133,23 +91,8 @@ private fun hudLines(
                 ),
         ),
         politics,
-        listOf(
-            null to
-                tr(
-                    "{vehicles} · Ø {meanSpeedKmh} km/h",
-                    "vehicles" to vehicles,
-                    "meanSpeedKmh" to stats.meanSpeedKmh.roundToInt(),
-                ),
-        ),
-        listOf(
-            null to
-                tr(
-                    "Angekommen {completedTrips} (Ø {tripMinutes} min) · aufgegeben {stuckRemovals}",
-                    "completedTrips" to stats.completedTrips,
-                    "tripMinutes" to tripMinutes,
-                    "stuckRemovals" to stats.stuckRemovals,
-                ),
-        ),
+        listOf(null to vehicleLine(frame)),
+        listOf(null to tripLine(frame)),
         listOf(null to environmentLine(snapshot.environment)),
         listOf(null to commuteLine(frame)),
         listOf(null to incidentLine(snapshot)),
@@ -168,6 +111,53 @@ private fun hudLines(
                     "gameRunner" to GameRunner.NIGHT_BOOST,
                 ),
         ),
+    )
+}
+
+/** Wochentag, Uhrzeit und Zeitraffer. */
+private fun clockLine(frame: TrafficFrame): String {
+    val time = frame.current.gameTime
+    val tempo =
+        when {
+            frame.speed == 0 -> {
+                tr("Pause")
+            }
+
+            frame.effectiveSpeed > frame.speed -> {
+                tr("{speed}x (Nacht: {night}x)", "speed" to frame.speed, "night" to frame.effectiveSpeed)
+            }
+
+            else -> {
+                "${frame.speed}x"
+            }
+        }
+    val day =
+        tr(
+            "{weekday}, Tag {day}/{termDays}",
+            "weekday" to time.weekday.germanName,
+            "day" to frame.game.termDay(time.day),
+            "termDays" to frame.game.termDays,
+        )
+    return tr("{day} · {clock} Uhr · Tempo {tempo}", "day" to day, "clock" to time.clockText, "tempo" to tempo)
+}
+
+private fun vehicleLine(frame: TrafficFrame): String {
+    val stats = frame.current.stats
+    return tr(
+        "Fahrzeuge {active} (+{pending} wartend) · Ø {speed} km/h",
+        "active" to stats.activeVehicles,
+        "pending" to stats.pendingVehicles,
+        "speed" to stats.meanSpeedKmh.roundToInt(),
+    )
+}
+
+private fun tripLine(frame: TrafficFrame): String {
+    val stats = frame.current.stats
+    return tr(
+        "Angekommen {completed} (Ø {minutes} min) · aufgegeben {stuck}",
+        "completed" to stats.completedTrips,
+        "minutes" to formatDecimal(stats.meanTripMinutes),
+        "stuck" to stats.stuckRemovals,
     )
 }
 

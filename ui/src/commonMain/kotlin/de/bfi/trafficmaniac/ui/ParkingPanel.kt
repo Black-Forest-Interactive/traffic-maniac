@@ -84,54 +84,8 @@ fun ParkingPanel(
             ),
             style = muted,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            BasicText(
-                tr("Politessen: {wardens}", "wardens" to office.wardens) +
-                    if (office.hiring > 0) tr(" (+{hiring} kommen)", "hiring" to office.hiring) else "",
-                style = text,
-            )
-            Choice("−1", false) { onCommand(GameCommand.FireWardens(1)) }
-            Choice("+1", false) { onCommand(GameCommand.HireWardens(1)) }
-            Choice("+5", false) { onCommand(GameCommand.HireWardens(FIVE)) }
-        }
-        BasicText(
-            tr(
-                "{wardenWeeklySalary}/Woche je Kopf, unterwegs {wardenStartHour}–{wardenEndHour} Uhr · " +
-                    "Knöllchen ab welcher Minute, regelt die Schärfe im Ordnungsamt",
-                "wardenWeeklySalary" to
-                    formatEuro(
-                        rules.wardenWeeklySalary,
-                    ),
-                "wardenStartHour" to rules.wardenStartHour,
-                "wardenEndHour" to rules.wardenEndHour,
-            ),
-            style = muted,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Choice(
-                tr("Brötchentaste"),
-                office.breadButton,
-            ) { onCommand(GameCommand.SetBreadButton(!office.breadButton)) }
-            Choice(tr("Anwohnerparken"), office.residentParking) {
-                onCommand(GameCommand.SetResidentParking(!office.residentParking))
-            }
-            Choice(
-                tr(
-                    "Parkplätze → Blumenkübel ({curbConversionCost})",
-                    "curbConversionCost" to formatEuro(rules.curbConversionCost),
-                ),
-                false,
-            ) {
-                onCommand(GameCommand.ConvertCurbParking)
-            }
-        }
-        BasicText(
-            tr(
-                "Straßenrand: noch {curbShare} % der Parkplätze",
-                "curbShare" to (summary.curbShare * PERCENT).roundToInt(),
-            ),
-            style = muted,
-        )
+        WardenSection(office, rules, onCommand, text, muted)
+        CurbSection(office, summary, rules, onCommand, muted)
         BasicText(tr("Parkscheinautomat am Straßenrand (€/Std.):"), style = text)
         FeeChoices(rules, { summary.curbFee == it }) { onCommand(GameCommand.SetCurbFee(it)) }
         BasicText(tr("Gebühr für alle Parkplätze (€/Std.):"), style = text)
@@ -141,6 +95,76 @@ fun ParkingPanel(
         BasicText(tr("Größte Parkplätze und Parkhäuser:"), style = text)
         for (lot in lots.sortedByDescending { it.baseCapacity }.take(VISIBLE_LOTS)) LotRow(lot, rules, onCommand, muted)
     }
+}
+
+/** Politessen: einstellen, entlassen, Gehalt und Dienstzeit. */
+@Composable
+private fun WardenSection(
+    office: ParkingOfficeState,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+    text: TextStyle,
+    muted: TextStyle,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        BasicText(
+            tr("Politessen: {wardens}", "wardens" to office.wardens) +
+                if (office.hiring > 0) tr(" (+{hiring} kommen)", "hiring" to office.hiring) else "",
+            style = text,
+        )
+        Choice("−1", false) { onCommand(GameCommand.FireWardens(1)) }
+        Choice("+1", false) { onCommand(GameCommand.HireWardens(1)) }
+        Choice("+5", false) { onCommand(GameCommand.HireWardens(FIVE)) }
+    }
+    BasicText(
+        tr(
+            "{wardenWeeklySalary}/Woche je Kopf, unterwegs {wardenStartHour}–{wardenEndHour} Uhr · " +
+                "Knöllchen ab welcher Minute, regelt die Schärfe im Ordnungsamt",
+            "wardenWeeklySalary" to
+                formatEuro(
+                    rules.wardenWeeklySalary,
+                ),
+            "wardenStartHour" to rules.wardenStartHour,
+            "wardenEndHour" to rules.wardenEndHour,
+        ),
+        style = muted,
+    )
+}
+
+/** Straßenrand: Brötchentaste, Anwohnerparken, Blumenkübel. */
+@Composable
+private fun CurbSection(
+    office: ParkingOfficeState,
+    summary: ParkingSummary,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+    muted: TextStyle,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Choice(
+            tr("Brötchentaste"),
+            office.breadButton,
+        ) { onCommand(GameCommand.SetBreadButton(!office.breadButton)) }
+        Choice(tr("Anwohnerparken"), office.residentParking) {
+            onCommand(GameCommand.SetResidentParking(!office.residentParking))
+        }
+        Choice(
+            tr(
+                "Parkplätze → Blumenkübel ({curbConversionCost})",
+                "curbConversionCost" to formatEuro(rules.curbConversionCost),
+            ),
+            false,
+        ) {
+            onCommand(GameCommand.ConvertCurbParking)
+        }
+    }
+    BasicText(
+        tr(
+            "Straßenrand: noch {curbShare} % der Parkplätze",
+            "curbShare" to (summary.curbShare * PERCENT).roundToInt(),
+        ),
+        style = muted,
+    )
 }
 
 /** Eine Reihe Gebührenstufen. */

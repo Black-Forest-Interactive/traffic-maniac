@@ -71,8 +71,8 @@ data class Scenario(
                     title = translatable("Tutorial: Der erste Tag im Amt"),
                     description =
                         translatable(
-                            "Schritt für Schritt: Tempolimit, Blitzer, Bußgelder, Presse. Die Werkzeuge kommen nach und " +
-                                "nach dazu – ideal für den Einstieg.",
+                            "Schritt für Schritt: Tempolimit, Blitzer, Bußgelder, Presse. " +
+                                "Die Werkzeuge kommen nach und nach dazu – ideal für den Einstieg.",
                         ),
                     termDays = 3,
                     startHour = 7.0,

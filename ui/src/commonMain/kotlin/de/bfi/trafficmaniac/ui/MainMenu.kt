@@ -343,7 +343,8 @@ private val CREDITS =
     listOf(
         translatable("traffic-maniac – eine Parodie auf Verkehrssimulationen."),
         translatable(
-            "Spiel, Simulation, Grafik und Musik: Black Forest Interactive (Grafik und Klänge werden im Spiel erzeugt).",
+            "Spiel, Simulation, Grafik und Musik: Black Forest Interactive " +
+                "(Grafik und Klänge werden im Spiel erzeugt).",
         ),
         translatable("Programmiert in Kotlin mit Compose Multiplatform und Skia."),
         translatable(

@@ -80,34 +80,7 @@ fun OfficePanel(
             ),
             style = muted,
         )
-        BasicText(
-            tr(
-                "Aufklärungsquote: {identificationRate} %",
-                "identificationRate" to (office.identificationRate * PERCENT).roundToInt(),
-            ),
-            style = text,
-        )
-        val stack =
-            tr("Aktenstapel: {backlog} Fotos", "backlog" to office.backlog) +
-                if (office.backlog >
-                    0
-                ) {
-                    tr(", ältestes {oldestCaseHours}", "oldestCaseHours" to age(office.oldestCaseHours))
-                } else {
-                    ""
-                }
-        BasicText(stack, style = text.copy(fontWeight = FontWeight.Bold))
-        BasicText(
-            tr(
-                "Bearbeitet {processed} · bezahlt {paid} · " +
-                    "verjährt {expired} · eingestellt {dropped}",
-                "processed" to office.processed,
-                "paid" to office.paid,
-                "expired" to office.expired,
-                "dropped" to office.dropped,
-            ),
-            style = muted,
-        )
+        CaseStats(office, text, muted)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicText(
                 tr(
@@ -126,6 +99,43 @@ fun OfficePanel(
             style = muted,
         )
     }
+}
+
+/** Aufklärungsquote, Aktenstapel und was aus den Fällen wurde. */
+@Composable
+private fun CaseStats(
+    office: FineOfficeState,
+    text: TextStyle,
+    muted: TextStyle,
+) {
+    BasicText(
+        tr(
+            "Aufklärungsquote: {identificationRate} %",
+            "identificationRate" to (office.identificationRate * PERCENT).roundToInt(),
+        ),
+        style = text,
+    )
+    val stack =
+        tr("Aktenstapel: {backlog} Fotos", "backlog" to office.backlog) +
+            if (office.backlog >
+                0
+            ) {
+                tr(", ältestes {oldestCaseHours}", "oldestCaseHours" to age(office.oldestCaseHours))
+            } else {
+                ""
+            }
+    BasicText(stack, style = text.copy(fontWeight = FontWeight.Bold))
+    BasicText(
+        tr(
+            "Bearbeitet {processed} · bezahlt {paid} · " +
+                "verjährt {expired} · eingestellt {dropped}",
+            "processed" to office.processed,
+            "paid" to office.paid,
+            "expired" to office.expired,
+            "dropped" to office.dropped,
+        ),
+        style = muted,
+    )
 }
 
 @Composable

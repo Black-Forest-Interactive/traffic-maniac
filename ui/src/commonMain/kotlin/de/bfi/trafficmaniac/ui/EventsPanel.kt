@@ -62,32 +62,7 @@ fun EventsPanel(
         }
         BasicText(tr("Geplant"), style = heading)
         if (events.calendar.isEmpty()) BasicText(tr("Keine Termine mehr in dieser Amtszeit."), style = muted)
-        for (entry in events.calendar.take(CALENDAR_ROWS)) {
-            val day =
-                if (entry.day ==
-                    today
-                ) {
-                    "heute"
-                } else {
-                    tr(
-                        "{germanName} (Tag {firstDay})",
-                        "germanName" to entry.weekday.germanName,
-                        "firstDay" to entry.day - firstDay + 1,
-                    )
-                }
-            BasicText(
-                tr(
-                    "{day} {startHour}–{endHour} Uhr · {kind}: {place}",
-                    "day" to day,
-                    "startHour" to entry.startHour,
-                    "endHour" to entry.endHour,
-                    "kind" to entry.kind.label,
-                    "place" to entry.place,
-                ),
-                style = text,
-                modifier = Modifier.clickable { onShow(entry.segments) },
-            )
-        }
+        CalendarRows(events, today, firstDay, text, onShow)
         BasicText(
             tr(
                 "Dauerstau-Tage in Folge: {jamStreak} – danach und am Wochenende kommen die Rad-Korsos. " +
@@ -102,6 +77,43 @@ fun EventsPanel(
                 style = muted,
             )
         }
+    }
+}
+
+/** Die nächsten Termine im Kalender, anklickbar. */
+@Composable
+private fun CalendarRows(
+    events: EventsState,
+    today: Int,
+    firstDay: Int,
+    text: TextStyle,
+    onShow: (Set<Int>) -> Unit,
+) {
+    for (entry in events.calendar.take(CALENDAR_ROWS)) {
+        val day =
+            if (entry.day ==
+                today
+            ) {
+                tr("heute")
+            } else {
+                tr(
+                    "{germanName} (Tag {firstDay})",
+                    "germanName" to entry.weekday.germanName,
+                    "firstDay" to entry.day - firstDay + 1,
+                )
+            }
+        BasicText(
+            tr(
+                "{day} {startHour}–{endHour} Uhr · {kind}: {place}",
+                "day" to day,
+                "startHour" to entry.startHour,
+                "endHour" to entry.endHour,
+                "kind" to entry.kind.label,
+                "place" to entry.place,
+            ),
+            style = text,
+            modifier = Modifier.clickable { onShow(entry.segments) },
+        )
     }
 }
 

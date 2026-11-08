@@ -64,30 +64,7 @@ fun DayReportOverlay(
                 style = TextStyle(color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold),
             )
             val text = TextStyle(color = Ink, fontSize = 15.sp)
-            BasicText(
-                tr(
-                    "Fahrten gestartet: {tripsStarted} · angekommen: {tripsCompleted}",
-                    "tripsStarted" to report.tripsStarted,
-                    "tripsCompleted" to report.tripsCompleted,
-                ),
-                style = text,
-            )
-            BasicText(
-                tr(
-                    "Ø Fahrzeit: {meanTripMinutes} min · aufgegeben: {stuckRemovals}",
-                    "meanTripMinutes" to formatDecimal(report.meanTripMinutes),
-                    "stuckRemovals" to report.stuckRemovals,
-                ),
-                style = text,
-            )
-            BasicText(
-                tr(
-                    "Spitze: {peakVehicles} Fahrzeuge gleichzeitig um {peakHour} Uhr",
-                    "peakVehicles" to report.peakVehicles,
-                    "peakHour" to report.peakHour,
-                ),
-                style = text,
-            )
+            DayFigures(report, text)
             BasicText(
                 tr("Fahrten je Stunde"),
                 style = text.copy(fontWeight = FontWeight.Bold),
@@ -116,6 +93,38 @@ fun DayReportOverlay(
             )
         }
     }
+}
+
+/** Kennzahlen des Tags: Fahrten, Fahrzeit, Spitze. */
+@Composable
+private fun DayFigures(
+    report: DayReport,
+    text: TextStyle,
+) {
+    BasicText(
+        tr(
+            "Fahrten gestartet: {tripsStarted} · angekommen: {tripsCompleted}",
+            "tripsStarted" to report.tripsStarted,
+            "tripsCompleted" to report.tripsCompleted,
+        ),
+        style = text,
+    )
+    BasicText(
+        tr(
+            "Ø Fahrzeit: {meanTripMinutes} min · aufgegeben: {stuckRemovals}",
+            "meanTripMinutes" to formatDecimal(report.meanTripMinutes),
+            "stuckRemovals" to report.stuckRemovals,
+        ),
+        style = text,
+    )
+    BasicText(
+        tr(
+            "Spitze: {peakVehicles} Fahrzeuge gleichzeitig um {peakHour} Uhr",
+            "peakVehicles" to report.peakVehicles,
+            "peakHour" to report.peakHour,
+        ),
+        style = text,
+    )
 }
 
 @Composable

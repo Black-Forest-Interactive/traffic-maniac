@@ -112,7 +112,8 @@ internal object Newspaper {
         val worst = news.report.ambulanceMinutes.maxOrNull() ?: return null
         return if (worst >= AMBULANCE_STORY_MINUTES) {
             tr(
-                "Rettungswagen steckt {worst} Minuten im Stau fest – Leserbrief: „Hauptsache, ich komme pünktlich heim“",
+                "Rettungswagen steckt {worst} Minuten im Stau fest – " +
+                    "Leserbrief: „Hauptsache, ich komme pünktlich heim“",
                 "worst" to worst.roundToInt(),
             )
         } else {

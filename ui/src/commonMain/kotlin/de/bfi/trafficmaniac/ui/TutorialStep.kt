@@ -83,8 +83,9 @@ enum class TutorialStep(
     TOOLBOX(
         translatable("Der ganze Werkzeugkasten"),
         translatable(
-            "Jetzt ist alles frei: Ampeln, mobile Blitzer, Vorfahrt, Radweg-Querungen und Umleitungen. Ampeln bremsen " +
-                "zuverlässig, Umleitungen ärgern alle. Was ein Symbol bedeutet, steht unter „Legende ?“.",
+            "Jetzt ist alles frei: Ampeln, mobile Blitzer, Vorfahrt, Radweg-Querungen und Umleitungen. " +
+                "Ampeln bremsen zuverlässig, Umleitungen ärgern alle. " +
+                "Was ein Symbol bedeutet, steht unter „Legende ?“.",
         ),
         Tool.entries.toSet(),
     ),
