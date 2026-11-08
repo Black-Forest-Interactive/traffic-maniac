@@ -51,8 +51,8 @@ data class SimulationConfig(
      * Knoten das Netz dauerhaft blockiert. `Double.POSITIVE_INFINITY` schaltet das ab.
      */
     val stuckTimeoutSeconds: Double = 300.0,
-    /** Anteil der Fahrer, die auch bei passendem Limit zu schnell fahren. */
-    val speedingBaseProbability: Double = 0.08,
+    /** Anteil der Raser bei passendem Limit (Messungen: 13–19 %, siehe SpeedingProfile). */
+    val speedingBaseProbability: Double = 0.15,
     /** Wahrscheinlichkeit, ein Schild zu übersehen, bei Aufmerksamkeit 0 (skaliert linear). */
     val overlookProbability: Double = 0.5,
     /** Anteil der Ortskundigen, die feste Blitzer kennen und davor bremsen. */

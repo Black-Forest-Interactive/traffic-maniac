@@ -188,11 +188,10 @@ class MaintenanceTest {
         var closed = false
         repeat(12) {
             game.run(minutes = 30)
+            // Nur die Baustelle zählt – Markt oder Stadtfest können die einzige Straße der Testkarte auch sperren
             closed = closed ||
-                game.simulation.graph.isClosed(
-                    game.simulation.graph.segmentLinks[0]
-                        .first(),
-                )
+                game.simulation.infrastructure.closures
+                    .isWorksClosed(0)
         }
 
         assertTrue(closed, "Während der Baustelle ist gesperrt")
@@ -204,10 +203,8 @@ class MaintenanceTest {
         )
         assertTrue(game.simulation.infrastructure.condition(0) > 0.95)
         assertTrue(
-            !game.simulation.graph.isClosed(
-                game.simulation.graph.segmentLinks[0]
-                    .first(),
-            ),
+            !game.simulation.infrastructure.closures
+                .isWorksClosed(0),
         )
     }
 
@@ -227,10 +224,8 @@ class MaintenanceTest {
                 return@repeat
             }
             game.run(minutes = 60)
-            if (game.simulation.graph.isClosed(
-                    game.simulation.graph.segmentLinks[0]
-                        .first(),
-                )
+            if (game.simulation.infrastructure.closures
+                    .isWorksClosed(0)
             ) {
                 closedAt += game.simulation.gameTime.hour
             }

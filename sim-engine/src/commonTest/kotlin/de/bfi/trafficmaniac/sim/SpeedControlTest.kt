@@ -49,9 +49,10 @@ class SpeedControlTest {
         val at20 = speedingShare(link)
 
         assertEquals(config.speedingBaseProbability, at50, 0.02)
-        // Zu schnell oder Schild übersehen (Normalo: 85 % aufmerksam → 7,5 % übersehen)
-        assertEquals(0.52, at30, 0.04)
-        assertEquals(0.70, at20, 0.04)
+        // Schild übersehen (Normalo: 85 % aufmerksam → 7,5 %) oder zu schnell: 15 % plus die „Straßenwirkung“ –
+        // Tempo 30 auf einer 50er-Straße ergibt wie bei echten Messungen in Tempo-30-Zonen gut 30 %
+        assertEquals(0.35, at30, 0.04)
+        assertEquals(0.42, at20, 0.04)
     }
 
     @Test
