@@ -3,11 +3,7 @@ package de.bfi.trafficmaniac.game
 import de.bfi.trafficmaniac.city.Zone
 import de.bfi.trafficmaniac.city.ZoneKind
 import de.bfi.trafficmaniac.sim.GameTime
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class FineOfficeTest {
     private val rules = GameRules()

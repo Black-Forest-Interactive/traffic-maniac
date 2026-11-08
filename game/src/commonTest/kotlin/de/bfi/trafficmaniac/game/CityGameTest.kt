@@ -1,16 +1,6 @@
 package de.bfi.trafficmaniac.game
 
-import de.bfi.trafficmaniac.city.Bounds
-import de.bfi.trafficmaniac.city.CityMap
-import de.bfi.trafficmaniac.city.GeoPoint
-import de.bfi.trafficmaniac.city.Polyline
-import de.bfi.trafficmaniac.city.RoadClass
-import de.bfi.trafficmaniac.city.RoadNetwork
-import de.bfi.trafficmaniac.city.RoadNode
-import de.bfi.trafficmaniac.city.RoadSegment
-import de.bfi.trafficmaniac.city.Scenery
-import de.bfi.trafficmaniac.city.Zone
-import de.bfi.trafficmaniac.city.ZoneKind
+import de.bfi.trafficmaniac.city.*
 import de.bfi.trafficmaniac.sim.DemandProfile
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import kotlin.test.Test
