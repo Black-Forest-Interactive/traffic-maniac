@@ -16,7 +16,7 @@ enum class MaintenanceBudget(
     /** Anteil des normalen Verfalls. */
     val decayFactor: Double,
 ) {
-    NONE(translatable("kein Erhaltungsbudget"), 1.0),
+    NONE(translatable("keins"), 1.0),
     BASIC(translatable("das Nötigste"), 0.5),
     FULL(translatable("vorbildlich"), 0.2),
     ;

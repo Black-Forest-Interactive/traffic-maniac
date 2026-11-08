@@ -1,19 +1,26 @@
 package de.bfi.trafficmaniac.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.DamageReport
@@ -26,22 +33,25 @@ import de.bfi.trafficmaniac.game.MaintenanceState
 import de.bfi.trafficmaniac.game.RepairMethod
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.tr
-import de.bfi.trafficmaniac.sim.DamageKind
+import de.bfi.trafficmaniac.ui.components.Badge
+import de.bfi.trafficmaniac.ui.components.BadgeTone
+import de.bfi.trafficmaniac.ui.components.ButtonKind
+import de.bfi.trafficmaniac.ui.components.Icon
+import de.bfi.trafficmaniac.ui.components.Icons
+import de.bfi.trafficmaniac.ui.components.OptionButton
+import de.bfi.trafficmaniac.ui.components.PanelScaffold
+import de.bfi.trafficmaniac.ui.components.PanelSection
+import de.bfi.trafficmaniac.ui.components.SegmentedControl
+import de.bfi.trafficmaniac.ui.components.StatTile
+import de.bfi.trafficmaniac.ui.components.TmButton
 import kotlin.math.roundToInt
 
-private val PanelBackground = ComicTheme.paper
-private val PanelText = ComicTheme.ink
-private val Muted = ComicTheme.muted
-private val Warning = ComicTheme.orange
-private val Danger = ComicTheme.red
-private val Active = ComicTheme.red
-private val Idle = ComicTheme.button
-private const val MAX_REPORTS = 6
+private val CardShape = RoundedCornerShape(12.dp)
 private val SIGN_LIMITS = listOf(30, 10)
 
 /**
- * Das Bauamt: Schadensmeldungen mit Frist und die Reaktion darauf – reparieren (drei Wege),
- * Warnschild mit Tempolimit, Brücke sperren oder nichts tun. Dazu das Erhaltungsbudget.
+ * Das Bauamt: Zustand, Reparaturen und Klagen, das Erhaltungsbudget und die offenen Schäden als Akkordeon – immer
+ * nur einer aufgeklappt, mit den Wegen zur Reparatur und den Möglichkeiten, die Stelle abzusichern.
  */
 @Composable
 fun MaintenancePanel(
@@ -49,89 +59,144 @@ fun MaintenancePanel(
     rules: GameRules,
     onCommand: (GameCommand) -> Unit,
     modifier: Modifier = Modifier,
-    /** Klick auf eine Meldung: die Karte zeigt die Stelle. */
+    /** „Auf Karte zeigen“: die Karte fliegt zur Stelle. */
     onShow: (DamageReport) -> Unit = {},
+    onClose: (() -> Unit)? = null,
 ) {
-    val title = TextStyle(color = PanelText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    val text = TextStyle(color = PanelText, fontSize = 12.sp)
-    val muted = TextStyle(color = Muted, fontSize = 11.sp)
-    Column(
-        modifier
-            .width(460.dp)
-            .padding(12.dp)
-            .comicPanel()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        BasicText(tr("Bauamt"), style = title)
-        BasicText(
-            tr(
-                "Straßenzustand im Mittel: {meanConditionPercent} % · repariert {repaired} · " +
-                    "Klagen {lawsuits} ({lawsuitCosts}) · Turbo-Wartungsverträge {turboContracts}",
-                "meanConditionPercent" to state.meanConditionPercent,
-                "repaired" to state.repaired,
-                "lawsuits" to state.lawsuits,
-                "lawsuitCosts" to
-                    formatEuro(
-                        state.lawsuitCosts,
-                    ),
-                "turboContracts" to state.turboContracts,
-            ),
-            style = muted,
-        )
-        BasicText(tr("Erhaltungsbudget pro Woche:"), style = text)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (budget in MaintenanceBudget.entries) {
-                val cost =
-                    when (budget) {
-                        MaintenanceBudget.NONE -> 0L
-                        MaintenanceBudget.BASIC -> rules.maintenanceBudgetBasic
-                        MaintenanceBudget.FULL -> rules.maintenanceBudgetFull
-                    }
-                Choice("${budget.label} (${formatEuro(cost)})", state.budget == budget) {
-                    onCommand(GameCommand.SetMaintenanceBudget(budget))
-                }
+    PanelScaffold(tr("Amt"), tr("Bauamt"), modifier, onClose, floating = false) {
+        PanelSection(divider = false) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatTile(tr("Zustand Ø"), "${state.meanConditionPercent} %", Modifier.weight(1f))
+                StatTile(tr("Repariert"), "${state.repaired}", Modifier.weight(1f))
+                StatTile(tr("Klagen"), "${state.lawsuits} · ${formatEuro(state.lawsuitCosts)}", Modifier.weight(1f))
+            }
+            if (state.turboContracts > 0) {
+                BasicText(
+                    tr("Turbo-Wartungsverträge: {count}", "count" to state.turboContracts),
+                    style = TmType.caption,
+                )
             }
         }
-        val reports =
-            state.reports
-                .sortedWith(compareBy({ it.status != DamageStatus.OPEN }, { it.hoursLeft }))
-                .take(MAX_REPORTS)
-        if (reports.isEmpty()) BasicText(tr("Keine Schadensmeldungen – noch."), style = muted)
-        for (report in reports) ReportRow(report, rules, onCommand, text, muted, onShow)
-        if (state.reports.size >
-            MAX_REPORTS
-        ) {
-            BasicText(tr("… und {reports} weitere", "reports" to state.reports.size - MAX_REPORTS), style = muted)
+        PanelSection(title = tr("Erhaltungsbudget pro Woche")) {
+            SegmentedControl(
+                MaintenanceBudget.entries,
+                state.budget,
+                { it.label },
+                { onCommand(GameCommand.SetMaintenanceBudget(it)) },
+                Modifier.fillMaxWidth(),
+                detail = { formatEuro(budgetCost(it, rules)) },
+            )
+        }
+        DamageList(state, rules, onCommand, onShow)
+    }
+}
+
+private fun budgetCost(
+    budget: MaintenanceBudget,
+    rules: GameRules,
+): Long =
+    when (budget) {
+        MaintenanceBudget.NONE -> 0L
+        MaintenanceBudget.BASIC -> rules.maintenanceBudgetBasic
+        MaintenanceBudget.FULL -> rules.maintenanceBudgetFull
+    }
+
+@Composable
+private fun DamageList(
+    state: MaintenanceState,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+    onShow: (DamageReport) -> Unit,
+) {
+    val reports = state.reports.sortedWith(compareBy({ it.status != DamageStatus.OPEN }, { it.hoursLeft }))
+    var expanded by remember { mutableStateOf<Int?>(null) }
+    val open = reports.firstOrNull { it.id == expanded } ?: reports.firstOrNull()
+    PanelSection(divider = false) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            BasicText(tr("Offene Schäden"), style = TmType.label, modifier = Modifier.weight(1f))
+            if (reports.isNotEmpty()) Badge("${reports.size}", tone = BadgeTone.DANGER)
+        }
+        if (reports.isEmpty()) BasicText(tr("Keine Schadensmeldungen – noch."), style = TmType.small)
+        for (report in reports.take(MAX_REPORTS)) {
+            if (report == open) {
+                ExpandedDamage(report, rules, { onCommand(GameCommand.RespondToDamage(report.id, it)) }) {
+                    onShow(report)
+                }
+            } else {
+                CollapsedDamage(report) { expanded = report.id }
+            }
+        }
+        if (reports.size > MAX_REPORTS) {
+            BasicText(tr("… und {reports} weitere", "reports" to reports.size - MAX_REPORTS), style = TmType.small)
         }
     }
 }
 
 @Composable
-private fun ReportRow(
+private fun CollapsedDamage(
+    report: DamageReport,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(CardShape)
+            .border(1.dp, TmColors.Track, CardShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            BasicText("${report.kind.label} · ${report.place}", style = TmType.text(13.sp, FontWeight.Bold))
+            BasicText(tr("Zustand {percent} %", "percent" to report.conditionPercent), style = TmType.small)
+        }
+        StatusBadge(report)
+        Icon(Icons.ChevronDown, null, tint = TmColors.Muted, size = 16.dp)
+    }
+}
+
+@Composable
+private fun ExpandedDamage(
     report: DamageReport,
     rules: GameRules,
-    onCommand: (GameCommand) -> Unit,
-    text: TextStyle,
-    muted: TextStyle,
-    onShow: (DamageReport) -> Unit,
+    respond: (DamageResponse) -> Unit,
+    onShow: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        BasicText(
-            "▸ " + headline(report),
-            style = text.copy(color = colorOf(report), fontWeight = FontWeight.Bold),
-            modifier = Modifier.clickable { onShow(report) },
-        )
-        BasicText(statusText(report), style = muted)
-        val busy = report.status == DamageStatus.TENDER || report.status == DamageStatus.CONSTRUCTION
-        if (report.isActionable && !busy) {
-            RepairActions(report, rules) { onCommand(GameCommand.RespondToDamage(report.id, it)) }
-            OtherActions(report) { onCommand(GameCommand.RespondToDamage(report.id, it)) }
+    Column(
+        Modifier.fillMaxWidth().border(2.dp, TmColors.Ink, CardShape).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                BasicText(report.kind.label, style = TmType.text(14.sp, FontWeight.Bold))
+                BasicText(placeLine(report), style = TmType.small)
+                report.progress?.let { BasicText(it, style = TmType.small) }
+            }
+            StatusBadge(report)
+        }
+        val actionable =
+            report.isActionable && report.status != DamageStatus.TENDER &&
+                report.status != DamageStatus.CONSTRUCTION
+        if (actionable) {
+            GroupLabel(tr("Reparieren"))
+            RepairActions(report, rules, respond)
+            GroupLabel(tr("Oder absichern"))
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(
+                Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (actionable) SecureActions(report, respond)
+            }
+            TmButton(tr("Auf Karte zeigen"), onShow, kind = ButtonKind.TEXT)
         }
     }
 }
 
-private fun headline(report: DamageReport): String {
+private fun placeLine(report: DamageReport): String {
     val sections =
         if (report.segments.size >
             1
@@ -140,114 +205,101 @@ private fun headline(report: DamageReport): String {
         } else {
             ""
         }
-    return "${report.kind.label}: ${report.place} (${report.conditionPercent} %$sections)"
+    return tr("{place} · Zustand {percent} %", "place" to report.place, "percent" to report.conditionPercent) + sections
 }
 
-private fun colorOf(report: DamageReport): Color {
-    val severe = report.kind == DamageKind.CRATER || report.kind == DamageKind.BRIDGE_UNSAFE
-    return when {
-        report.status == DamageStatus.COLLAPSED || severe -> Danger
-        report.status == DamageStatus.OPEN -> Warning
-        else -> PanelText
+@Composable
+private fun GroupLabel(text: String) {
+    BasicText(text.uppercase(), style = TmType.eyebrow.copy(letterSpacing = GROUP_SPACING.sp))
+}
+
+/** Frist als gelbes Etikett, sonst der Stand („Warnschild“, „Baustelle“ …). */
+@Composable
+private fun StatusBadge(report: DamageReport) {
+    when (report.status) {
+        DamageStatus.OPEN -> {
+            val hours = report.hoursLeft.coerceAtLeast(0.0).roundToInt()
+            Badge(tr("noch {hours} Std.", "hours" to hours), tone = BadgeTone.WARN, pill = false)
+        }
+
+        DamageStatus.COLLAPSED -> {
+            Badge(report.status.label, tone = BadgeTone.DANGER, pill = false)
+        }
+
+        DamageStatus.SIGNED -> {
+            Badge(tr("Schild, Tempo {kmh}", "kmh" to (report.signKmh ?: "–")), pill = false)
+        }
+
+        else -> {
+            Badge(report.status.label, pill = false)
+        }
     }
 }
 
-private fun statusText(report: DamageReport): String {
-    val status =
-        when (report.status) {
-            DamageStatus.OPEN -> {
-                tr(
-                    "Frist: noch {hoursLeft} Std.",
-                    "hoursLeft" to report.hoursLeft.coerceAtLeast(0.0).roundToInt(),
-                )
-            }
-
-            DamageStatus.SIGNED -> {
-                tr("Warnschild, Tempo {signKmh}", "signKmh" to (report.signKmh ?: "–"))
-            }
-
-            else -> {
-                report.status.label
-            }
-        }
-    return status + (report.progress?.let { " · $it" } ?: "")
-}
-
-/** Ausschreibung, Turbo-Baukonsortium, Planfeststellung. */
+/** Ausschreibung, Turbo-Baukonsortium, Planfeststellung – jeweils mit Preis. */
 @Composable
 private fun RepairActions(
     report: DamageReport,
     rules: GameRules,
     respond: (DamageResponse) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        val base = report.repairCost
-        Choice(tr("Ausschreibung {base}", "base" to formatEuro(base)), false) {
-            respond(DamageResponse.Repair(RepairMethod.TENDER))
-        }
-        Choice(
-            tr("Turbo {turboCostFactor}", "turboCostFactor" to formatEuro((base * rules.turboCostFactor).toLong())),
-            false,
-        ) {
-            respond(DamageResponse.Repair(RepairMethod.TURBO))
-        }
+    val base = report.repairCost
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        OptionButton(
+            tr("Ausschreibung"),
+            { respond(DamageResponse.Repair(RepairMethod.TENDER)) },
+            Modifier.weight(1f),
+            formatEuro(base),
+        )
+        OptionButton(
+            tr("Turbo"),
+            { respond(DamageResponse.Repair(RepairMethod.TURBO)) },
+            Modifier.weight(1f),
+            formatEuro((base * rules.turboCostFactor).toLong()),
+        )
         if (report.status != DamageStatus.PLANNING) {
-            Choice(tr("Planfeststellung {planningCost}", "planningCost" to formatEuro(rules.planningCost)), false) {
-                respond(DamageResponse.Repair(RepairMethod.PLANNING))
-            }
+            OptionButton(
+                tr("Planfeststellung"),
+                { respond(DamageResponse.Repair(RepairMethod.PLANNING)) },
+                Modifier.weight(1f),
+                formatEuro(rules.planningCost),
+            )
         }
     }
 }
 
 /** Warnschild, Brücke sperren, nichts tun. */
 @Composable
-private fun OtherActions(
+private fun SecureActions(
     report: DamageReport,
     respond: (DamageResponse) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        val unsigned = report.canSign && report.status != DamageStatus.SIGNED
-        when {
-            unsigned && report.node >= 0 -> {
-                Choice(
-                    tr("Schild „Ampel ausgefallen“"),
-                    false,
-                ) { respond(DamageResponse.WarningSign(0)) }
-            }
-
-            unsigned -> {
-                SIGN_LIMITS.forEach { kmh ->
-                    Choice(tr("Schild {kmh}", "kmh" to kmh), false) { respond(DamageResponse.WarningSign(kmh)) }
-                }
-            }
+    val unsigned = report.canSign && report.status != DamageStatus.SIGNED
+    if (unsigned && report.node >= 0) {
+        OptionButton(tr("Schild „Ampel ausgefallen“"), { respond(DamageResponse.WarningSign(0)) })
+    } else if (unsigned) {
+        for (kmh in SIGN_LIMITS) {
+            OptionButton(tr("Schild {kmh}", "kmh" to kmh), { respond(DamageResponse.WarningSign(kmh)) })
         }
-        if (report.canClose &&
-            report.status != DamageStatus.CLOSED
-        ) {
-            Choice(tr("Sperren"), false) { respond(DamageResponse.Close) }
-        }
-        if (report.status == DamageStatus.OPEN) Choice(tr("Nichts tun"), false) { respond(DamageResponse.Ignore) }
+    }
+    if (report.canClose && report.status != DamageStatus.CLOSED) {
+        OptionButton(tr("Sperren"), { respond(DamageResponse.Close) })
+    }
+    if (report.status == DamageStatus.OPEN) {
+        BasicText(
+            tr("Nichts tun"),
+            style =
+                TmType
+                    .text(12.sp, FontWeight.SemiBold, TmColors.Muted)
+                    .copy(textDecoration = TextDecoration.Underline),
+            modifier =
+                Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(role = Role.Button) { respond(DamageResponse.Ignore) }
+                    .padding(10.dp),
+        )
     }
 }
 
-@Composable
-private fun Choice(
-    label: String,
-    active: Boolean,
-    onClick: () -> Unit,
-) {
-    BasicText(
-        label,
-        style =
-            TextStyle(
-                color = PanelText,
-                fontSize = 11.sp,
-                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-            ),
-        modifier =
-            Modifier
-                .comicButton(active)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 8.dp, vertical = 5.dp),
-    )
-}
+private const val MAX_REPORTS = 8
+private const val GROUP_SPACING = 0.6f

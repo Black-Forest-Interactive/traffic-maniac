@@ -97,5 +97,15 @@ fun formatEuro(amount: Long): String {
     return if (I18n.language == Language.DE) "$sign$number €" else "$sign€$number"
 }
 
+/** Betrag mit Cent (z. B. Parkgebühr): ganze Euro ohne Nachkommastellen, sonst zwei – 2,50 € bzw. €2.50. */
+fun formatEuro(amount: Double): String {
+    val cents = (abs(amount) * CENTS).roundToLong()
+    if (cents % CENTS == 0L) return formatEuro((if (amount < 0) -cents else cents) / CENTS)
+    val number = formatDecimal(abs(amount), 2)
+    val sign = if (amount < 0) "-" else ""
+    return if (I18n.language == Language.DE) "$sign$number €" else "$sign€$number"
+}
+
 private const val GROUP = 3
+private const val CENTS = 100L
 private const val TEN = 10L

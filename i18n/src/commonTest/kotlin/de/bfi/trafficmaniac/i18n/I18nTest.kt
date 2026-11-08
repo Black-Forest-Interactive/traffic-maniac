@@ -22,9 +22,12 @@ class I18nTest {
         assertEquals("-1.500 €", formatEuro(-1_500))
         assertEquals("19,5", formatDecimal(19.46))
         assertEquals("1.234,57", formatDecimal(1234.567, 2))
+        assertEquals("2,50 €", formatEuro(2.5))
+        assertEquals("3 €", formatEuro(3.0))
         I18n.use(Language.EN)
         assertEquals("€158,000", formatEuro(158_000))
         assertEquals("19.5", formatDecimal(19.46))
         assertEquals("0", formatDecimal(-0.2, 0))
+        assertEquals("€2.50", formatEuro(2.5))
     }
 }

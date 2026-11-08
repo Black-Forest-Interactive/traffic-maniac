@@ -24,7 +24,24 @@ import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
-import de.bfi.trafficmaniac.sim.*
+import de.bfi.trafficmaniac.sim.ChargingStationState
+import de.bfi.trafficmaniac.sim.DamageKind
+import de.bfi.trafficmaniac.sim.EventKind
+import de.bfi.trafficmaniac.sim.FLAG_BRAKING
+import de.bfi.trafficmaniac.sim.FLAG_DISABLED
+import de.bfi.trafficmaniac.sim.FLAG_ELECTRIC
+import de.bfi.trafficmaniac.sim.FLAG_EMERGENCY
+import de.bfi.trafficmaniac.sim.FLAG_JAMMED
+import de.bfi.trafficmaniac.sim.GameTime
+import de.bfi.trafficmaniac.sim.IncidentKind
+import de.bfi.trafficmaniac.sim.IncidentMarker
+import de.bfi.trafficmaniac.sim.ParkingLotState
+import de.bfi.trafficmaniac.sim.SignalMarkers
+import de.bfi.trafficmaniac.sim.SignalState
+import de.bfi.trafficmaniac.sim.SpeedCamera
+import de.bfi.trafficmaniac.sim.VehicleRole
+import de.bfi.trafficmaniac.sim.VehicleType
+import de.bfi.trafficmaniac.ui.TmType
 
 /** Ein Eintrag der Legende: Vorschau (in Weltkoordinaten um den Nullpunkt, [scale] Pixel je Meter) und Erklärung. */
 private class LegendEntry(
@@ -40,14 +57,13 @@ private class LegendEntry(
 @Composable
 fun MapLegend(
     textColor: Color,
-    mutedColor: Color,
     modifier: Modifier = Modifier,
     /** Fertige Grafiken – die Legende zeigt dieselben Symbole wie die Karte. */
     sprites: SpriteSource = NoSprites,
 ) {
     val measurer = rememberTextMeasurer()
-    val heading = TextStyle(color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-    val text = TextStyle(color = textColor, fontSize = 11.sp)
+    val heading = TmType.text(13.sp, FontWeight.Bold, textColor)
+    val text = TmType.text(12.sp, color = textColor)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         for ((title, entries) in SECTIONS) {
             BasicText(tr(title), style = heading)
@@ -63,10 +79,6 @@ fun MapLegend(
                 }
             }
         }
-        BasicText(
-            tr("Tipp: Meldungen mit ▸ anklicken – die Karte zeigt die Stelle."),
-            style = text.copy(color = mutedColor),
-        )
     }
 }
 

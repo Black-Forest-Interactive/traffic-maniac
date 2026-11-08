@@ -33,6 +33,7 @@ import de.bfi.trafficmaniac.ui.MainMenu
 import de.bfi.trafficmaniac.ui.NoSound
 import de.bfi.trafficmaniac.ui.SaveSlots
 import de.bfi.trafficmaniac.ui.SoundBoard
+import de.bfi.trafficmaniac.ui.Tool
 import de.bfi.trafficmaniac.ui.TrafficManiacApp
 import de.bfi.trafficmaniac.ui.map.NoSprites
 import de.bfi.trafficmaniac.ui.map.SpriteSource
@@ -231,6 +232,8 @@ private fun Playing(
         onMenu = onMenu,
         onSave = { scope.save(current, saves, "spiel-" + LocalDateTime.now().format(SAVE_ID_FORMAT)) },
         tutorial = current.scenario.tutorial,
+        onSpeed = current.runner::setSpeed,
+        input = current.input,
     )
 }
 
@@ -298,7 +301,10 @@ private fun parseOptions(args: Array<String>): Options {
     )
 }
 
-/** Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo, M Ton, N Musik, F5 Schnellspeichern. */
+/**
+ * Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo, M Ton, N Musik, F5 Schnellspeichern,
+ * F3 Entwickler-Anzeige, Esc und Q/W/E/R/T/A/S/D/X Werkzeuge.
+ */
 private fun handleKey(
     event: KeyEvent,
     session: Session,
@@ -315,6 +321,8 @@ private fun handleKey(
         event.key == Key.M -> sound.muted = !sound.muted
         event.key == Key.N -> sound.music = !sound.music
         event.key == Key.F5 -> onQuickSave()
+        event.key == Key.F3 -> session.input.debug = !session.input.debug
+        Tool.forKey(event.key) != null -> session.input.toolRequest = Tool.forKey(event.key)
         else -> return false
     }
     return true

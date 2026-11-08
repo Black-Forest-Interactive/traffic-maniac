@@ -1,45 +1,70 @@
 package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
-import de.bfi.trafficmaniac.ui.map.NoSprites
-import de.bfi.trafficmaniac.ui.map.SpriteSource
+import de.bfi.trafficmaniac.ui.components.Icon
+import de.bfi.trafficmaniac.ui.components.Icons
+import de.bfi.trafficmaniac.ui.components.MinTouch
+import de.bfi.trafficmaniac.ui.components.TmIcon
 
-/** Werkzeuge der Werkzeugleiste. */
+/** Werkzeuge im Dock, mit Icon und Tastenkürzel. */
 enum class Tool(
     private val labelText: String,
+    internal val icon: TmIcon,
+    /** Taste, die das Werkzeug wählt, und ihre Beschriftung im Dock. */
+    val key: Key,
+    internal val keyLabel: String,
 ) {
-    LOOK(translatable("Ansehen")),
-    SPEED_LIMIT(translatable("Tempolimit")),
-    SIGNAL(translatable("Ampel")),
-    CAMERA(translatable("Blitzer")),
-    LASER(translatable("Laser")),
-    TRAILER(translatable("Anhänger")),
-    PRIORITY(translatable("Vorfahrt")),
-    BIKE_CROSSING(translatable("Radweg-Querung")),
-    DETOUR(translatable("Umleitung")),
-    REMOVE(translatable("Abbauen")),
+    LOOK(translatable("Ansehen"), Icons.Eye, Key.Escape, "Esc"),
+    SPEED_LIMIT(translatable("Tempolimit"), Icons.Gauge, Key.Q, "Q"),
+    SIGNAL(translatable("Ampel"), Icons.TrafficLight, Key.W, "W"),
+    CAMERA(translatable("Blitzer"), Icons.Camera, Key.E, "E"),
+    LASER(translatable("Laser"), Icons.Zap, Key.R, "R"),
+    TRAILER(translatable("Anhänger"), Icons.Trailer, Key.T, "T"),
+    PRIORITY(translatable("Vorfahrt"), Icons.Diamond, Key.A, "A"),
+    BIKE_CROSSING(translatable("Radweg-Querung"), Icons.Bike, Key.S, "S"),
+    DETOUR(translatable("Umleitung"), Icons.Detour, Key.D, "D"),
+    REMOVE(translatable("Abbauen"), Icons.Eraser, Key.X, "X"),
     ;
 
     val label: String get() = tr(labelText)
+
+    companion object {
+        /** Werkzeug zur Taste, sonst `null`. */
+        fun forKey(key: Key): Tool? = entries.firstOrNull { it.key == key }
+    }
 }
 
 /** Gewählter Wert des Tempolimit-Werkzeugs; `null` = ursprüngliches Limit wiederherstellen. */
@@ -54,109 +79,213 @@ data class ToolSelection(
     }
 }
 
-private val BarBackground = ComicTheme.paper
-private val ButtonIdle = ComicTheme.button
-private val ButtonActive = ComicTheme.red
-private val TextColor = ComicTheme.ink
-private const val WALKING_SPEED = 7
+/**
+ * Eingaben aus dem Fenster an die Spieloberfläche: Werkzeug per Taste und die Entwickler-Anzeige (F3). Das Fenster
+ * setzt die Werte, die Oberfläche übernimmt sie.
+ */
+class HudInput {
+    var toolRequest by mutableStateOf<Tool?>(null)
+    var debug by mutableStateOf(false)
+}
 
-/** Werkzeugleiste am unteren Rand: Werkzeug wählen, beim Tempolimit zusätzlich den Wert. */
+/** Was das Dock braucht: Auswahl, freigeschaltete Werkzeuge, freie Anhänger und was bei einer Auswahl passiert. */
+internal class ToolDockState(
+    val selection: ToolSelection,
+    val available: Set<Tool>,
+    val idleTrailers: Int,
+    val onSelect: (ToolSelection) -> Unit,
+)
+
+private val DockShape = RoundedCornerShape(16.dp)
+private val TileShape = RoundedCornerShape(11.dp)
+private val DockShadow = TmColors.Ink.copy(alpha = 0.32f)
+
+/** Werkzeug-Dock unten mittig, darüber die Optionen des gewählten Werkzeugs. */
 @Composable
-fun ToolBar(
-    selection: ToolSelection,
+internal fun ToolDock(
+    state: ToolDockState,
     rules: GameRules,
-    onSelect: (ToolSelection) -> Unit,
     modifier: Modifier = Modifier,
-    sprites: SpriteSource = NoSprites,
-    /** Blitzeranhänger im Depot (für den Kostenhinweis). */
-    idleTrailers: Int = 0,
-    /** Freigeschaltete Werkzeuge (im Tutorial nach und nach). */
-    available: Set<Tool> = Tool.entries.toSet(),
 ) {
     Column(
-        modifier
-            .padding(12.dp)
-            .comicPanel()
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (selection.tool == Tool.SPEED_LIMIT) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                for (kmh in rules.speedLimitOptions) {
-                    ToolButton(if (kmh == WALKING_SPEED) tr("Schritt") else "$kmh", selection.speedLimit == kmh) {
-                        onSelect(selection.copy(speedLimit = kmh))
-                    }
+        if (state.selection.tool == Tool.SPEED_LIMIT) SpeedLimitOptions(state.selection, rules, state.onSelect)
+        Row(
+            Modifier.shadow(12.dp, DockShape, spotColor = DockShadow).background(TmColors.Ink, DockShape).padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            for (tool in Tool.entries.filter { it in state.available }) {
+                ToolTile(tool, state.selection.tool == tool, price(tool, rules, state.idleTrailers)) {
+                    state.onSelect(state.selection.copy(tool = tool))
                 }
-                ToolButton(tr("Original"), selection.speedLimit == null) { onSelect(selection.copy(speedLimit = null)) }
-                ToolButton(
-                    tr("nur nachts"),
-                    selection.nightOnly,
-                ) { onSelect(selection.copy(nightOnly = !selection.nightOnly)) }
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (tool in Tool.entries.filter { it in available }) {
-                ToolButton(
-                    "${tool.label}${costHint(tool, rules, idleTrailers)}",
-                    selection.tool == tool,
-                    sprites,
-                    toolIcon(tool, sprites),
-                ) { onSelect(selection.copy(tool = tool)) }
             }
         }
     }
 }
 
-/** Icon des Werkzeugs; für den Anhänger notfalls das Blitzer-Icon. */
-private fun toolIcon(
+@Composable
+private fun ToolTile(
     tool: Tool,
-    sprites: SpriteSource,
-): String {
-    val name = "tool_" + tool.name.lowercase()
-    return if (tool == Tool.TRAILER && !sprites.has(name)) "tool_camera" else name
+    active: Boolean,
+    price: String,
+    onClick: () -> Unit,
+) {
+    val color = if (active) TmColors.Ink else TmColors.OnDark
+    Box(
+        Modifier
+            .width(TILE_WIDTH.dp)
+            .heightIn(min = TILE_HEIGHT.dp)
+            .clip(TileShape)
+            .background(if (active) TmColors.Active else Color.Transparent)
+            .clickable(role = Role.RadioButton, onClick = onClick),
+    ) {
+        BasicText(
+            tool.keyLabel,
+            style = TmType.mono(9.sp, bold = false, color = color.copy(alpha = KEY_ALPHA)),
+            modifier = Modifier.padding(start = 6.dp, top = 4.dp),
+        )
+        Column(
+            Modifier.align(Alignment.Center).padding(start = 4.dp, end = 4.dp, top = 10.dp, bottom = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Icon(tool.icon, null, tint = color, size = 22.dp)
+            BasicText(
+                tool.label,
+                style = TmType.text(11.sp, FontWeight.SemiBold, color).copy(textAlign = TextAlign.Center),
+            )
+            if (price.isNotEmpty()) {
+                BasicText(
+                    price,
+                    style =
+                        TmType.mono(10.sp, bold = false, color = if (active) TmColors.Ink else TmColors.OnDarkMuted),
+                )
+            }
+        }
+    }
 }
 
-private fun costHint(
+/** Tempolimit wählen: runde Schilder wie an der Straße (gewählt mit rotem Ring), „Original“ und „nur nachts“. */
+@Composable
+private fun SpeedLimitOptions(
+    selection: ToolSelection,
+    rules: GameRules,
+    onSelect: (ToolSelection) -> Unit,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier
+            .shadow(8.dp, shape, spotColor = DockShadow)
+            .background(TmColors.Surface, shape)
+            .border(1.dp, TmColors.Line, shape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        BasicText(tr("Tempolimit"), style = TmType.text(12.sp, FontWeight.Bold, TmColors.Muted))
+        for (kmh in rules.speedLimitOptions) {
+            SpeedSign(if (kmh == WALKING_SPEED) tr("Schritt") else "$kmh", selection.speedLimit == kmh) {
+                onSelect(selection.copy(speedLimit = kmh))
+            }
+        }
+        Box(Modifier.width(1.dp).height(28.dp).background(TmColors.Track))
+        OptionChip(tr("Original"), selection.speedLimit == null) { onSelect(selection.copy(speedLimit = null)) }
+        OptionChip(tr("nur nachts"), selection.nightOnly) { onSelect(selection.copy(nightOnly = !selection.nightOnly)) }
+    }
+}
+
+@Composable
+private fun SpeedSign(
+    text: String,
+    chosen: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier
+            .size(MinTouch)
+            .clip(CircleShape)
+            .background(TmColors.Surface)
+            .border(if (chosen) 3.dp else 1.dp, if (chosen) TmColors.Danger else TmColors.Line, CircleShape)
+            .clickable(role = Role.RadioButton, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            text,
+            style =
+                TmType.text(
+                    if (text.length >
+                        2
+                    ) {
+                        9.sp
+                    } else {
+                        14.sp
+                    },
+                    FontWeight.Bold,
+                    if (chosen) TmColors.Ink else TmColors.Muted,
+                ),
+        )
+    }
+}
+
+@Composable
+private fun OptionChip(
+    text: String,
+    active: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    Box(
+        Modifier
+            .heightIn(min = 36.dp)
+            .clip(shape)
+            .background(if (active) TmColors.Active else TmColors.Surface)
+            .border(1.dp, if (active) TmColors.Active else TmColors.Line, shape)
+            .clickable(role = Role.Checkbox, onClick = onClick)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) { BasicText(text, style = TmType.text(12.sp, FontWeight.SemiBold)) }
+}
+
+/** Preis eines Werkzeugs für das Dock; leer, wenn es nichts kostet. */
+private fun price(
     tool: Tool,
     rules: GameRules,
     idleTrailers: Int,
 ): String =
     when (tool) {
-        Tool.TRAILER -> {
-            if (idleTrailers > 0) {
-                tr(
-                    " (umsetzen {trailerMoveCost}, {idleTrailers} frei)",
-                    "trailerMoveCost" to formatEuro(rules.trailerMoveCost),
-                    "idleTrailers" to idleTrailers,
-                )
-            } else {
-                " (${formatEuro(rules.trailerCost)})"
-            }
-        }
-
         Tool.SPEED_LIMIT -> {
-            " (${formatEuro(rules.speedLimitSignCost)})"
+            formatEuro(rules.speedLimitSignCost)
         }
 
         Tool.SIGNAL -> {
-            " (${formatEuro(rules.signalCost)})"
+            formatEuro(rules.signalCost)
         }
 
         Tool.CAMERA -> {
-            " (${formatEuro(rules.cameraCost)})"
+            formatEuro(rules.cameraCost)
         }
 
         Tool.LASER -> {
-            tr(" ({laserDailyCost}/Tag)", "laserDailyCost" to formatEuro(rules.laserDailyCost))
+            tr("{cost}/Tag", "cost" to formatEuro(rules.laserDailyCost))
+        }
+
+        Tool.TRAILER -> {
+            if (idleTrailers > 0) {
+                tr("{count} frei", "count" to idleTrailers)
+            } else {
+                formatEuro(rules.trailerCost)
+            }
         }
 
         Tool.PRIORITY -> {
-            " (${formatEuro(rules.priorityRoadCost)})"
+            formatEuro(rules.priorityRoadCost)
         }
 
         Tool.BIKE_CROSSING -> {
-            " (${formatEuro(rules.bikeCrossingCost)})"
+            formatEuro(rules.bikeCrossingCost)
         }
 
         else -> {
@@ -164,30 +293,7 @@ private fun costHint(
         }
     }
 
-@Composable
-private fun ToolButton(
-    label: String,
-    active: Boolean,
-    sprites: SpriteSource = NoSprites,
-    icon: String? = null,
-    onClick: () -> Unit,
-) {
-    Row(
-        Modifier.comicButton(active).clickable(onClick = onClick).padding(horizontal = 7.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        icon?.let { SpriteIcon(sprites, it, TOOL_ICON.dp) }
-        BasicText(
-            label,
-            style =
-                TextStyle(
-                    color = TextColor,
-                    fontSize = 13.sp,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                ),
-        )
-    }
-}
-
-private const val TOOL_ICON = 20
+private const val WALKING_SPEED = 7
+private const val TILE_WIDTH = 78
+private const val TILE_HEIGHT = 68
+private const val KEY_ALPHA = 0.6f

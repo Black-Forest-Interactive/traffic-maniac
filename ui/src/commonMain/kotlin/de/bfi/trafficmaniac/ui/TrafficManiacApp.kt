@@ -2,9 +2,22 @@ package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,8 +26,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.city.CityMap
-import de.bfi.trafficmaniac.game.*
-import de.bfi.trafficmaniac.ui.map.*
+import de.bfi.trafficmaniac.game.GameCommand
+import de.bfi.trafficmaniac.game.GameMessage
+import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.GameState
+import de.bfi.trafficmaniac.game.MapPlace
+import de.bfi.trafficmaniac.game.TrafficFrame
+import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
+import de.bfi.trafficmaniac.ui.map.MapFocus
+import de.bfi.trafficmaniac.ui.map.MapPicker
+import de.bfi.trafficmaniac.ui.map.MapView
+import de.bfi.trafficmaniac.ui.map.MapZoom
+import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.hypot
@@ -22,16 +46,40 @@ import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
-private val BackgroundColor = Color(0xFF2B2D42)
+private val BackgroundColor = TmColors.Ink
 private val HUD_REFRESH = 250.milliseconds
-private val MessageBackground = ComicTheme.paper
-private val MessageText = ComicTheme.ink
 private const val PICK_RADIUS_PIXELS = 14f
 private const val MIN_PICK_RADIUS_METERS = 6f
-private const val VISIBLE_MESSAGES = 3
 private const val MILLIS_PER_SECOND = 1_000.0
 private const val MONEY_RAIN_WIDTH = 360
 private const val MONEY_RAIN_HEIGHT = 260
+
+/** Zustand der Spieloberfläche: Werkzeug, offenes Fenster, Tutorial-Schritt, Kartenansicht, Flug- und Zoomziel. */
+internal class HudState(
+    tutorial: Boolean,
+) {
+    var fps by mutableStateOf(0)
+    var selection by mutableStateOf(ToolSelection())
+    var panel by mutableStateOf(SidePanel.NONE)
+    var step by mutableStateOf(if (tutorial) TutorialStep.WELCOME else null)
+    val toggles = MapToggles()
+    var focus by mutableStateOf<MapFocus?>(null)
+    var zoom by mutableStateOf<MapZoom?>(null)
+
+    /** Aktuelle Zoomstufe der Karte – für die Lautstärke der Geräuschkulisse. */
+    val zoomLevel = floatArrayOf(1f)
+
+    /** Im Tutorial nur die freigeschalteten Werkzeuge. */
+    val availableTools: Set<Tool> get() = step?.unlocked ?: Tool.entries.toSet()
+
+    fun togglePanel(target: SidePanel) {
+        panel = if (panel == target) SidePanel.NONE else target
+    }
+
+    fun show(place: MapPlace) {
+        focus = MapFocus(place.x, place.y)
+    }
+}
 
 /** Wurzel der Spieloberfläche. Ohne Stadt wird ein Hinweis angezeigt, wie man sie erzeugt. */
 @Composable
@@ -51,100 +99,116 @@ fun TrafficManiacApp(
     onSave: (() -> Unit)? = null,
     /** Geführte Schritte, die die Werkzeuge nach und nach freischalten. */
     tutorial: Boolean = false,
+    /** Zeitraffer wählen (0 = Pause); `null` blendet die Tempo-Knöpfe aus. */
+    onSpeed: ((Int) -> Unit)? = null,
+    /** Tasten aus dem Fenster: Werkzeuge und Entwickler-Anzeige. */
+    input: HudInput = remember { HudInput() },
 ) {
     if (city == null) {
         MissingCity(missingCityMessage)
         return
     }
-    var fps by remember { mutableStateOf(0) }
-    var selection by remember { mutableStateOf(ToolSelection()) }
-    var panel by remember { mutableStateOf(SidePanel.NONE) }
-    var step by remember { mutableStateOf(if (tutorial) TutorialStep.WELCOME else null) }
-    val toggles = remember { MapToggles() }
+    val hud = remember(tutorial) { HudState(tutorial) }
     val picker = remember(city) { MapPicker(city) }
-    val zoom = remember { floatArrayOf(1f) }
-    var focus by remember { mutableStateOf<MapFocus?>(null) }
-    val show: (MapPlace) -> Unit = { focus = MapFocus(it.x, it.y) }
     val command: (GameCommand) -> Unit = {
         sound.play(SoundEffect.CLICK)
         onCommand(it)
     }
-    val hudFrame by rememberHudFrame(traffic, sound, zoom)
-    Box(Modifier.fillMaxSize()) {
-        MapView(
-            focus = focus,
-            sprites = sprites,
-            city = city,
-            traffic = traffic?.let { flow -> { flow.value } },
-            onFps = { fps = it },
-            showMoods = toggles.showMoods,
-            environmentLayer = toggles.environmentLayer,
-            showCondition = toggles.showCondition || selection.tool == Tool.DETOUR,
-            onZoom = { zoom[0] = it },
-            onMapClick = { x, y, metersPerPixel ->
-                val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
-                commandFor(selection, picker, traffic?.value, x, y, radius)?.let(command)
-            },
-        )
-        hudFrame?.let { frame ->
-            HudWithMoneyRain(frame, fps, sprites, Modifier.align(Alignment.TopStart))
-            SidePanels(
-                frame = frame,
-                rules = rules,
-                panel = panel,
-                onPanel = { panel = if (panel == it) SidePanel.NONE else it },
-                toggles = toggles,
-                onCommand = command,
-                picker = picker,
-                onShow = show,
-                onMenu = onMenu,
-                onSave = onSave,
-                sprites = sprites,
-                modifier = Modifier.align(Alignment.TopEnd),
-            )
-            Messages(frame.game.messages, show, Modifier.align(Alignment.BottomStart).padding(bottom = 24.dp))
-            step?.let { s -> TutorialPanel(s, frame.game, { step = it }, Modifier.align(Alignment.CenterStart)) }
+    LaunchedEffect(input.toolRequest) {
+        input.toolRequest?.let { if (it in hud.availableTools) hud.selection = hud.selection.copy(tool = it) }
+        input.toolRequest = null
+    }
+    val hudFrame by rememberHudFrame(traffic, sound, hud.zoomLevel)
+    TmTheme {
+        Box(Modifier.fillMaxSize().background(TmColors.Ground)) {
+            Column(Modifier.fillMaxSize()) {
+                hudFrame?.let { HudTopBar(it, TopBarActions(onSpeed, onSave, onMenu)) }
+                Row(Modifier.weight(1f)) {
+                    HudRail(hud.panel, hud::togglePanel, hudFrame?.current?.incidents?.size ?: 0)
+                    MapArea(
+                        city,
+                        traffic,
+                        hudFrame,
+                        hud,
+                        picker,
+                        rules,
+                        command,
+                        sprites,
+                        input.debug,
+                        Modifier.weight(1f),
+                    )
+                    hudFrame?.let { frame ->
+                        if (hud.panel != SidePanel.NONE) {
+                            val context =
+                                PanelContext(frame, rules, command, picker, hud::show, sprites) {
+                                    hud.panel =
+                                        SidePanel.NONE
+                                }
+                            SidePanelSlot(hud.panel, context)
+                        }
+                    }
+                }
+            }
+            hudFrame?.let { EndOfDayOverlays(it, onContinueDay, onMenu, sprites) }
         }
-        val tools = ToolBarState(selection, hudFrame?.game, step) { selection = it }
-        if (traffic != null) ToolBar(tools, rules, sprites, Modifier.align(Alignment.BottomCenter))
-        hudFrame?.let { EndOfDayOverlays(it, onContinueDay, onMenu, sprites) }
     }
 }
 
-/** Was die Werkzeugleiste unten braucht: Auswahl, Spielstand, Tutorial-Schritt und was bei einer Auswahl passiert. */
-private class ToolBarState(
-    val selection: ToolSelection,
-    game: GameState?,
-    step: TutorialStep?,
-    val onSelect: (ToolSelection) -> Unit,
-) {
-    val idleTrailers = game?.idleTrailers ?: 0
-
-    /** Im Tutorial nur die freigeschalteten Werkzeuge. */
-    val available = step?.unlocked ?: Tool.entries.toSet()
-}
-
+/** Die Karte mit allem, was darüber schwebt: Ansicht, Lage und Meldungen, Tutorial, Zoom, Werkzeug-Dock. */
 @Composable
-private fun ToolBar(
-    state: ToolBarState,
+private fun MapArea(
+    city: CityMap,
+    traffic: StateFlow<TrafficFrame?>?,
+    hudFrame: TrafficFrame?,
+    hud: HudState,
+    picker: MapPicker,
     rules: GameRules,
+    command: (GameCommand) -> Unit,
     sprites: SpriteSource,
-    modifier: Modifier,
-) = ToolBar(state.selection, rules, state.onSelect, modifier, sprites, state.idleTrailers, state.available)
-
-/** HUD oben links; bei neuen Einnahmen regnet es Münzen darüber. */
-@Composable
-private fun HudWithMoneyRain(
-    frame: TrafficFrame,
-    fps: Int,
-    sprites: SpriteSource,
+    debug: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier) {
-        TrafficHud(frame, fps, sprites = sprites)
-        val game = frame.game
-        val income = game.fineIncome + game.parkingOffice.feeIncome + game.parkingOffice.ticketIncome
-        MoneyRain(income, Modifier.size(MONEY_RAIN_WIDTH.dp, MONEY_RAIN_HEIGHT.dp), sprites)
+    Box(modifier.fillMaxSize()) {
+        MapView(
+            focus = hud.focus,
+            zoom = hud.zoom,
+            sprites = sprites,
+            city = city,
+            traffic = traffic?.let { flow -> { flow.value } },
+            onFps = { hud.fps = it },
+            showMoods = hud.toggles.showMoods,
+            environmentLayer = hud.toggles.environmentLayer,
+            showCondition = hud.toggles.showCondition || hud.selection.tool == Tool.DETOUR,
+            onZoom = { hud.zoomLevel[0] = it },
+            onMapClick = { x, y, metersPerPixel ->
+                val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
+                commandFor(hud.selection, picker, traffic?.value, x, y, radius)?.let(command)
+            },
+        )
+        MapViewSwitcher(hud.toggles, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
+        ZoomControls({ hud.zoom = MapZoom(it) }, Modifier.align(Alignment.CenterEnd).padding(end = 14.dp))
+        hudFrame?.let { frame ->
+            HudFeed(frame, hud::show, Modifier.align(Alignment.TopStart).padding(14.dp))
+            val game = frame.game
+            val income = game.fineIncome + game.parkingOffice.feeIncome + game.parkingOffice.ticketIncome
+            MoneyRain(
+                income,
+                Modifier.align(Alignment.TopCenter).size(MONEY_RAIN_WIDTH.dp, MONEY_RAIN_HEIGHT.dp),
+                sprites,
+            )
+            hud.step?.let { s ->
+                TutorialPanel(s, game, { hud.step = it }, Modifier.align(Alignment.BottomStart).padding(bottom = 14.dp))
+            }
+            if (debug) {
+                DebugOverlay(
+                    frame,
+                    hud.fps,
+                    Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 26.dp),
+                )
+            }
+            val dock = ToolDockState(hud.selection, hud.availableTools, game.idleTrailers) { hud.selection = it }
+            ToolDock(dock, rules, Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
+        }
     }
 }
 
@@ -309,29 +373,6 @@ private fun removeCommandFor(
 
         else -> {
             null
-        }
-    }
-}
-
-@Composable
-private fun Messages(
-    messages: List<GameMessage>,
-    onShow: (MapPlace) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        for (message in messages.takeLast(VISIBLE_MESSAGES)) {
-            // Meldungen mit Ort: Klick zeigt die Stelle auf der Karte
-            val place = message.place
-            BasicText(
-                "${message.time.clockText}  ${message.text}" + if (place != null) "  ▸" else "",
-                style = TextStyle(color = MessageText, fontSize = 13.sp),
-                modifier =
-                    Modifier
-                        .comicPanel(shadow = 3.dp)
-                        .then(if (place != null) Modifier.clickable { onShow(place) } else Modifier)
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-            )
         }
     }
 }
