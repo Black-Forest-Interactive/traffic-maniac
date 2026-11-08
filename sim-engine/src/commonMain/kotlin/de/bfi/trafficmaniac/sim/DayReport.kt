@@ -74,6 +74,9 @@ internal class DayStatistics {
         incidents[kind] = (incidents[kind] ?: 0) + 1
     }
 
+    /** Vorfälle je Art seit Mitternacht. */
+    val incidentsSoFar: Map<IncidentKind, Int> get() = incidents
+
     fun ambulanceArrived(seconds: Double) {
         ambulance += seconds / SECONDS_PER_MINUTE
     }

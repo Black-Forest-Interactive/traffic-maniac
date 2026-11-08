@@ -136,15 +136,15 @@ internal fun TutorialPanel(
     ) {
         BasicText(
             tr("Tutorial {ordinal}/{entries}", "ordinal" to step.ordinal + 1, "entries" to TutorialStep.entries.size),
-            style = TextStyle(color = ComicTheme.muted, fontSize = 11.sp),
+            style = TmType.caption,
         )
-        BasicText(step.title, style = TextStyle(color = ink, fontSize = 17.sp, fontWeight = FontWeight.Black))
-        BasicText(step.text, style = TextStyle(color = ink, fontSize = 13.sp))
+        BasicText(step.title, style = TmType.display(17.sp, ink))
+        BasicText(step.text, style = TmType.text(13.sp, color = ink))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (step.done == null) {
                 TutorialButton(if (step.next == null) tr("Los geht's") else tr("Weiter"), true) { onStep(step.next) }
             } else {
-                BasicText(tr("Aufgabe läuft …"), style = TextStyle(color = ComicTheme.muted, fontSize = 12.sp))
+                BasicText(tr("Aufgabe läuft …"), style = TmType.small)
             }
             TutorialButton(tr("Tutorial beenden"), false) { onStep(null) }
         }
@@ -159,7 +159,7 @@ private fun TutorialButton(
 ) {
     BasicText(
         label,
-        style = TextStyle(color = ComicTheme.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold),
+        style = TmType.text(13.sp, FontWeight.Bold, ComicTheme.ink),
         modifier =
             Modifier
                 .comicButton(active)
