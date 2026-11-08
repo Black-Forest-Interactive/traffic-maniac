@@ -46,8 +46,9 @@ enum class TutorialStep(
     SPEED_LIMIT(
         translatable("Erst die Schilder"),
         translatable(
-            "Wählen Sie unten das Werkzeug „Tempolimit“ – 30 ist schon eingestellt – und klicken Sie auf eine große " +
-                "Straße mit viel Verkehr. Das Limit gilt von Kreuzung zu Kreuzung.",
+            "Wählen Sie unten das Werkzeug „Tempolimit“ – 30 ist schon eingestellt. Klicken Sie auf den Anfang und " +
+                "dann auf das Ende eines Stücks einer großen Straße (zweimal dieselbe Stelle: bis zur nächsten " +
+                "Kreuzung). Alles ist erst geplant – gebaut und bezahlt wird mit „Bauen“ über dem Werkzeugkasten.",
         ),
         setOf(Tool.SPEED_LIMIT, Tool.REMOVE),
         { it.speedLimits.isNotEmpty() },
@@ -55,8 +56,8 @@ enum class TutorialStep(
     CAMERA(
         translatable("Dann der Blitzer"),
         translatable(
-            "Wo ein Limit ist, darf geblitzt werden. Nehmen Sie „Blitzer“ und klicken Sie auf dieselbe Straße. " +
-                "Ein fester Blitzer ist teuer, verdient aber Tag und Nacht.",
+            "Wo ein Limit ist, darf geblitzt werden. Nehmen Sie „Blitzer“, klicken Sie auf dieselbe Straße und " +
+                "dann auf „Bauen“. Ein fester Blitzer ist teuer, verdient aber Tag und Nacht.",
         ),
         setOf(Tool.CAMERA),
         { it.cameras.isNotEmpty() },

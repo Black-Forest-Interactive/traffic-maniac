@@ -36,6 +36,7 @@ import de.bfi.trafficmaniac.ui.components.Badge
 import de.bfi.trafficmaniac.ui.components.BadgeTone
 import de.bfi.trafficmaniac.ui.components.Icon
 import de.bfi.trafficmaniac.ui.components.Icons
+import de.bfi.trafficmaniac.ui.components.Meter
 import de.bfi.trafficmaniac.ui.components.PanelScaffold
 import de.bfi.trafficmaniac.ui.components.PanelSection
 
@@ -58,13 +59,15 @@ fun EventsPanel(
             if (events.active.isEmpty()) BasicText(tr("Alles ruhig."), style = TmType.small)
             for (event in events.active) {
                 val since = if (event.since.isNotEmpty()) tr("seit {since}, ", "since" to event.since) else ""
-                EventRow(event.kind.label, event.place, "$since${event.until}", live = true) { onShow(event.segments) }
+                EventRow(event.kind.label, event.place, "$since${event.until}", event.progress) {
+                    onShow(event.segments)
+                }
             }
         }
         PanelSection(title = tr("Geplant")) {
             if (events.calendar.isEmpty()) BasicText(tr("Keine Termine mehr in dieser Amtszeit."), style = TmType.small)
             for (entry in events.calendar.take(CALENDAR_ROWS)) {
-                EventRow(entry.kind.label, entry.place, whenText(entry, today, firstDay), live = false) {
+                EventRow(entry.kind.label, entry.place, whenText(entry, today, firstDay), progress = null) {
                     onShow(entry.segments)
                 }
             }
@@ -106,15 +109,16 @@ private fun whenText(
     return tr("{day}, {start}–{end} Uhr", "day" to day, "start" to entry.startHour, "end" to entry.endHour)
 }
 
-/** Ereignis als anklickbare Zeile; laufende mit oranger Seitenleiste. */
+/** Ereignis als anklickbare Zeile; laufende ([progress] gesetzt) mit oranger Seitenleiste und Fortschrittsbalken. */
 @Composable
 private fun EventRow(
     kind: String,
     place: String,
     time: String,
-    live: Boolean,
+    progress: Float?,
     onClick: () -> Unit,
 ) {
+    val live = progress != null
     Row(
         Modifier
             .fillMaxWidth()
@@ -131,6 +135,14 @@ private fun EventRow(
         ) {
             BasicText("$kind · $place", style = TmType.text(13.sp, FontWeight.SemiBold))
             BasicText(time, style = TmType.caption)
+            progress?.let {
+                Meter(
+                    it,
+                    Modifier.fillMaxWidth().padding(top = 4.dp),
+                    height = 5.dp,
+                    color = TmColors.Warn,
+                )
+            }
         }
         Icon(
             Icons.ChevronRight,

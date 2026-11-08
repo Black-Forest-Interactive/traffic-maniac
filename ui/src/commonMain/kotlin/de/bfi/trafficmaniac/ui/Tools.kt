@@ -114,6 +114,8 @@ internal class ToolDockState(
     val available: Set<Tool>,
     val idleTrailers: Int,
     val onSelect: (ToolSelection) -> Unit,
+    /** Planungsleiste über dem Dock, solange etwas geplant ist. */
+    val plan: PlanBarState? = null,
 )
 
 private val DockShape = RoundedCornerShape(16.dp)
@@ -132,6 +134,7 @@ internal fun ToolDock(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        state.plan?.let { PlanBar(it) }
         if (state.selection.tool == Tool.SPEED_LIMIT) SpeedLimitOptions(state.selection, rules, state.onSelect)
         Row(
             Modifier.shadow(12.dp, DockShape, spotColor = DockShadow).background(TmColors.Ink, DockShape).padding(6.dp),
@@ -336,7 +339,7 @@ private fun price(
         }
     }
 
-private const val WALKING_SPEED = 7
+internal const val WALKING_SPEED = 7
 private const val TILE_WIDTH = 78
 private const val TILE_HEIGHT = 68
 private const val KEY_ALPHA = 0.6f

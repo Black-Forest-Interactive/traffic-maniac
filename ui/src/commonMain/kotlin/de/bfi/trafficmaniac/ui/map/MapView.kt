@@ -98,6 +98,8 @@ fun MapView(
     network: NetworkDebug? = null,
     /** Im Straßennetz-Modus angeklickter Knoten bzw. Abschnitt. */
     networkPick: NetworkPick? = null,
+    /** Geplante, noch nicht gebaute Maßnahmen als Vorschau. */
+    plan: PlanPreview? = null,
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
@@ -149,6 +151,9 @@ fun MapView(
                     focus?.let { drawPing(currentCamera, it, (nanos - ping[0]) / NANOS_PER_SECOND.toDouble()) }
                 }
             }
+        }
+        if (plan != null && currentCamera != null) {
+            Canvas(Modifier.fillMaxSize()) { drawPlan(plan, currentCamera, picker, segmentPaths, textMeasurer) }
         }
         if (network != null) NetworkCanvas(network, currentCamera, textMeasurer, networkPick, traffic)
         Attribution(city.attribution, Modifier.align(Alignment.BottomEnd))

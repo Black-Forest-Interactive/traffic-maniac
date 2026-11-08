@@ -35,6 +35,7 @@ import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.TrafficFrame
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.SpeedCamera
 import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
 import de.bfi.trafficmaniac.ui.map.MapFocus
@@ -44,7 +45,9 @@ import de.bfi.trafficmaniac.ui.map.MapZoom
 import de.bfi.trafficmaniac.ui.map.NetworkDebug
 import de.bfi.trafficmaniac.ui.map.NetworkPick
 import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.PlanPreview
 import de.bfi.trafficmaniac.ui.map.SpriteSource
+import de.bfi.trafficmaniac.ui.map.StreetRoute
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.hypot
@@ -73,6 +76,9 @@ internal class HudState(
     val toggles = MapToggles()
     var focus by mutableStateOf<MapFocus?>(null)
     var zoom by mutableStateOf<MapZoom?>(null)
+
+    /** Geplante, noch nicht gebaute Maßnahmen. */
+    val plan = Plan()
 
     /** Im Straßennetz-Modus (F4) angeklickter Knoten bzw. Abschnitt. */
     var networkPick by mutableStateOf<NetworkPick?>(null)
@@ -186,31 +192,7 @@ private fun MapArea(
     val networkData = remember(city) { lazy { NetworkDebug(city) } }
     val network = if (input.network) networkData.value else null
     Box(modifier.fillMaxSize()) {
-        // Die Karte ohne UI-Skalierung: Zoom, Linien und Sprites bleiben gleich, nur die Bedienung wächst
-        Unscaled {
-            MapView(
-                focus = hud.focus,
-                zoom = hud.zoom,
-                sprites = sprites,
-                city = city,
-                traffic = traffic?.let { flow -> { flow.value } },
-                onFps = { hud.fps = it },
-                showMoods = hud.toggles.showMoods,
-                environmentLayer = hud.toggles.environmentLayer,
-                showCondition = hud.toggles.showCondition || hud.selection.tool == Tool.DETOUR,
-                onZoom = { hud.zoomLevel[0] = it },
-                onMapClick = { x, y, metersPerPixel ->
-                    val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
-                    if (network != null) {
-                        hud.networkPick = network.pick(x, y, radius)
-                    } else {
-                        commandFor(hud.selection, picker, traffic?.value, x, y, radius)?.let(command)
-                    }
-                },
-                network = network,
-                networkPick = hud.networkPick,
-            )
-        }
+        MapLayer(city, traffic, hud, picker, rules, sprites, network)
         // Mittig über dem Teil der Karte rechts neben Verkehrslage und Meldungen – sonst überlappen sie
         Box(
             Modifier.fillMaxWidth().padding(start = (FEED_WIDTH + FEED_GAP).dp, top = 14.dp),
@@ -230,11 +212,80 @@ private fun MapArea(
                 TutorialPanel(s, game, { hud.step = it }, Modifier.align(Alignment.BottomStart).padding(bottom = 14.dp))
             }
             DeveloperOverlays(frame, hud, network, input)
-            val dock = ToolDockState(hud.selection, hud.availableTools, game.idleTrailers) { hud.selection = it }
+            val dock =
+                ToolDockState(hud.selection, hud.availableTools, game.idleTrailers, {
+                    // Werkzeugwechsel bricht ein angefangenes Tempolimit (Anfang gesetzt) ab
+                    if (it.tool != hud.selection.tool) hud.plan.routeStart = null
+                    hud.selection = it
+                }, planBar(hud.plan, game.balance, command))
             ToolDock(dock, rules, Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
         }
     }
 }
+
+/** Die Karte ohne UI-Skalierung: Zoom, Linien und Sprites bleiben gleich, nur die Bedienung wächst. */
+@Composable
+private fun MapLayer(
+    city: CityMap,
+    traffic: StateFlow<TrafficFrame?>?,
+    hud: HudState,
+    picker: MapPicker,
+    rules: GameRules,
+    sprites: SpriteSource,
+    network: NetworkDebug?,
+) {
+    val route = remember(city) { StreetRoute(city) }
+    Unscaled {
+        MapView(
+            focus = hud.focus,
+            zoom = hud.zoom,
+            sprites = sprites,
+            city = city,
+            traffic = traffic?.let { flow -> { flow.value } },
+            onFps = { hud.fps = it },
+            showMoods = hud.toggles.showMoods,
+            environmentLayer = hud.toggles.environmentLayer,
+            showCondition = hud.toggles.showCondition || hud.selection.tool == Tool.DETOUR,
+            onZoom = { hud.zoomLevel[0] = it },
+            onMapClick = { x, y, metersPerPixel ->
+                val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
+                if (network != null) {
+                    hud.networkPick = network.pick(x, y, radius)
+                } else {
+                    hud.plan.click(
+                        hud.selection,
+                        PlanContext(city, picker, route, rules, traffic?.value),
+                        x,
+                        y,
+                        radius,
+                    )
+                }
+            },
+            network = network,
+            networkPick = hud.networkPick,
+            plan = PlanPreview(hud.plan.actions.map { it.marker }, hud.plan.routeStart, tr("Anfang")),
+        )
+    }
+}
+
+/** Planungsleiste, solange etwas geplant ist; „Bauen“ schickt alle Befehle in der geplanten Reihenfolge. */
+private fun planBar(
+    plan: Plan,
+    balance: Long,
+    command: (GameCommand) -> Unit,
+): PlanBarState? =
+    if (!plan.isActive) {
+        null
+    } else {
+        PlanBarState(
+            plan.actions.size,
+            plan.total,
+            balance,
+            plan.routeStart != null,
+            plan::undo,
+            plan::clear,
+        ) { plan.take().forEach(command) }
+    }
 
 /** Entwickler-Werkzeuge: Straßennetz-Inspektor (F4) unten links, Rechenzeit und Bildrate (F3) unten rechts. */
 @Composable
@@ -309,135 +360,6 @@ private fun EndOfDayOverlays(
                 onContinueDay,
                 firstDay = frame.game.firstDay,
             )
-        }
-    }
-}
-
-/** Übersetzt einen Klick auf die Karte mit dem gewählten Werkzeug in einen Spielbefehl. */
-private fun commandFor(
-    selection: ToolSelection,
-    picker: MapPicker,
-    frame: TrafficFrame?,
-    x: Float,
-    y: Float,
-    radius: Float,
-): GameCommand? =
-    when (selection.tool) {
-        Tool.LOOK -> {
-            null
-        }
-
-        Tool.SIGNAL -> {
-            picker.nearestNode(x, y, radius)?.let { GameCommand.BuildSignal(it) }
-        }
-
-        Tool.REMOVE -> {
-            removeCommandFor(picker, frame, x, y, radius)
-        }
-
-        // Klick auf einen aufgestellten Anhänger lädt ihn auf, der nächste Klick auf eine Straße stellt ihn dort auf
-        Tool.TRAILER -> {
-            nearestCamera(frame, x, y, radius) { it.trailer }?.let { GameCommand.RemoveCamera(it.id) }
-                ?: picker.nearestSegment(x, y, radius)?.let { GameCommand.PlaceTrailer(it) }
-        }
-
-        // Für die Umleitung kommen auch Nebenstraßen in Frage
-        Tool.DETOUR -> {
-            picker.nearestSegment(x, y, radius, allowPassive = { true })?.let {
-                GameCommand.SetDetour(it, it !in frame?.game?.detourSegments.orEmpty())
-            }
-        }
-
-        else -> {
-            // Zugeschaltete Nebenstraßen (Umleitung) lassen sich wie Hauptstraßen beschildern
-            val detour = frame?.game?.detourSegments.orEmpty()
-            picker
-                .nearestSegment(
-                    x,
-                    y,
-                    radius,
-                    allowPassive = { it in detour },
-                )?.let { segmentCommand(selection, it, frame) }
-        }
-    }
-
-/** Werkzeuge, die auf einen Straßenabschnitt wirken. */
-private fun segmentCommand(
-    selection: ToolSelection,
-    segment: Int,
-    frame: TrafficFrame?,
-): GameCommand? =
-    when (selection.tool) {
-        Tool.SPEED_LIMIT -> GameCommand.SetSpeedLimit(segment, selection.speedLimit, selection.nightOnly)
-        Tool.CAMERA -> GameCommand.PlaceCamera(segment)
-        Tool.LASER -> GameCommand.PlaceCamera(segment, mobile = true)
-        Tool.PRIORITY -> GameCommand.SetPriorityRoad(segment, segment !in frame?.game?.priorityRoads.orEmpty())
-        Tool.BIKE_CROSSING -> GameCommand.SetBikeCrossing(segment, segment !in frame?.game?.bikeCrossings.orEmpty())
-        else -> null
-    }
-
-/** Nächster Blitzer im Umkreis, der [accept] erfüllt. */
-private fun nearestCamera(
-    frame: TrafficFrame?,
-    x: Float,
-    y: Float,
-    radius: Float,
-    accept: (SpeedCamera) -> Boolean,
-): SpeedCamera? =
-    frame
-        ?.current
-        ?.cameras
-        ?.filter { accept(it) && hypot(it.x - x, it.y - y) <= radius }
-        ?.minByOrNull { hypot(it.x - x, it.y - y) }
-
-/** Abbauen: zuerst Blitzer, dann Tempolimit (Tag, dann Nacht), dann Ampel. */
-private fun removeCommandFor(
-    picker: MapPicker,
-    frame: TrafficFrame?,
-    x: Float,
-    y: Float,
-    radius: Float,
-): GameCommand? {
-    val signalNodes = frame?.game?.signalNodes.orEmpty()
-    val camera = nearestCamera(frame, x, y, radius) { true }
-    val detour = frame?.game?.detourSegments.orEmpty()
-    val nearest = picker.nearestSegment(x, y, radius, allowPassive = { it in detour })
-    val segment = nearest?.takeIf { it in frame?.game?.speedLimits.orEmpty() }
-    val nightSegment = nearest?.takeIf { it in frame?.game?.nightLimits.orEmpty() }
-    val node = picker.nearestNode(x, y, radius)?.takeIf { it in signalNodes }
-    return when {
-        camera != null -> {
-            GameCommand.RemoveCamera(camera.id)
-        }
-
-        segment != null -> {
-            GameCommand.SetSpeedLimit(segment, null)
-        }
-
-        nightSegment != null -> {
-            GameCommand.SetSpeedLimit(nightSegment, null, nightOnly = true)
-        }
-
-        nearest != null && nearest in frame?.game?.priorityRoads.orEmpty() -> {
-            GameCommand.SetPriorityRoad(
-                nearest,
-                false,
-            )
-        }
-
-        nearest != null && nearest in frame?.game?.bikeCrossings.orEmpty() -> {
-            GameCommand.SetBikeCrossing(
-                nearest,
-                false,
-            )
-        }
-
-        node != null -> {
-            GameCommand.RemoveSignal(node)
-        }
-
-        else -> {
-            null
         }
     }
 }
