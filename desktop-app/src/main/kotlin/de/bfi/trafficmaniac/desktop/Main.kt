@@ -345,7 +345,7 @@ private fun parseOptions(args: Array<String>): Options {
 
 /**
  * Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo, M Ton, N Musik, F5 Schnellspeichern,
- * F3 Entwickler-Anzeige, Esc und Q/W/E/R/T/A/S/D/X Werkzeuge.
+ * F3 Entwickler-Anzeige, F4 Straßennetz-Modus, Esc und Q/W/E/R/T/A/S/D/X Werkzeuge.
  */
 private fun handleKey(
     event: KeyEvent,
@@ -364,6 +364,7 @@ private fun handleKey(
         event.key == Key.N -> sound.music = !sound.music
         event.key == Key.F5 -> onQuickSave()
         event.key == Key.F3 -> session.input.debug = !session.input.debug
+        event.key == Key.F4 -> session.input.network = !session.input.network
         Tool.forKey(event.key) != null -> session.input.toolRequest = Tool.forKey(event.key)
         else -> return false
     }

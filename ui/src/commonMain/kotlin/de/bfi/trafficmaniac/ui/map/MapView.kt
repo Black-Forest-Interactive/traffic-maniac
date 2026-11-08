@@ -94,6 +94,10 @@ fun MapView(
     sprites: SpriteSource = NoSprites,
     /** Zoom-Knopf: Jede neue Instanz zoomt um ihren Faktor um die Bildmitte. */
     zoom: MapZoom? = null,
+    /** Straßennetz-Modus (F4): Knoten, Abschnitte und Strecken über der Karte; `null` = aus. */
+    network: NetworkDebug? = null,
+    /** Im Straßennetz-Modus angeklickter Knoten bzw. Abschnitt. */
+    networkPick: NetworkPick? = null,
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
@@ -146,16 +150,39 @@ fun MapView(
                 }
             }
         }
-        BasicText(
-            text = city.attribution,
-            style = TextStyle(color = MapStyle.attribution, fontSize = 12.sp),
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .background(MapStyle.attributionBackground, RoundedCornerShape(topStart = 6.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-        )
+        if (network != null) NetworkCanvas(network, currentCamera, textMeasurer, networkPick, traffic)
+        Attribution(city.attribution, Modifier.align(Alignment.BottomEnd))
     }
+}
+
+/** Straßennetz-Modus über allem anderen; die Ampel-Positionen kommen aus dem aktuellen Simulationsschritt. */
+@Composable
+private fun NetworkCanvas(
+    network: NetworkDebug,
+    camera: Camera?,
+    textMeasurer: TextMeasurer,
+    pick: NetworkPick?,
+    traffic: (() -> TrafficFrame?)?,
+) {
+    Canvas(Modifier.fillMaxSize()) {
+        if (camera != null) drawNetwork(network, camera, textMeasurer, pick, traffic?.invoke()?.current?.signalMarkers)
+    }
+}
+
+/** OSM-Hinweis unten rechts, halbtransparent hinterlegt. */
+@Composable
+private fun Attribution(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    BasicText(
+        text = text,
+        style = TextStyle(color = MapStyle.attribution, fontSize = 12.sp),
+        modifier =
+            modifier
+                .background(MapStyle.attributionBackground, RoundedCornerShape(topStart = 6.dp))
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+    )
 }
 
 /** Zoomt bei jedem neuen [zoom] um die Bildmitte. */
