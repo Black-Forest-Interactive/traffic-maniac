@@ -26,6 +26,8 @@ class CityGame(
     private val treasury = Treasury(rules.startBudget) { message(it, kind = MessageKind.PROBLEM) }
     private val works = PublicWorks(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
     private val timing = SignalTiming(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
+    private val roadworks =
+        Roadworks(city, simulation, rules, treasury, works) { message(it, kind = MessageKind.ACTION) }
     private val citizens = Citizens(city.zones, rules)
     private val drivers = DriverRegistry(rules, citizens)
     private val office = FineOffice(rules, treasury, citizens, drivers) { message(it, kind = MessageKind.ACTION) }
@@ -118,6 +120,8 @@ class CityGame(
             achievements = achievements.titles,
             signalNodes = works.signalNodes,
             greenWaves = timing.greenWaves.toList(),
+            roadworks = roadworks.roadworks.toSet(),
+            roadClosures = roadworks.closed.toSet(),
             cameras = works.cameraCounters.values.map { it.toRecord() },
             messages = messages.toList(),
             prContract = prContract,
@@ -260,6 +264,7 @@ class CityGame(
         recordToday = null
         recordRatioToday = 0.0
         if (works.laserCount > 0) treasury.charge(works.laserCount * rules.laserDailyCost)
+        politics.press(roadworks.dayEnded(report.day))
         if (report.weekday == Weekday.SUNDAY) budgetRound()
         if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
     }
@@ -308,8 +313,12 @@ class CityGame(
                 works.buildSignal(command.node)
             }
 
-            is GameCommand.SetSignalProgram, is GameCommand.SetGreenWave -> {
+            // Ampelprogramme und eigene Baustellen – jede Stelle übernimmt nur ihre Befehle
+            is GameCommand.SetSignalProgram, is GameCommand.SetGreenWave,
+            is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure,
+            -> {
                 timing.execute(command)
+                roadworks.execute(command)
             }
 
             is GameCommand.RemoveSignal -> {

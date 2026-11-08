@@ -42,6 +42,9 @@ data class GameState(
     val signalNodes: Set<Int>,
     /** Abschnitte der grünen Wellen (je Welle in Fahrtrichtung). */
     val greenWaves: List<List<Int>> = emptyList(),
+    /** Eigene Baustellen und Vollsperrungen des Spielers (Abschnitte). */
+    val roadworks: Set<Int> = emptySet(),
+    val roadClosures: Set<Int> = emptySet(),
     val cameras: List<CameraRecord>,
     val messages: List<GameMessage>,
     val prContract: PrContract,
