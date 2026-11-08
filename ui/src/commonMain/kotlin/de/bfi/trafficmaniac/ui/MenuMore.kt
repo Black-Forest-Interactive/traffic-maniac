@@ -131,6 +131,15 @@ internal fun SettingsScreen(
                 Modifier.width(CONTROL_WIDTH.dp),
             )
         }
+        SettingRow(tr("Oberflächengröße"), hint = tr("Automatisch: wächst mit breiten Fenstern")) {
+            SegmentedControl(
+                UI_SCALES,
+                settings.uiScale,
+                { if (it == 0) tr("Auto") else "$it %" },
+                { onSettings(settings.copy(uiScale = it)) },
+                Modifier.width(SCALE_WIDTH.dp),
+            )
+        }
         Divider()
         OnOff(tr("Geräusche"), settings.sound) { onSettings(settings.copy(sound = it)) }
         OnOff(tr("Musik"), settings.music) { onSettings(settings.copy(music = it)) }
@@ -206,3 +215,4 @@ private val SPEEDS = listOf(1, 2, 4, 8)
 private const val PAGE_WIDTH = 920
 private const val CONTROL_WIDTH = 320
 private const val ON_OFF_WIDTH = 180
+private const val SCALE_WIDTH = 400

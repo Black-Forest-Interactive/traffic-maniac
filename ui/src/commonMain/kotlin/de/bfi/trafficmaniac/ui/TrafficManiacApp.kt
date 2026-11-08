@@ -118,6 +118,10 @@ fun TrafficManiacApp(
         input.toolRequest?.let { if (it in hud.availableTools) hud.selection = hud.selection.copy(tool = it) }
         input.toolRequest = null
     }
+    LaunchedEffect(input.panelRequest) {
+        input.panelRequest?.let { hud.panel = it }
+        input.panelRequest = null
+    }
     val hudFrame by rememberHudFrame(traffic, sound, hud.zoomLevel)
     TmTheme {
         Box(Modifier.fillMaxSize().background(TmColors.Ground)) {
@@ -169,22 +173,25 @@ private fun MapArea(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
-        MapView(
-            focus = hud.focus,
-            zoom = hud.zoom,
-            sprites = sprites,
-            city = city,
-            traffic = traffic?.let { flow -> { flow.value } },
-            onFps = { hud.fps = it },
-            showMoods = hud.toggles.showMoods,
-            environmentLayer = hud.toggles.environmentLayer,
-            showCondition = hud.toggles.showCondition || hud.selection.tool == Tool.DETOUR,
-            onZoom = { hud.zoomLevel[0] = it },
-            onMapClick = { x, y, metersPerPixel ->
-                val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
-                commandFor(hud.selection, picker, traffic?.value, x, y, radius)?.let(command)
-            },
-        )
+        // Die Karte ohne UI-Skalierung: Zoom, Linien und Sprites bleiben gleich, nur die Bedienung wächst
+        Unscaled {
+            MapView(
+                focus = hud.focus,
+                zoom = hud.zoom,
+                sprites = sprites,
+                city = city,
+                traffic = traffic?.let { flow -> { flow.value } },
+                onFps = { hud.fps = it },
+                showMoods = hud.toggles.showMoods,
+                environmentLayer = hud.toggles.environmentLayer,
+                showCondition = hud.toggles.showCondition || hud.selection.tool == Tool.DETOUR,
+                onZoom = { hud.zoomLevel[0] = it },
+                onMapClick = { x, y, metersPerPixel ->
+                    val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
+                    commandFor(hud.selection, picker, traffic?.value, x, y, radius)?.let(command)
+                },
+            )
+        }
         MapViewSwitcher(hud.toggles, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
         ZoomControls({ hud.zoom = MapZoom(it) }, Modifier.align(Alignment.CenterEnd).padding(end = 14.dp))
         hudFrame?.let { frame ->
