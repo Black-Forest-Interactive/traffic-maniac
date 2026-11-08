@@ -12,6 +12,14 @@ import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.PlanMarker
 import de.bfi.trafficmaniac.ui.map.StreetRoute
 import kotlin.math.hypot
+import kotlin.math.roundToInt
+
+/** Ampelknoten näher als das gehören zur selben Anlage (Schätzung für die Kosten einer Welle). */
+private const val SAME_PLANT_METERS = 80f
+
+/** Ampeln stehen oft etwas vor der Kreuzung – deshalb ein größerer Fangradius. */
+private const val SIGNAL_PICK_FACTOR = 3f
+private const val PERCENT = 100
 
 /**
  * Eine geplante Maßnahme: noch nicht gebaut, noch nicht bezahlt. [key] bezeichnet das Ziel (Strecke, Knoten,
@@ -123,7 +131,16 @@ internal fun Plan.click(
         }
 
         Tool.SPEED_LIMIT -> {
-            speedLimitClick(selection, context, x, y, radius)
+            routeClick(context, x, y, radius) { speedLimitAction(selection, context, it) }
+        }
+
+        Tool.SIGNAL_TIMING -> {
+            val kmh = selection.signalPreset.waveKmh
+            if (kmh != null) {
+                routeClick(context, x, y, radius, directed = true) { greenWaveAction(kmh, context, it) }
+            } else {
+                splitClick(selection.signalPreset, context, x, y, radius)
+            }
         }
 
         else -> {
@@ -132,13 +149,17 @@ internal fun Plan.click(
     }
 }
 
-/** Tempolimit: erster Klick = Anfang, zweiter = Ende; dieselbe Strecke zweimal = nur bis zur nächsten Kreuzung. */
-private fun Plan.speedLimitClick(
-    selection: ToolSelection,
+/**
+ * Zwei Klicks entlang einer Straße: erster Klick = Anfang, zweiter = Ende; dieselbe Strecke zweimal = nur bis zur
+ * nächsten Kreuzung. [plan] macht aus dem Weg (Abschnitte vom Anfang zum Ende) die geplante Maßnahme.
+ */
+private fun Plan.routeClick(
     context: PlanContext,
     x: Float,
     y: Float,
     radius: Float,
+    directed: Boolean = false,
+    plan: (List<Int>) -> PlannedAction?,
 ) {
     val detour =
         context.frame
@@ -152,28 +173,109 @@ private fun Plan.speedLimitClick(
         return
     }
     routeStart = null
-    val stretches = context.picker.stretches
     val path =
-        if (segment in stretches.stretchOf(start)) {
-            listOf(segment)
+        if (segment in context.picker.stretches.stretchOf(start)) {
+            context.picker.stretches.stretchOf(segment)
         } else {
-            context.route.between(start, segment, allow = { it in detour }) ?: return
+            context.route.between(start, segment, allow = { it in detour }, directed = directed) ?: return
         }
-    // Ein Schild je Strecke von Kreuzung zu Kreuzung
+    plan(path)?.let(::add)
+}
+
+/** Tempolimit von Anfang bis Ende: ein Schild je Strecke von Kreuzung zu Kreuzung. */
+private fun speedLimitAction(
+    selection: ToolSelection,
+    context: PlanContext,
+    path: List<Int>,
+): PlannedAction {
+    val stretches = context.picker.stretches
     val firstOfStretch = path.map { stretches.stretchOf(it).min() }.distinct()
     val commands = firstOfStretch.map { GameCommand.SetSpeedLimit(it, selection.speedLimit, selection.nightOnly) }
-    val allSegments = firstOfStretch.flatMap { stretches.stretchOf(it) }
-    val middle = path[path.size / 2]
-    val (mx, my) = context.picker.midpoint(middle)
+    val (mx, my) = context.picker.midpoint(path[path.size / 2])
     val night = if (selection.nightOnly) " " + tr("nachts") else ""
     val label = (selection.speedLimit?.let { limitLabel(it) } ?: tr("Original")) + night
     val cost = if (selection.speedLimit == null) 0L else context.rules.speedLimitSignCost * commands.size
+    return PlannedAction(
+        commands,
+        "limit:${firstOfStretch.sorted().joinToString(",")}:${selection.nightOnly}",
+        PlanMarker(
+            mx,
+            my,
+            label,
+            removal = selection.speedLimit == null,
+            segments =
+                firstOfStretch.flatMap {
+                    stretches.stretchOf(it)
+                },
+        ),
+        cost,
+    )
+}
+
+/** Grüne Welle von Anfang bis Ende; bezahlt wird je Ampelanlage auf dem Weg (hier geschätzt). */
+private fun greenWaveAction(
+    kmh: Int,
+    context: PlanContext,
+    path: List<Int>,
+): PlannedAction {
+    val (mx, my) = context.picker.midpoint(path[path.size / 2])
+    val cost = context.rules.signalProgramCost * estimatedPlants(context, path)
+    return PlannedAction(
+        listOf(GameCommand.SetGreenWave(path, kmh)),
+        "wave:${path.joinToString(",")}",
+        PlanMarker(mx, my, tr("Welle {kmh}", "kmh" to kmh), segments = path),
+        cost,
+    )
+}
+
+/** Ampelanlagen entlang des Wegs: Ampelknoten auf dem Weg, nahe beieinander liegende zählen als eine Anlage. */
+private fun estimatedPlants(
+    context: PlanContext,
+    path: List<Int>,
+): Int {
+    val signalNodes =
+        context.frame
+            ?.game
+            ?.signalNodes
+            .orEmpty()
+    val roads = context.city.roads
+    val onPath =
+        path.flatMap { listOf(roads.segments[it].from, roads.segments[it].to) }.distinct().filter {
+            it in
+                signalNodes
+        }
+    val clusters = ArrayList<Pair<Float, Float>>()
+    for (node in onPath) {
+        val n = roads.nodes[node]
+        if (clusters.none { (x, y) -> hypot(x - n.x, y - n.y) < SAME_PLANT_METERS }) clusters += n.x to n.y
+    }
+    return clusters.size
+}
+
+/** Grünzeit einer Ampelanlage aufteilen: die nächste Ampel im Umkreis. */
+private fun Plan.splitClick(
+    preset: SignalPreset,
+    context: PlanContext,
+    x: Float,
+    y: Float,
+    radius: Float,
+) {
+    val share = preset.mainShare ?: return
+    val roads = context.city.roads
+    val node =
+        context.frame
+            ?.game
+            ?.signalNodes
+            .orEmpty()
+            .filter { hypot(roads.nodes[it].x - x, roads.nodes[it].y - y) <= radius * SIGNAL_PICK_FACTOR }
+            .minByOrNull { hypot(roads.nodes[it].x - x, roads.nodes[it].y - y) } ?: return
+    val main = (share * PERCENT).roundToInt()
     add(
         PlannedAction(
-            commands,
-            "limit:${firstOfStretch.sorted().joinToString(",")}:${selection.nightOnly}",
-            PlanMarker(mx, my, label, removal = selection.speedLimit == null, segments = allSegments),
-            cost,
+            listOf(GameCommand.SetSignalProgram(node, share)),
+            "program:$node",
+            PlanMarker(roads.nodes[node].x, roads.nodes[node].y, "$main/${PERCENT - main}"),
+            context.rules.signalProgramCost,
         ),
     )
 }

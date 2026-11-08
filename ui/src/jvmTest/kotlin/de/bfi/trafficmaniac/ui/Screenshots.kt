@@ -11,6 +11,7 @@ import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.game.TrafficFrame
+import de.bfi.trafficmaniac.ui.map.StreetRoute
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.skia.EncodedImageFormat
 import java.io.File
@@ -51,7 +52,12 @@ class Screenshots {
                 )
             }
             for (panel in listOf(SidePanel.NONE, SidePanel.OFFICE, SidePanel.BUDGET)) {
-                val input = HudInput().apply { panelRequest = panel }
+                val input =
+                    HudInput().apply {
+                        panelRequest = panel
+                        // Ohne Fenster: das Ampelprogramm-Werkzeug mit seiner Auswahl zeigen
+                        if (panel == SidePanel.NONE) toolRequest = Tool.SIGNAL_TIMING
+                    }
                 shoot(File(out, "game-${panel.name.lowercase()}-$suffix.png"), width, height) {
                     TrafficManiacApp(
                         city,
@@ -105,6 +111,13 @@ class Screenshots {
         main.take(3).forEach { game.submit(GameCommand.SetSpeedLimit(it, 30)) }
         game.submit(GameCommand.PlaceCamera(main[3]))
         game.submit(GameCommand.SetDeadlineDays(5))
+        // Grüne Welle über die Karlsruher Straße (getrennte Richtungsfahrbahnen, mehrere Ampeln)
+        val street = city.roads.segments.filter { !it.passive && it.name == "Karlsruher Straße" }
+        if (street.size > 1) {
+            StreetRoute(city).between(street.first().id, street.last().id, directed = true)?.let {
+                game.submit(GameCommand.SetGreenWave(it, 50))
+            }
+        }
         repeat(WARMUP_TICKS) { game.step() }
         val snapshot = game.simulation.snapshot()
         return TrafficFrame(

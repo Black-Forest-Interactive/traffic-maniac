@@ -31,6 +31,7 @@ private val CONTROLS =
         "Esc · Q W E R T" to translatable("Ansehen, Tempolimit, Ampel, Blitzer, Laser, Anhänger"),
         "T" to translatable("Anhänger umsetzen: aufgestellten Anhänger anklicken, dann die neue Straße"),
         "A S D X" to translatable("Vorfahrt, Radweg-Querung, Umleitung, Abbauen"),
+        "G" to translatable("Ampelprogramm: Grünzeit aufteilen oder grüne Welle (Anfang und Ende anklicken)"),
         "Enter" to translatable("Tagesabschluss schließen"),
         "M · N" to translatable("Ton bzw. Musik aus/an"),
         "F5" to translatable("Schnell speichern (Laden im Startmenü)"),

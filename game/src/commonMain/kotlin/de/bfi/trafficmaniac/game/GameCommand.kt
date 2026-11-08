@@ -18,6 +18,18 @@ sealed interface GameCommand {
         val node: Int,
     ) : GameCommand
 
+    /** Grünzeit der Ampelanlage an [node] aufteilen: [mainShare] für die Hauptrichtung (0,5 = gleich). */
+    data class SetSignalProgram(
+        val node: Int,
+        val mainShare: Double,
+    ) : GameCommand
+
+    /** Grüne Welle entlang [segments] (zusammenhängend, vom ersten zum letzten) für [kmh]. */
+    data class SetGreenWave(
+        val segments: List<Int>,
+        val kmh: Int,
+    ) : GameCommand
+
     /** Fester Blitzer oder – mit [mobile] – Lasermessung (Personal, Kosten pro Tag, frei umsetzbar). */
     data class PlaceCamera(
         val segment: Int,
