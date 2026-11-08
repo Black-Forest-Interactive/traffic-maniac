@@ -235,8 +235,11 @@ internal class Incidents(
     fun update(time: Double) {
         val finished = ArrayList<Incident>()
         for (incident in incidents) {
+            // Wer nach einer Viertelstunde nicht durchkommt, nimmt einen anderen Weg – sonst blockieren sich zwei
+            // Einsätze gegenseitig (die Feuerwehr des einen steckt im anderen Unfall und umgekehrt)
+            val overdue = time - incident.startTime > RESPONDER_PATIENCE_SECONDS
             for (responder in incident.responders) {
-                if (responder.role in incident.arrived || !hasArrived(responder, incident)) continue
+                if (responder.role in incident.arrived || !(overdue || hasArrived(responder, incident))) continue
                 incident.arrived += responder.role
                 responder.working = true
                 if (responder.role == VehicleRole.AMBULANCE) {
@@ -263,13 +266,23 @@ internal class Incidents(
         }
     }
 
+    /**
+     * Angekommen: direkt an der Einsatzstelle – oder in der Nähe im Stau stehend. Dann bilden die anderen eine
+     * Rettungsgasse bzw. die Besatzung geht das letzte Stück zu Fuß. Sonst warten Einsatzfahrzeuge ewig hinter
+     * ihren Kollegen, hinter den Autos, die sich hinter dem Unfall stauen, oder hinter einem anderen Unfall.
+     */
     private fun hasArrived(
         responder: Vehicle,
         incident: Incident,
-    ): Boolean =
-        responder.active &&
+    ): Boolean {
+        if (!responder.active) return false
+        val atScene =
             responder.link == incident.link &&
-            (responder.position >= incident.position - ARRIVAL_DISTANCE || responder.holdAtEnd)
+                (responder.position >= incident.position - ARRIVAL_DISTANCE || responder.holdAtEnd)
+        if (atScene) return true
+        val stuckNearby = responder.speed < MOVING && responder.waitingTime >= RESCUE_LANE_WAIT
+        return stuckNearby && graph.distanceToScene(responder, incident) <= RESCUE_LANE_DISTANCE
+    }
 
     private fun workSeconds(kind: IncidentKind): Double =
         SECONDS_PER_MINUTE *
@@ -309,9 +322,33 @@ internal class Incidents(
         const val GAPER_SLOWDOWN = 0.7f
         const val ARRIVAL_DISTANCE = 20.0
 
+        /** So weit vor der Einsatzstelle zählt ein im Stau stehendes Einsatzfahrzeug als angekommen. */
+        const val RESCUE_LANE_DISTANCE = 300.0
+
+        /** Spätestens dann gilt jedes Einsatzfahrzeug als vor Ort (es kam über einen anderen Weg). */
+        const val RESPONDER_PATIENCE_SECONDS = 15 * 60.0
+
+        /** … wenn es mindestens so lange steht (Sekunden). */
+        const val RESCUE_LANE_WAIT = 20.0
+
         /** Sicherheitsnetz: Nach drei Stunden ist jeder Einsatz erledigt, auch wenn niemand durchkam. */
         const val GIVE_UP_SECONDS = 3 * 3_600.0
     }
+}
+
+/** Restweg entlang der Route bis zur Einsatzstelle in Metern (große Zahl, wenn sie nicht auf der Route liegt). */
+private fun RoadGraph.distanceToScene(
+    responder: Vehicle,
+    incident: Incident,
+): Double {
+    if (responder.link == incident.link) return incident.position - responder.position
+    var meters = linkLength[responder.link] - responder.position
+    var i = responder.routeIndex + 1
+    while (i < responder.route.size && responder.route[i] != incident.link && meters < Double.MAX_VALUE) {
+        meters += linkLength[responder.route[i]]
+        i++
+    }
+    return if (i < responder.route.size) meters + incident.position else Double.MAX_VALUE
 }
 
 internal fun SimulationConfig.ticksPerSecondInverse(): Double = 1.0 / ticksPerSecond
