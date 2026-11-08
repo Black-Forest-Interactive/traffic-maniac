@@ -90,6 +90,8 @@ fun MapView(
     focus: MapFocus? = null,
     /** Fertige Grafiken (z. B. aus `assets/sprites/`); fehlende werden gezeichnet. */
     sprites: SpriteSource = NoSprites,
+    /** Zoom-Knopf: Jede neue Instanz zoomt um ihren Faktor um die Bildmitte. */
+    zoom: MapZoom? = null,
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
@@ -105,6 +107,7 @@ fun MapView(
     LaunchedEffect(camera?.scale) { camera?.let { onZoom(it.scale) } }
     val ping = remember { longArrayOf(0L) }
     LaunchedEffect(focus) { focus?.let { flyTo(view, it, ping) } }
+    ZoomRequests(view, zoom)
 
     Box(
         modifier
@@ -150,6 +153,23 @@ fun MapView(
         )
     }
 }
+
+/** Zoomt bei jedem neuen [zoom] um die Bildmitte. */
+@Composable
+private fun ZoomRequests(
+    view: ViewState,
+    zoom: MapZoom?,
+) {
+    LaunchedEffect(zoom) {
+        val request = zoom ?: return@LaunchedEffect
+        view.camera = view.camera?.zoomAt(request.factor, view.width / 2, view.height / 2, view.width, view.height)
+    }
+}
+
+/** Zoom um [factor] (größer 1 = näher heran). Jede neue Instanz zoomt erneut. */
+class MapZoom(
+    val factor: Float,
+)
 
 /** Ziel für "zeig mir das" in Weltkoordinaten. Jede neue Instanz löst einen neuen Flug aus. */
 class MapFocus(

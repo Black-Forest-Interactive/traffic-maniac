@@ -8,6 +8,7 @@ import de.bfi.trafficmaniac.game.HighscoreEntry
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.ui.HudInput
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -23,6 +24,9 @@ internal class Session(
     val game: CityGame,
     val runner: GameRunner,
 ) {
+    /** Tasten an die Spieloberfläche: Werkzeuge (Q, W, E …) und Entwickler-Anzeige (F3). */
+    val input = HudInput()
+
     /**
      * Wartet auf das Ende der Partie. Liefert den Eintrag für die Bestenliste, wenn die Amtszeit regulär endet –
      * wer abgewählt wird, kommt nicht hinein.

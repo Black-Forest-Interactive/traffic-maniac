@@ -1,21 +1,27 @@
 package de.bfi.trafficmaniac.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,12 +33,15 @@ import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.IncidentKind
 import de.bfi.trafficmaniac.sim.IncidentMarker
-import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
+import de.bfi.trafficmaniac.ui.components.Badge
+import de.bfi.trafficmaniac.ui.components.BadgeTone
+import de.bfi.trafficmaniac.ui.components.PanelScaffold
+import de.bfi.trafficmaniac.ui.components.PanelSection
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlin.math.roundToInt
 
-/** Einblendbare Fenster rechts oben. */
+/** Fenster, die die linke Leiste rechts öffnet. */
 internal enum class SidePanel(
     private val labelText: String,
 ) {
@@ -52,71 +61,30 @@ internal enum class SidePanel(
     val label: String get() = tr(labelText)
 }
 
-/** Einblendbare Karten-Ebenen: Umwelt, Zufriedenheit und Straßenzustand. */
-internal class MapToggles {
-    var showMoods by mutableStateOf(false)
-    var showCondition by mutableStateOf(false)
-    var environmentLayer by mutableStateOf(EnvironmentLayer.NONE)
-
-    fun nextEnvironmentLayer() {
-        environmentLayer = EnvironmentLayer.entries[(environmentLayer.ordinal + 1) % EnvironmentLayer.entries.size]
-    }
-}
-
-/** Knopfleiste rechts oben und das gerade geöffnete Fenster darunter. */
-@Composable
-internal fun SidePanels(
-    frame: TrafficFrame,
-    rules: GameRules,
-    panel: SidePanel,
-    onPanel: (SidePanel) -> Unit,
-    toggles: MapToggles,
-    onCommand: (GameCommand) -> Unit,
-    picker: MapPicker,
+/** Was ein Fenster im Seitenbereich braucht. */
+internal class PanelContext(
+    val frame: TrafficFrame,
+    val rules: GameRules,
+    val onCommand: (GameCommand) -> Unit,
+    val picker: MapPicker,
     /** Klick auf eine Meldung, ein Ereignis oder einen Einsatz: die Karte zeigt die Stelle. */
-    onShow: (MapPlace) -> Unit,
-    onMenu: (() -> Unit)?,
-    sprites: SpriteSource,
+    val onShow: (MapPlace) -> Unit,
+    val sprites: SpriteSource,
+    val onClose: () -> Unit,
+)
+
+/** Seitenbereich rechts (372 dp, volle Höhe) mit dem geöffneten Fenster; scrollt, wenn es länger ist. */
+@Composable
+internal fun SidePanelSlot(
+    panel: SidePanel,
+    context: PanelContext,
     modifier: Modifier = Modifier,
-    onSave: (() -> Unit)? = null,
 ) {
-    Column(modifier, horizontalAlignment = Alignment.End) {
-        // Bricht in eine zweite Zeile um, statt das HUD links oben zu überdecken
-        FlowRow(Modifier.widthIn(max = BUTTON_ROW_WIDTH.dp), horizontalArrangement = Arrangement.End) {
-            onMenu?.let { SmallButton(tr("Menü"), it) }
-            onSave?.let { SmallButton(tr("Speichern"), it) }
-            val layer = toggles.environmentLayer
-            SmallButton(
-                if (layer ==
-                    EnvironmentLayer.NONE
-                ) {
-                    tr("Umwelt")
-                } else {
-                    tr("Umwelt: {layer}", "layer" to layer.label)
-                },
-            ) {
-                toggles.nextEnvironmentLayer()
-            }
-            SmallButton(if (toggles.showMoods) tr("Zufriedenheit ausblenden") else tr("Zufriedenheit")) {
-                toggles.showMoods = !toggles.showMoods
-            }
-            SmallButton(if (toggles.showCondition) tr("Zustand ausblenden") else tr("Zustand")) {
-                toggles.showCondition = !toggles.showCondition
-            }
-            for (option in SidePanel.entries.drop(1)) {
-                val count = frame.current.incidents.size
-                val label =
-                    if (option == SidePanel.EMERGENCIES &&
-                        count > 0
-                    ) {
-                        "${option.label} ($count)"
-                    } else {
-                        option.label
-                    }
-                SmallButton(label) { onPanel(option) }
-            }
+    Row(modifier.fillMaxHeight()) {
+        Box(Modifier.width(1.dp).fillMaxHeight().background(TmColors.Line))
+        Column(Modifier.width(SLOT_WIDTH.dp).fillMaxHeight().background(TmColors.Surface)) {
+            with(context) { PanelContent(panel, frame, rules, onCommand, picker, onShow, sprites, onClose) }
         }
-        PanelContent(panel, frame, rules, onCommand, picker, onShow, sprites)
     }
 }
 
@@ -129,6 +97,7 @@ private fun PanelContent(
     picker: MapPicker,
     onShow: (MapPlace) -> Unit,
     sprites: SpriteSource,
+    onClose: () -> Unit,
 ) {
     val game = frame.game
     when (panel) {
@@ -175,7 +144,7 @@ private fun PanelContent(
         }
 
         SidePanel.EMERGENCIES -> {
-            EmergencyPanel(frame.current.incidents, frame.current.time, onShow)
+            EmergencyPanel(frame.current.incidents, frame.current.time, onShow, onClose)
         }
 
         SidePanel.ACHIEVEMENTS -> {
@@ -191,77 +160,96 @@ private fun PanelContent(
 }
 
 /**
- * Laufende Einsätze: Unfälle zuerst, dann die neuesten. Jeder Eintrag zeigt, wer schon vor Ort und wer noch unterwegs
- * ist – ein Klick fliegt hin.
+ * Laufende Einsätze: Unfälle zuerst, dann die neuesten. Jeder Einsatz mit farbiger Seitenleiste (Unfall rot, Panne
+ * orange), Dauer und Einsatzkräften als Etiketten (vor Ort grün, unterwegs gelb) – ein Klick fliegt hin.
  */
 @Composable
 private fun EmergencyPanel(
     incidents: List<IncidentMarker>,
     now: Double,
     onShow: (MapPlace) -> Unit,
+    onClose: () -> Unit,
 ) {
-    val title = TextStyle(color = ComicTheme.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    val text = TextStyle(color = ComicTheme.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-    val muted = TextStyle(color = ComicTheme.muted, fontSize = 11.sp)
-    Column(
-        Modifier
-            .width(PANEL_WIDTH.dp)
-            .padding(12.dp)
-            .comicPanel()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+    PanelScaffold(
+        tr("Bericht"),
+        tr("Einsätze"),
+        floating = false,
+        onClose = onClose,
+        headerExtra = { if (incidents.isNotEmpty()) Badge("${incidents.size}", tone = BadgeTone.DANGER) },
     ) {
-        BasicText(tr("Einsätze ({incidents})", "incidents" to incidents.size), style = title)
-        if (incidents.isEmpty()) BasicText(tr("Alles ruhig – kein Blaulicht unterwegs."), style = muted)
-        val sorted = incidents.sortedWith(compareBy({ it.kind != IncidentKind.ACCIDENT }, { -it.startTime }))
-        for (incident in sorted.take(MAX_ROWS)) {
-            val minutes = ((now - incident.startTime) / SECONDS_PER_MINUTE).roundToInt()
-            val color = if (incident.kind == IncidentKind.ACCIDENT) ComicTheme.red else ComicTheme.ink
-            Column(Modifier.clickable { onShow(MapPlace(incident.x, incident.y)) }) {
-                BasicText(
-                    tr("▸ {kind} – seit {minutes} min", "kind" to incident.kind.label, "minutes" to minutes),
-                    style = text.copy(color = color),
-                )
-                val details =
-                    listOfNotNull(
-                        incident.onScene.takeIf { it.isNotEmpty() }?.let {
-                            tr("vor Ort: ") +
-                                it.joinToString { r -> r.label }
-                        },
-                        incident.onTheWay.takeIf { it.isNotEmpty() }?.let {
-                            "unterwegs: " +
-                                it.joinToString { r -> r.label }
-                        },
-                    )
-                if (details.isNotEmpty()) BasicText(details.joinToString(" · "), style = muted)
+        PanelSection(divider = false) {
+            if (incidents.isEmpty()) BasicText(tr("Alles ruhig – kein Blaulicht unterwegs."), style = TmType.small)
+            val sorted = incidents.sortedWith(compareBy({ it.kind != IncidentKind.ACCIDENT }, { -it.startTime }))
+            for (incident in sorted.take(
+                MAX_ROWS,
+            )) {
+                IncidentCard(incident, now) { onShow(MapPlace(incident.x, incident.y)) }
             }
-        }
-        if (incidents.size >
-            MAX_ROWS
-        ) {
-            BasicText(tr("… und {incidents} weitere", "incidents" to incidents.size - MAX_ROWS), style = muted)
+            if (incidents.size > MAX_ROWS) {
+                BasicText(
+                    tr("… und {incidents} weitere", "incidents" to incidents.size - MAX_ROWS),
+                    style = TmType.small,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun SmallButton(
-    label: String,
+private fun IncidentCard(
+    incident: IncidentMarker,
+    now: Double,
     onClick: () -> Unit,
 ) {
-    BasicText(
-        label,
-        style = TextStyle(color = ComicTheme.ink, fontSize = 13.sp),
-        modifier =
-            Modifier
-                .padding(top = 12.dp, end = 12.dp)
-                .comicButton(active = false)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-    )
+    val shape = RoundedCornerShape(12.dp)
+    val accent =
+        when (incident.kind) {
+            IncidentKind.ACCIDENT, IncidentKind.TRUCK_STUCK -> TmColors.Danger
+            IncidentKind.OIL_SPILL -> TmColors.Primary
+            else -> TmColors.Warn
+        }
+    val minutes = ((now - incident.startTime) / SECONDS_PER_MINUTE).roundToInt()
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clip(shape)
+            .border(1.dp, TmColors.Line, shape)
+            .clickable(role = Role.Button, onClick = onClick),
+    ) {
+        Box(Modifier.width(5.dp).fillMaxHeight().background(accent))
+        Column(
+            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                BasicText(incident.kind.label, style = TmType.text(14.sp, FontWeight.Bold))
+                BasicText(
+                    tr("seit {minutes} min", "minutes" to minutes),
+                    style = TmType.mono(12.sp, bold = false, color = TmColors.Muted),
+                )
+            }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                for (role in incident.onScene) {
+                    Badge(
+                        tr("{unit} vor Ort", "unit" to role.label),
+                        tone = BadgeTone.SUCCESS,
+                    )
+                }
+                for (role in incident.onTheWay) {
+                    Badge(
+                        tr("{unit} unterwegs", "unit" to role.label),
+                        tone = BadgeTone.WARN,
+                    )
+                }
+            }
+        }
+    }
 }
 
-private const val PANEL_WIDTH = 380
-private const val BUTTON_ROW_WIDTH = 860
+private const val SLOT_WIDTH = 372
 private const val MAX_ROWS = 12
 private const val SECONDS_PER_MINUTE = 60.0

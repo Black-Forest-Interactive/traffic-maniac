@@ -35,6 +35,7 @@ private val PanelShape = RoundedCornerShape(14.dp)
 /**
  * Fenster nach dem Muster aller Ämter und Berichte: Kopf mit Eyebrow („Amt“, „Bericht“) und Display-Titel, rechts
  * optional eine Kennzahl ([headerExtra]) und das Schließen-Kreuz, darunter scrollbarer Inhalt aus [PanelSection]s.
+ * [floating] = schwebendes Fenster mit Rahmen und Schatten; sonst füllt es den Platz (Seitenfenster rechts).
  */
 @Composable
 fun PanelScaffold(
@@ -42,15 +43,20 @@ fun PanelScaffold(
     title: String,
     modifier: Modifier = Modifier,
     onClose: (() -> Unit)? = null,
+    floating: Boolean = true,
     headerExtra: (@Composable RowScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier
-            .shadow(6.dp, PanelShape, spotColor = Shadow, ambientColor = Shadow)
-            .background(TmColors.Surface, PanelShape)
-            .border(1.dp, TmColors.Line, PanelShape),
-    ) {
+    val frame =
+        if (floating) {
+            Modifier
+                .shadow(6.dp, PanelShape, spotColor = Shadow, ambientColor = Shadow)
+                .background(TmColors.Surface, PanelShape)
+                .border(1.dp, TmColors.Line, PanelShape)
+        } else {
+            Modifier.background(TmColors.Surface)
+        }
+    Column(modifier.then(frame)) {
         Row(
             Modifier.fillMaxWidth().padding(start = 20.dp, end = 10.dp, top = 16.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
