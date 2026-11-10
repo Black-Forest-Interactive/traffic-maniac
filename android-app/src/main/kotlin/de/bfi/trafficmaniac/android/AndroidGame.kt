@@ -150,14 +150,14 @@ private fun Playing(
 }
 
 /**
- * Das Spiel ist für mindestens [MIN_WIDTH_DP] gezeichnet; auf schmaleren Bildschirmen (Handy im Querformat) wird
- * alles passend verkleinert. Vorläufig, bis die Touch-Oberfläche eigene Layouts für kleine Bildschirme hat.
+ * Das Spiel ist für mindestens [MIN_WIDTH_DP] × [MIN_HEIGHT_DP] gezeichnet; auf kleineren Bildschirmen (Handy im
+ * Querformat) wird alles passend verkleinert. Vorläufig, bis die Touch-Oberfläche eigene Layouts für kleine Bildschirme hat.
  */
 @Composable
 private fun FitWidth(content: @Composable () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val base = LocalDensity.current
-        val factor = (maxWidth.value / MIN_WIDTH_DP).coerceAtMost(1f)
+        val factor = minOf(maxWidth.value / MIN_WIDTH_DP, maxHeight.value / MIN_HEIGHT_DP, 1f)
         CompositionLocalProvider(
             LocalDensity provides Density(base.density * factor, base.fontScale),
             content = content,
@@ -166,3 +166,4 @@ private fun FitWidth(content: @Composable () -> Unit) {
 }
 
 private const val MIN_WIDTH_DP = 1200f
+private const val MIN_HEIGHT_DP = 700f
