@@ -98,6 +98,41 @@ internal class HudState(
     }
 }
 
+/** Tasten und Anfragen aus dem Fenster: Werkzeug (Blitzer zweimal = nächste Art) und Fenster rechts. */
+@Composable
+private fun InputRequests(
+    input: HudInput,
+    hud: HudState,
+) {
+    LaunchedEffect(input.toolRequest) {
+        input.toolRequest?.let { tool ->
+            val selection = hud.selection
+            hud.selection =
+                when {
+                    tool !in hud.availableTools -> {
+                        selection
+                    }
+
+                    // Blitzer schon gewählt: E noch einmal wechselt die Art
+                    tool == Tool.CAMERA && selection.tool == Tool.CAMERA -> {
+                        selection.copy(
+                            cameraKind = selection.cameraKind.next,
+                        )
+                    }
+
+                    else -> {
+                        selection.copy(tool = tool)
+                    }
+                }
+        }
+        input.toolRequest = null
+    }
+    LaunchedEffect(input.panelRequest) {
+        input.panelRequest?.let { hud.panel = it }
+        input.panelRequest = null
+    }
+}
+
 /** Wurzel der Spieloberfläche. Ohne Stadt wird ein Hinweis angezeigt, wie man sie erzeugt. */
 @Composable
 fun TrafficManiacApp(
@@ -131,14 +166,7 @@ fun TrafficManiacApp(
         sound.play(SoundEffect.CLICK)
         onCommand(it)
     }
-    LaunchedEffect(input.toolRequest) {
-        input.toolRequest?.let { if (it in hud.availableTools) hud.selection = hud.selection.copy(tool = it) }
-        input.toolRequest = null
-    }
-    LaunchedEffect(input.panelRequest) {
-        input.panelRequest?.let { hud.panel = it }
-        input.panelRequest = null
-    }
+    InputRequests(input, hud)
     val hudFrame by rememberHudFrame(traffic, sound, hud.zoomLevel)
     TmTheme {
         Box(Modifier.fillMaxSize().background(TmColors.Ground)) {

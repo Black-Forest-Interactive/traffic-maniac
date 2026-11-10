@@ -53,6 +53,17 @@ sealed interface GameCommand {
         val mobile: Boolean = false,
     ) : GameCommand
 
+    /** Rotlichtblitzer an der Haltelinie der Ampelzufahrt [link]; mit [withSpeed] misst er auch das Tempo. */
+    data class PlaceRedLightCamera(
+        val link: Int,
+        val withSpeed: Boolean,
+    ) : GameCommand
+
+    /** Geschwindigkeits-Anzeigetafel an [segment]: misst nur, blitzt nicht. */
+    data class PlaceDisplay(
+        val segment: Int,
+    ) : GameCommand
+
     /** Blitzeranhänger aufstellen: ein freier aus dem Depot (Umsetzgebühr) oder ein neuer. */
     data class PlaceTrailer(
         val segment: Int,

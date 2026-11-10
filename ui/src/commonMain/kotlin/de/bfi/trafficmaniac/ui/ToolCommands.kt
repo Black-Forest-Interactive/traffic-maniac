@@ -28,10 +28,8 @@ internal fun commandFor(
             removeCommandFor(picker, frame, x, y, radius)
         }
 
-        // Klick auf einen aufgestellten Anhänger lädt ihn auf, der nächste Klick auf eine Straße stellt ihn dort auf
-        Tool.TRAILER -> {
-            nearestCamera(frame, x, y, radius) { it.trailer }?.let { GameCommand.RemoveCamera(it.id) }
-                ?: picker.nearestSegment(x, y, radius)?.let { GameCommand.PlaceTrailer(it) }
+        Tool.CAMERA -> {
+            cameraCommand(selection.cameraKind, picker, frame, x, y, radius)
         }
 
         // Für die Umleitung kommen auch Nebenstraßen in Frage
@@ -62,8 +60,6 @@ private fun segmentCommand(
 ): GameCommand? =
     when (selection.tool) {
         Tool.SPEED_LIMIT -> GameCommand.SetSpeedLimit(segment, selection.speedLimit, selection.nightOnly)
-        Tool.CAMERA -> GameCommand.PlaceCamera(segment)
-        Tool.LASER -> GameCommand.PlaceCamera(segment, mobile = true)
         Tool.PRIORITY -> GameCommand.SetPriorityRoad(segment, segment !in frame?.game?.priorityRoads.orEmpty())
         Tool.BIKE_CROSSING -> GameCommand.SetBikeCrossing(segment, segment !in frame?.game?.bikeCrossings.orEmpty())
         else -> null

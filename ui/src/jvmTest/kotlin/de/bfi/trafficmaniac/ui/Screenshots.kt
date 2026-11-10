@@ -51,12 +51,12 @@ class Screenshots {
                     cityMap = city,
                 )
             }
-            for (panel in listOf(SidePanel.NONE, SidePanel.OFFICE, SidePanel.BUDGET)) {
+            for (panel in listOf(SidePanel.NONE, SidePanel.OFFICE, SidePanel.CAMERAS)) {
                 val input =
                     HudInput().apply {
                         panelRequest = panel
                         // Ohne Fenster: das Ampelprogramm-Werkzeug mit seiner Auswahl zeigen
-                        toolRequest = if (panel == SidePanel.NONE) Tool.SIGNAL_TIMING else Tool.ROADWORKS
+                        toolRequest = if (panel == SidePanel.NONE) Tool.CAMERA else Tool.ROADWORKS
                     }
                 shoot(File(out, "game-${panel.name.lowercase()}-$suffix.png"), width, height) {
                     TrafficManiacApp(
@@ -110,6 +110,11 @@ class Screenshots {
                 .map { it.id }
         main.take(3).forEach { game.submit(GameCommand.SetSpeedLimit(it, 30)) }
         game.submit(GameCommand.PlaceCamera(main[3]))
+        // Anzeigetafel auf einer der Tempo-30-Strecken, Rotlichtblitzer an der ersten Ampelzufahrt
+        game.submit(GameCommand.PlaceDisplay(main[1]))
+        game.simulation.signals.controlledLinks.firstOrNull()?.let {
+            game.submit(GameCommand.PlaceRedLightCamera(it, withSpeed = true))
+        }
         game.submit(GameCommand.SetDeadlineDays(5))
         // Grüne Welle über die Karlsruher Straße (getrennte Richtungsfahrbahnen, mehrere Ampeln)
         val street = city.roads.segments.filter { !it.passive && it.name == "Karlsruher Straße" }

@@ -453,6 +453,7 @@ private fun DrawScope.drawTraffic(
     effects.clouds.draw(this, traffic.current, camera.scale, seconds, effects.sprites)
     val signs = speedSigns(traffic.game.speedLimits, traffic.game.nightLimits, picker, camera.scale)
     drawSpeedSigns(signs, camera.scale, textMeasurer, effects.sprites)
+    drawDisplays(traffic.current.cameras, camera.scale, textMeasurer)
     val priority = traffic.game.priorityRoads.map { picker.midpoint(it) }
     val crossings = traffic.game.bikeCrossings.map { picker.midpoint(it) }
     drawRoadMarkers(priority, crossings, camera.scale, effects.sprites)

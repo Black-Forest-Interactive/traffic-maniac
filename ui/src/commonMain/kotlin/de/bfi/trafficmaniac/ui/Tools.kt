@@ -64,8 +64,6 @@ enum class Tool(
     SIGNAL(translatable("Ampel"), Icons.TrafficLight, Key.W, "W"),
     SIGNAL_TIMING(translatable("Ampelprogramm"), Icons.Timer, Key.G, "G", translatable("Programm")),
     CAMERA(translatable("Blitzer"), Icons.Camera, Key.E, "E"),
-    LASER(translatable("Laser"), Icons.Zap, Key.R, "R"),
-    TRAILER(translatable("Anhänger"), Icons.Trailer, Key.T, "T"),
     PRIORITY(translatable("Vorfahrt"), Icons.Diamond, Key.A, "A"),
     BIKE_CROSSING(translatable("Radweg-Querung"), Icons.Bike, Key.S, "S", translatable("Radweg")),
     DETOUR(translatable("Umleitung"), Icons.Detour, Key.D, "D"),
@@ -94,6 +92,8 @@ data class ToolSelection(
     val signalPreset: SignalPreset = SignalPreset.MAIN,
     /** Baustelle mit Tempo 30 oder Vollsperrung. */
     val closure: Boolean = false,
+    /** Art des Blitzers (fest, Laser, Anhänger, Rotlicht, Anzeigetafel). */
+    val cameraKind: CameraKind = CameraKind.FIXED,
 ) {
     companion object {
         const val DEFAULT_SPEED_LIMIT = 30
@@ -142,6 +142,11 @@ internal fun ToolDock(
     ) {
         state.plan?.let { PlanBar(it) }
         if (state.selection.tool == Tool.SPEED_LIMIT) SpeedLimitOptions(state.selection, rules, state.onSelect)
+        if (state.selection.tool ==
+            Tool.CAMERA
+        ) {
+            CameraOptions(state.selection, rules, state.idleTrailers, state.onSelect)
+        }
         if (state.selection.tool == Tool.SIGNAL_TIMING) SignalTimingOptions(state.selection, state.onSelect)
         if (state.selection.tool == Tool.ROADWORKS) RoadworksOptions(state.selection, rules, state.onSelect)
         Row(
@@ -149,7 +154,7 @@ internal fun ToolDock(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             for (tool in Tool.entries.filter { it in state.available }) {
-                ToolTile(tool, state.selection.tool == tool, price(tool, rules, state.idleTrailers)) {
+                ToolTile(tool, state.selection.tool == tool, price(tool, rules, state.selection, state.idleTrailers)) {
                     state.onSelect(state.selection.copy(tool = tool))
                 }
             }
@@ -307,6 +312,7 @@ internal fun OptionChip(
 private fun price(
     tool: Tool,
     rules: GameRules,
+    selection: ToolSelection,
     idleTrailers: Int,
 ): String =
     when (tool) {
@@ -319,19 +325,7 @@ private fun price(
         }
 
         Tool.CAMERA -> {
-            formatEuro(rules.cameraCost)
-        }
-
-        Tool.LASER -> {
-            tr("{cost}/Tag", "cost" to formatEuro(rules.laserDailyCost))
-        }
-
-        Tool.TRAILER -> {
-            if (idleTrailers > 0) {
-                tr("{count} frei", "count" to idleTrailers)
-            } else {
-                formatEuro(rules.trailerCost)
-            }
+            selection.cameraKind.price(rules, idleTrailers)
         }
 
         Tool.PRIORITY -> {

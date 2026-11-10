@@ -308,6 +308,9 @@ class Vehicle internal constructor(
     /** Noch mit Sommerreifen unterwegs (nur bei Schnee von Belang). */
     internal var summerTyres = false
 
+    /** Fährt bei frischem Rot noch durch („war doch noch gelb“). */
+    internal var runsRedLights = false
+
     /** Einsatz, zu dem ein Einsatzfahrzeug unterwegs ist, oder -1. */
     internal var incidentId = -1
 

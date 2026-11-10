@@ -95,6 +95,8 @@ data class SimulationConfig(
     val defaultParkingFee: Double = 1.5,
     /** Startgebühr am Parkscheinautomaten am Straßenrand in Euro je Stunde (0 = kostenlos). */
     val defaultCurbFee: Double = 0.0,
+    /** Anteil der Fahrer, die bei frischem Rot noch durchfahren (mal [DriverProfile.speedingFactor]). */
+    val redLightRunnerShare: Double = 0.05,
     /** Wetter (Schnee, Sommerreifen, Räumdienst); `null` = trocken. */
     val weather: WeatherConfig? = null,
 ) {

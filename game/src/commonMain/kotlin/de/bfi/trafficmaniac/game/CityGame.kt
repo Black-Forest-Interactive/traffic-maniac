@@ -29,6 +29,8 @@ class CityGame(
     private val roadworks =
         Roadworks(city, simulation, rules, treasury, works) { message(it, kind = MessageKind.ACTION) }
     private val winter = WinterService(simulation, rules, treasury) { message(it, kind = MessageKind.PROBLEM) }
+    private val surveillance =
+        Surveillance(city, simulation, rules, treasury, works) { message(it, kind = MessageKind.ACTION) }
     private val citizens = Citizens(city.zones, rules)
     private val drivers = DriverRegistry(rules, citizens)
     private val office = FineOffice(rules, treasury, citizens, drivers) { message(it, kind = MessageKind.ACTION) }
@@ -165,10 +167,13 @@ class CityGame(
     /** Neue Blitzerfotos gehen an die Bußgeldstelle; Geld gibt es erst mit dem Bescheid. */
     private fun collectFines() {
         for (violation in simulation.speedControl.drainViolations()) {
-            val tier = FineTier.of(violation.excessKmh)
+            val red = violation.redSeconds
+            val tier = if (red != null) FineTier.ofRedLight(red) else FineTier.of(violation.excessKmh)
             works.cameraCounters[violation.cameraId]?.record(tier, violation.measuredKmh, violation.limitKmh)
             office.register(tier, violation.homeZone, violation.person, simulation.time)
             finesToday += tier.fine
+            // Tagesrekord und „Raser des Jahres“ zählen nur Tempoverstöße
+            if (red != null) continue
             if (violation.limitKmh > 0) {
                 recordRatioToday = maxOf(recordRatioToday, violation.measuredKmh / violation.limitKmh)
             }
@@ -207,7 +212,7 @@ class CityGame(
             meanSpeedKmh = stats.meanSpeedKmh,
             bridgesOpen = if (bridges.isEmpty()) -1 else bridges.count { it !in unusable },
             signForest = PublicWorks.SIGN_FOREST in works.achievements,
-            cameras = works.cameraCounters.size,
+            cameras = works.cameraCounters.values.count { !it.isDisplay },
             collapses = infrastructure.collapsedSegments.size,
             plannings = maintenanceState.reports.count { it.status == DamageStatus.PLANNING },
             corsos = events.state().totals[EventKind.BIKE_CORSO] ?: 0,
@@ -321,10 +326,12 @@ class CityGame(
             // Ampelprogramme und eigene Baustellen – jede Stelle übernimmt nur ihre Befehle
             is GameCommand.SetSignalProgram, is GameCommand.SetGreenWave,
             is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure, is GameCommand.SetPloughs,
+            is GameCommand.PlaceRedLightCamera, is GameCommand.PlaceDisplay,
             -> {
                 timing.execute(command)
                 roadworks.execute(command)
                 winter.execute(command)
+                surveillance.execute(command)
             }
 
             is GameCommand.RemoveSignal -> {
