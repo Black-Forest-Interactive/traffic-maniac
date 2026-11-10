@@ -151,7 +151,8 @@ private fun Playing(
 
 /**
  * Das Spiel ist für mindestens [MIN_WIDTH_DP] × [MIN_HEIGHT_DP] gezeichnet; auf kleineren Bildschirmen (Handy im
- * Querformat) wird alles passend verkleinert. Vorläufig, bis die Touch-Oberfläche eigene Layouts für kleine Bildschirme hat.
+ * Querformat) wird alles passend verkleinert. Vorläufig, bis die Touch-Oberfläche eigene Layouts für kleine
+ * Bildschirme hat.
  */
 @Composable
 private fun FitWidth(content: @Composable () -> Unit) {
