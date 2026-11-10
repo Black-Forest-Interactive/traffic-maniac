@@ -32,32 +32,6 @@ import de.bfi.trafficmaniac.ui.components.Icon
 import de.bfi.trafficmaniac.ui.components.Icons
 import de.bfi.trafficmaniac.ui.components.TmIcon
 
-/** Einträge der linken Leiste: Kurzname, Icon und das Fenster, das sie öffnen. */
-private class RailEntry(
-    val panel: SidePanel,
-    val labelText: String,
-    val icon: TmIcon,
-)
-
-private val OFFICES =
-    listOf(
-        // Bewusst getrennt: ein weiches Trennzeichen bricht um, zeigt aber keinen Bindestrich („Ordnungs / amt“)
-        RailEntry(SidePanel.OFFICE, translatable("Ordnungs-\namt"), Icons.Scale),
-        RailEntry(SidePanel.MAINTENANCE, translatable("Bauamt"), Icons.HardHat),
-        RailEntry(SidePanel.PARKING, translatable("Parken"), Icons.Parking),
-    )
-
-private val REPORTS =
-    listOf(
-        RailEntry(SidePanel.CAMERAS, translatable("Blitzer"), Icons.Camera),
-        RailEntry(SidePanel.BUDGET, translatable("Haushalt & PR"), Icons.Wallet),
-        RailEntry(SidePanel.CITIZENS, translatable("Bürger"), Icons.Users),
-        RailEntry(SidePanel.EVENTS, translatable("Kalender"), Icons.Calendar),
-        RailEntry(SidePanel.EMERGENCIES, translatable("Einsätze"), Icons.Siren),
-        RailEntry(SidePanel.ACHIEVEMENTS, translatable("Erfolge"), Icons.Award),
-        RailEntry(SidePanel.HELP, translatable("Hilfe"), Icons.Help),
-    )
-
 /**
  * Linke Leiste mit den Ämtern und Berichten. Ein Klick öffnet das Fenster rechts, ein zweiter schließt es; das
  * offene ist Ampelgelb. [emergencies] erscheint als roter Zähler an „Einsätze“.

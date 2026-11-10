@@ -1,10 +1,8 @@
 package de.bfi.trafficmaniac.desktop
 
+import de.bfi.trafficmaniac.game.Overrides
 import de.bfi.trafficmaniac.i18n.I18n
 import de.bfi.trafficmaniac.i18n.Language
-import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.Locale
 
@@ -14,8 +12,6 @@ import java.util.Locale
  */
 object Translations {
     const val DIRECTORY = "lang"
-
-    private val json = Json { isLenient = true }
 
     /** Die eingestellte Sprache, sonst die des Systems, sonst Englisch. */
     fun languageFor(setting: String?): Language =
@@ -37,7 +33,7 @@ object Translations {
         val file = File(directory, "${language.code}.json")
         if (!file.isFile) return emptyMap()
         return runCatching {
-            json.decodeFromString(MapSerializer(String.serializer(), String.serializer()), file.readText())
+            Overrides.translations(file.readText())
         }.onFailure { println("${file.path} ist beschädigt: ${it.message}") }
             .getOrDefault(emptyMap())
     }

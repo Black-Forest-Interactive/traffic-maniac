@@ -33,6 +33,16 @@ scripts/import-city.sh pforzheim # OSM-Extrakt laden (155 MB) und cities/pforzhe
 ./gradlew ktlintFormat           # Formatierung automatisch korrigieren
 ```
 
+### Android
+
+Die Android-App wird nur gebaut, wenn ein Android-SDK gefunden wird (`sdk.dir` in `local.properties`, `ANDROID_HOME`
+oder `~/Android/Sdk`) – ohne SDK bleibt alles beim Desktop. Querformat, ab Android 9.
+
+```bash
+./gradlew :android-app:assembleDebug   # APK nach android-app/build/outputs/apk/debug/
+./gradlew :android-app:installDebug    # auf das per USB verbundene Handy (USB-Debugging an)
+```
+
 Spielwerte (Kosten, Bußgelder, Schwellen für Bürgerzorn usw.) stehen in `balancing/*.json`.
 
 | Modul         | Inhalt                                                      |
@@ -42,6 +52,7 @@ Spielwerte (Kosten, Bußgelder, Schwellen für Bürgerzorn usw.) stehen in `bala
 | `game`        | Spielregeln: Geld, Bürgerzorn, Werkzeuge (Multiplatform)    |
 | `ui`          | Oberfläche mit Compose Multiplatform                        |
 | `desktop-app` | Startpunkt und Packaging der Desktop-Anwendung              |
+| `android-app` | Android-App: gleicher Kern und dieselbe Karte, eigene Hülle (nur mit SDK) |
 | `osm-import`  | Kommandozeilenwerkzeug: OpenStreetMap → Stadtdatei          |
 | `build-logic` | gemeinsame Gradle-Konfiguration (Convention-Plugins)        |
 

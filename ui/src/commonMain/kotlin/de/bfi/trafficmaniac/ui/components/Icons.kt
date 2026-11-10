@@ -227,6 +227,26 @@ object Icons {
             "M22 21v-2a4 4 0 0 0-3-3.87",
             "M16 3.13a4 4 0 0 1 0 7.75",
         )
+
+    /** Klemmbrett: Berichte. */
+    val Clipboard =
+        TmIcon(
+            "M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z",
+            "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2",
+            "M8 12h8",
+            "M8 16h5",
+        )
+
+    /** Funkwellen: Lage und Meldungen. */
+    val Radio =
+        TmIcon(
+            "M4.9 19.1C1 15.2 1 8.8 4.9 4.9",
+            "M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5",
+            "M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0",
+            "M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5",
+            "M19.1 4.9C23 8.8 23 15.1 19.1 19",
+        )
+
     val Calendar =
         TmIcon(
             "M8 2v4",

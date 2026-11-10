@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -169,8 +170,9 @@ internal fun ToolDock(
         state.plan?.let { PlanBar(it) }
         val open = state.openGroup?.takeIf { it in tools }
         if (open != null) {
-            // Über der eigenen Kachel: Abstand der Kachelmitte zur Dockmitte
-            val shift = (tools.indexOf(open) - (tools.size - 1) / 2f) * (TILE_WIDTH + TILE_GAP)
+            // Über der eigenen Kachel: Abstand der Kachelmitte zur Dockmitte (per Finger zweispaltig in der Mitte)
+            val shift =
+                if (LocalTouch.current) 0f else (tools.indexOf(open) - (tools.size - 1) / 2f) * (TILE_WIDTH + TILE_GAP)
             ToolFlyout(open, state.selection, rules, state.idleTrailers, state.onSelect, Modifier.offset(x = shift.dp))
         } else if (state.selection.tool == Tool.SPEED_LIMIT) {
             SpeedLimitOptions(state.selection, rules, state.onSelect)
@@ -204,6 +206,7 @@ private fun ToolTile(
     onClick: () -> Unit,
 ) {
     val active = look == TileLook.ACTIVE
+    val touch = LocalTouch.current
     val color = if (active) TmColors.Ink else TmColors.OnDark
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
@@ -225,11 +228,13 @@ private fun ToolTile(
             .clickable(interaction, LocalIndication.current, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = tool.label + ": " + kind.label },
     ) {
-        BasicText(
-            tool.keyLabel,
-            style = TmType.mono(10.sp, color = color.copy(alpha = KEY_ALPHA)),
-            modifier = Modifier.padding(start = 6.dp, top = 3.dp),
-        )
+        if (!touch) {
+            BasicText(
+                tool.keyLabel,
+                style = TmType.mono(10.sp, color = color.copy(alpha = KEY_ALPHA)),
+                modifier = Modifier.padding(start = 6.dp, top = 3.dp),
+            )
+        }
         // Gruppe: kleiner Pfeil – ein Klick klappt die Liste auf
         if (tool.isGroup) {
             Icon(
@@ -258,7 +263,7 @@ private fun ToolTile(
                 maxLines = 1,
             )
         }
-        if (hovered && look != TileLook.OPEN) ToolTooltip("${tool.label}: ${kind.label} (${tool.keyLabel})")
+        if (hovered && look != TileLook.OPEN && !touch) ToolTooltip("${tool.label}: ${kind.label} (${tool.keyLabel})")
     }
 }
 
@@ -279,9 +284,10 @@ private fun ToolFlyout(
     modifier: Modifier = Modifier,
 ) {
     val current = selection.chosen[group] ?: group.kinds.first()
+    val touch = LocalTouch.current
     Column(
         modifier
-            .width(FLYOUT_WIDTH.dp)
+            .width(if (touch) TOUCH_FLYOUT_WIDTH.dp else FLYOUT_WIDTH.dp)
             .shadow(10.dp, FlyoutShape, spotColor = DockShadow)
             .background(TmColors.Surface, FlyoutShape)
             .border(1.dp, TmColors.Line, FlyoutShape),
@@ -292,20 +298,31 @@ private fun ToolFlyout(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             BasicText(group.label.uppercase(), style = TmType.eyebrow)
-            BasicText(
-                tr("{key} wechselt · 1–{count} wählt", "key" to group.keyLabel, "count" to group.kinds.size),
-                style = TmType.mono(11.sp, bold = false, color = TmColors.Muted),
-            )
+            if (!touch) {
+                BasicText(
+                    tr("{key} wechselt · 1–{count} wählt", "key" to group.keyLabel, "count" to group.kinds.size),
+                    style = TmType.mono(11.sp, bold = false, color = TmColors.Muted),
+                )
+            }
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(TmColors.LineSoft))
+        val row: @Composable (Int, ToolKind, Modifier) -> Unit = { index, kind, rowModifier ->
+            FlyoutRow(
+                (index + 1).takeIf { !touch },
+                kind,
+                kind == current,
+                kind.price(rules, idleTrailers),
+                rowModifier,
+            ) { onSelect(selection.with(kind)) }
+        }
+        // Per Finger zweispaltig: so passt auch die längste Gruppe über das Dock eines Handys im Querformat
+        val columns = if (touch) 2 else 1
         Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            group.kinds.forEachIndexed { index, kind ->
-                FlyoutRow(
-                    index + 1,
-                    kind,
-                    kind == current,
-                    kind.price(rules, idleTrailers),
-                ) { onSelect(selection.with(kind)) }
+            group.kinds.withIndex().chunked(columns).forEach { line ->
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    line.forEach { (index, kind) -> row(index, kind, Modifier.weight(1f)) }
+                    repeat(columns - line.size) { Spacer(Modifier.weight(1f)) }
+                }
             }
         }
     }
@@ -313,16 +330,17 @@ private fun ToolFlyout(
 
 @Composable
 private fun FlyoutRow(
-    number: Int,
+    number: Int?,
     kind: ToolKind,
     selected: Boolean,
     price: String,
+    modifier: Modifier,
     onClick: () -> Unit,
 ) {
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
-            .heightIn(min = ROW_HEIGHT.dp)
+            .heightIn(min = if (LocalTouch.current) TOUCH_ROW_HEIGHT.dp else ROW_HEIGHT.dp)
             .clip(RowShape)
             .background(if (selected) TmColors.PrimaryTint else Color.Transparent)
             .then(if (selected) Modifier.border(2.dp, TmColors.Primary, RowShape) else Modifier)
@@ -331,20 +349,27 @@ private fun FlyoutRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        BasicText(
-            "$number",
-            style = TmType.mono(11.sp, color = TmColors.Muted).copy(textAlign = TextAlign.Center),
-            modifier =
-                Modifier
-                    .width(
-                        22.dp,
-                    ).background(TmColors.Ground, RoundedCornerShape(6.dp))
-                    .padding(vertical = 3.dp),
-        )
+        if (number != null) {
+            BasicText(
+                "$number",
+                style = TmType.mono(11.sp, color = TmColors.Muted).copy(textAlign = TextAlign.Center),
+                modifier =
+                    Modifier
+                        .width(22.dp)
+                        .background(TmColors.Ground, RoundedCornerShape(6.dp))
+                        .padding(vertical = 3.dp),
+            )
+        }
         Icon(kind.icon, null, tint = TmColors.Ink, size = 20.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             BasicText(kind.label, style = TmType.text(14.sp, FontWeight.SemiBold))
-            BasicText(kind.note, style = TmType.text(12.sp, color = TmColors.Muted))
+            // Per Finger einzeilig: die Liste muss über das Dock eines Handys passen
+            BasicText(
+                kind.note,
+                style = TmType.text(12.sp, color = TmColors.Muted),
+                maxLines = if (LocalTouch.current) 1 else Int.MAX_VALUE,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         BasicText(price, style = TmType.mono(12.sp, bold = false), maxLines = 1)
     }
@@ -457,4 +482,6 @@ private const val KEY_ALPHA = 0.6f
 private const val CHEVRON_ALPHA = 0.7f
 private const val TOOLTIP_OFFSET = 34
 private const val FLYOUT_WIDTH = 340
+private const val TOUCH_FLYOUT_WIDTH = 600
 private const val ROW_HEIGHT = 52
+private const val TOUCH_ROW_HEIGHT = 44
