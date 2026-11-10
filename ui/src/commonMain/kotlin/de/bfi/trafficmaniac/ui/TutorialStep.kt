@@ -34,6 +34,8 @@ enum class TutorialStep(
     private val textText: String,
     val tools: Set<Tool> = emptySet(),
     val done: ((GameState) -> Boolean)? = null,
+    /** Text für die Bedienung per Finger, wenn [textText] von Maus oder Tasten spricht. */
+    private val touchText: String? = null,
 ) {
     WELCOME(
         translatable("Willkommen im Rathaus!"),
@@ -42,6 +44,12 @@ enum class TutorialStep(
                 "und nicht abgewählt werden. Mausrad zoomt, Ziehen verschiebt die Karte. Leertaste hält die Zeit an.",
         ),
         setOf(Tool.LOOK),
+        touchText =
+            translatable(
+                "Sie sind der neue Verkehrsbürgermeister. Ihr Ziel: Geld für die Stadtkasse verdienen, gut " +
+                    "dastehen und nicht abgewählt werden. Zwei Finger zoomen, ein Finger verschiebt die Karte. " +
+                    "Oben links hält der Knopf neben der Uhr die Zeit an.",
+            ),
     ),
     SPEED_LIMIT(
         translatable("Erst die Schilder"),
@@ -52,6 +60,11 @@ enum class TutorialStep(
         ),
         setOf(Tool.SPEED_LIMIT, Tool.REMOVE),
         { it.speedLimits.isNotEmpty() },
+        translatable(
+            "Wählen Sie unten das Werkzeug „Tempolimit“ – 30 ist schon eingestellt. Tippen Sie auf den Anfang und " +
+                "dann auf das Ende eines Stücks einer großen Straße (zweimal dieselbe Stelle: bis zur nächsten " +
+                "Kreuzung). Alles ist erst geplant – gebaut und bezahlt wird mit „Bauen“ über dem Werkzeugkasten.",
+        ),
     ),
     CAMERA(
         translatable("Dann der Blitzer"),
@@ -61,6 +74,10 @@ enum class TutorialStep(
         ),
         setOf(Tool.CAMERA),
         { it.cameras.isNotEmpty() },
+        translatable(
+            "Wo ein Limit ist, darf geblitzt werden. Nehmen Sie „Überwachung“, tippen Sie auf dieselbe Straße " +
+                "und dann auf „Bauen“. Ein fester Blitzer ist teuer, verdient aber Tag und Nacht.",
+        ),
     ),
     FINES(
         translatable("Abwarten und kassieren"),
@@ -69,6 +86,11 @@ enum class TutorialStep(
                 "die Bußgelder stehen oben links.",
         ),
         done = { it.fineIncome > 0 },
+        touchText =
+            translatable(
+                "Der Tempo-Knopf oben neben der Uhr schaltet bis aufs achtfache Tempo. Sobald der erste Raser " +
+                    "geblitzt wird, klingelt die Kasse – die Bußgelder zeigt „Haushalt & PR“ unter „Berichte“.",
+            ),
     ),
     CITIZENS(
         translatable("Die Bürger schauen zu"),
@@ -84,6 +106,11 @@ enum class TutorialStep(
                 "freundlicher, und der Ärger der Bürger zählt weniger.",
         ),
         done = { it.prContract != PrContract.NONE },
+        touchText =
+            translatable(
+                "Öffnen Sie links „Berichte“ → „Haushalt & PR“ und schließen Sie einen PR-Vertrag ab. Dann schreibt " +
+                    "die Zeitung freundlicher, und der Ärger der Bürger zählt weniger.",
+            ),
     ),
     TOOLBOX(
         translatable("Der ganze Werkzeugkasten"),
@@ -94,6 +121,13 @@ enum class TutorialStep(
                 "Was ein Symbol bedeutet, steht unter „Legende ?“.",
         ),
         Tool.entries.toSet(),
+        touchText =
+            translatable(
+                "Jetzt ist alles frei: Ampeln und Ampelprogramme (auch grüne Wellen), mobile Blitzer, Vorfahrt, " +
+                    "Radweg-Querungen, Umleitungen, Baustellen und Sperrungen. " +
+                    "Ampeln bremsen zuverlässig, Umleitungen ärgern alle. " +
+                    "Was ein Symbol bedeutet, steht links unter „Berichte“ → „Hilfe“.",
+            ),
     ),
     EVENING(
         translatable("Feierabend"),
@@ -113,6 +147,9 @@ enum class TutorialStep(
 
     val title: String get() = tr(titleText)
     val text: String get() = tr(textText)
+
+    /** Text für Maus und Tastatur bzw. – mit [touch] – für den Finger. */
+    fun text(touch: Boolean): String = tr(touchText?.takeIf { touch } ?: textText)
 
     /** Werkzeuge, die bis einschließlich dieses Schritts frei sind. */
     val unlocked: Set<Tool> get() = entries.take(ordinal + 1).flatMap { it.tools }.toSet()
@@ -150,7 +187,7 @@ internal fun TutorialPanel(
             Meter((step.ordinal + 1f) / total, Modifier.weight(1f), height = 6.dp)
         }
         BasicText(step.title, style = TmType.display(17.sp, ink))
-        BasicText(step.text, style = TmType.text(13.sp, color = ink))
+        BasicText(step.text(LocalTouch.current), style = TmType.text(13.sp, color = ink))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (step.done == null) {
                 val label = if (step.next == null) tr("Los geht's") else tr("Weiter")

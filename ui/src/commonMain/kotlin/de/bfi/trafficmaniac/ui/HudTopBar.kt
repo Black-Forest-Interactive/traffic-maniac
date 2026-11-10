@@ -39,16 +39,16 @@ import de.bfi.trafficmaniac.ui.components.Meter
 import de.bfi.trafficmaniac.ui.components.MinTouch
 import kotlin.math.roundToInt
 
-private val ChipShape = RoundedCornerShape(10.dp)
-private val RecallFill = Color(0xFFFF8A8F)
+internal val ChipShape = RoundedCornerShape(10.dp)
+internal val RecallFill = Color(0xFFFF8A8F)
 
 /** Icon-Farben der Kennzahlen wie im Entwurf: Kasse gelb, Reputation hellblau, Zorn und Abwahl hellrot. */
-private val MoneyIcon = TmColors.Active
-private val ReputationIcon = Color(0xFF8DB8F2)
-private val AlarmIcon = RecallFill
+internal val MoneyIcon = TmColors.Active
+internal val ReputationIcon = Color(0xFF8DB8F2)
+internal val AlarmIcon = RecallFill
 
 /** Ab diesem Abwahlindex wird der Chip rot hinterlegt. */
-private const val RECALL_DANGER = 50.0
+internal const val RECALL_DANGER = 50.0
 
 /** Was die Kopfleiste auslösen kann; `null` blendet den jeweiligen Knopf aus. */
 internal class TopBarActions(

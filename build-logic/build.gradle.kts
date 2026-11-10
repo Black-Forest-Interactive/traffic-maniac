@@ -9,4 +9,5 @@ dependencies {
     implementation(libs.compose.compiler.gradle.plugin)
     implementation(libs.detekt.gradle.plugin)
     implementation(libs.ktlint.gradle.plugin)
+    implementation(libs.android.gradle.plugin)
 }

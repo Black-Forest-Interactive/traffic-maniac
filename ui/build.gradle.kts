@@ -24,3 +24,9 @@ compose.resources {
     packageOfResClass = "de.bfi.trafficmaniac.ui.resources"
     publicResClass = false
 }
+
+// Unter Android liegen die Compose-Resources (Schriften) in den Android-Resources der Bibliothek
+if (hasAndroidSdk()) {
+    val target = (kotlin as ExtensionAware).extensions.getByName("android")
+    (target as com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget).androidResources.enable = true
+}

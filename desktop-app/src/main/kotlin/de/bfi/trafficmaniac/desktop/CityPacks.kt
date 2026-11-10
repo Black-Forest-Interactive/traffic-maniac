@@ -2,53 +2,12 @@ package de.bfi.trafficmaniac.desktop
 
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
+import de.bfi.trafficmaniac.game.CityPackInfo
 import de.bfi.trafficmaniac.game.CityTexts
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.i18n.I18n
-import de.bfi.trafficmaniac.i18n.Language
 import de.bfi.trafficmaniac.sim.SimulationConfig
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import java.io.File
-
-/**
- * Beschreibung eines Stadtpakets (`cities/<id>/city.json`): Texte, Feinabstimmung und woher die Kartendaten kommen.
- * Die Karte selbst liegt daneben als `map.city` und wird mit `scripts/import-city.sh <id>` erzeugt.
- */
-@Serializable
-data class CityPackInfo(
-    val id: String,
-    val texts: CityTexts = CityTexts(),
-    /** Ein, zwei Sätze für die Stadtauswahl. */
-    val description: String = "",
-    /** Einzelne Werte aus `balancing/simulation.json`, die für diese Stadt anders sind. */
-    val simulation: JsonObject = JsonObject(emptyMap()),
-    /** Einzelne Werte aus `balancing/game-rules.json`, die für diese Stadt anders sind. */
-    val rules: JsonObject = JsonObject(emptyMap()),
-    /** Woher die Kartendaten kommen; nur für das Import-Skript. */
-    val import: CityImport? = null,
-    /** Texte und Beschreibung in weiteren Sprachen, nach Sprachkürzel („en“). Fehlt eine, gilt die deutsche. */
-    val translations: Map<String, CityTranslation> = emptyMap(),
-) {
-    /** Texte in [language]. */
-    fun texts(language: Language): CityTexts = translations[language.code]?.texts ?: texts
-
-    fun description(language: Language): String = translations[language.code]?.description ?: description
-}
-
-@Serializable
-data class CityTranslation(
-    val texts: CityTexts,
-    val description: String? = null,
-)
-
-/** OSM-Auszug (Geofabrik) und Ausschnitt `minLon,minLat,maxLon,maxLat`. */
-@Serializable
-data class CityImport(
-    val extract: String,
-    val bbox: String,
-)
 
 /** Ein Stadtpaket mit fertiger Karte. */
 class CityPack(
@@ -65,11 +24,9 @@ class CityPack(
     /** Die Karte; wird beim ersten Zugriff geladen. */
     val map: CityMap by lazy { CityMapCodec.decode(mapFile.readBytes()) }
 
-    fun simulationConfig(base: SimulationConfig): SimulationConfig =
-        Balancing.override(SimulationConfig.serializer(), base, info.simulation)
+    fun simulationConfig(base: SimulationConfig): SimulationConfig = info.simulationConfig(base)
 
-    fun gameRules(base: GameRules): GameRules =
-        Balancing.override(GameRules.serializer(), base, info.rules).copy(city = texts)
+    fun gameRules(base: GameRules): GameRules = info.gameRules(base, I18n.language)
 }
 
 /** Findet die Stadtpakete im Ordner `cities/`. */
@@ -77,8 +34,6 @@ object CityPacks {
     const val DIRECTORY = "cities"
     const val INFO_FILE = "city.json"
     const val MAP_FILE = "map.city"
-
-    private val json = Json { ignoreUnknownKeys = true }
 
     /** Alle Pakete mit Karte, alphabetisch; beschädigte Beschreibungen werden gemeldet und übersprungen. */
     fun discover(root: File = File(DIRECTORY)): List<CityPack> =
@@ -97,7 +52,7 @@ object CityPacks {
 
     private fun load(directory: File): CityPack? {
         val map = mapOf(directory) ?: return null
-        return runCatching { json.decodeFromString(CityPackInfo.serializer(), File(directory, INFO_FILE).readText()) }
+        return runCatching { CityPackInfo.parse(File(directory, INFO_FILE).readText()) }
             .onFailure { println("${directory.name}/$INFO_FILE ist beschädigt: ${it.message}") }
             .getOrNull()
             ?.let { CityPack(it, map) }

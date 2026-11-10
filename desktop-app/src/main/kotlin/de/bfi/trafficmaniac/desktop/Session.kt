@@ -7,10 +7,9 @@ import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.HighscoreEntry
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
+import de.bfi.trafficmaniac.game.highscore
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.HudInput
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -31,23 +30,7 @@ internal class Session(
      * Wartet auf das Ende der Partie. Liefert den Eintrag für die Bestenliste, wenn die Amtszeit regulär endet –
      * wer abgewählt wird, kommt nicht hinein.
      */
-    suspend fun result(): HighscoreEntry? {
-        val end =
-            runner.frames
-                .filterNotNull()
-                .first { it.game.isTermOver || it.game.isGameOver }
-                .game
-        if (end.isGameOver || scenario.tutorial) return null
-        return HighscoreEntry(
-            scenarioId = scenario.id,
-            difficulty = difficulty,
-            points = end.score.points,
-            earnings = end.score.earnings,
-            reputation = end.reputation.roundToInt(),
-            date = LocalDate.now().toString(),
-            honoraryCitizen = end.reputation >= HONORARY_CITIZEN,
-        )
-    }
+    suspend fun result(): HighscoreEntry? = runner.highscore(scenario, difficulty) { LocalDate.now().toString() }
 
     /** Speichert die Partie unter [id] – zwischen zwei Simulationsschritten, das Spiel läuft danach weiter. */
     suspend fun save(
@@ -84,7 +67,6 @@ internal class Session(
         }
 
     companion object {
-        private const val HONORARY_CITIZEN = 70.0
         private const val SECONDS_PER_MINUTE = 60
 
         /** Setzt einen Spielstand fort; das Spiel steht zunächst, bis der Spieler weiterlaufen lässt. */

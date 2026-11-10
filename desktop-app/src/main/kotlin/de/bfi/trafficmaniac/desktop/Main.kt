@@ -54,6 +54,12 @@ private val SAVE_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
 /** Tasten 1–4 → Zeitraffer 1x, 2x, 4x, 8x. */
 private val speedKeys = mapOf(Key.One to 1, Key.Two to 2, Key.Three to 4, Key.Four to 8)
 
+/** Ziffern 1–9: bei offener Werkzeugliste die Art an dieser Stelle. */
+private val digitKeys =
+    listOf(Key.One, Key.Two, Key.Three, Key.Four, Key.Five, Key.Six, Key.Seven, Key.Eight, Key.Nine)
+        .mapIndexed { i, key -> key to i + 1 }
+        .toMap()
+
 /**
  * Startet das Spiel mit dem Startmenü (Szenario, Schwierigkeit, Highscores, Einstellungen, Credits).
  *
@@ -344,8 +350,9 @@ private fun parseOptions(args: Array<String>): Options {
 }
 
 /**
- * Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo, M Ton, N Musik, F5 Schnellspeichern,
- * F3 Entwickler-Anzeige, F4 Straßennetz-Modus, Esc und Q/W/E/R/T/A/S/D/X Werkzeuge.
+ * Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo (bei offener Werkzeugliste: 1–9 wählt
+ * die Art), M Ton, N Musik, F5 Schnellspeichern, F3 Entwickler-Anzeige, F4 Straßennetz-Modus, Esc/Q/W/E/A/B/X
+ * Werkzeuggruppen.
  */
 private fun handleKey(
     event: KeyEvent,
@@ -356,9 +363,11 @@ private fun handleKey(
     if (event.type != KeyEventType.KeyDown) return false
     val runner = session.runner
     val speed = speedKeys[event.key]
+    val digit = digitKeys[event.key]
     when {
         event.key == Key.Spacebar -> runner.togglePause()
         event.key == Key.Enter -> runner.acknowledgeReport()
+        digit != null && session.input.listOpen -> session.input.kindRequest = digit
         speed != null -> runner.setSpeed(speed)
         event.key == Key.M -> sound.muted = !sound.muted
         event.key == Key.N -> sound.music = !sound.music

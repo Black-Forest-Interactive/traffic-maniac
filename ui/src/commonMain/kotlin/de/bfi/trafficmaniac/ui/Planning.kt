@@ -102,7 +102,7 @@ internal class PlanContext(
     val frame: TrafficFrame?,
 )
 
-/** Ein Klick auf die Karte mit dem gewählten Werkzeug – wird zur geplanten Maßnahme. */
+/** Ein Klick auf die Karte mit der gewählten Art – wird zur geplanten Maßnahme. */
 internal fun Plan.click(
     selection: ToolSelection,
     context: PlanContext,
@@ -110,53 +110,37 @@ internal fun Plan.click(
     y: Float,
     radius: Float,
 ) {
-    when (selection.tool) {
-        Tool.LOOK -> {
+    val kind = selection.kind
+    val share = kind.signalShare
+    val wave = kind.waveKmh
+    when {
+        kind == ToolKind.LOOK -> {
             Unit
         }
 
         // Abbauen auf eine geplante Maßnahme streicht sie aus der Planung
-        Tool.REMOVE -> {
-            if (!removeNear(
-                    x,
-                    y,
-                    radius,
-                )
-            ) {
-                plan(context, commandFor(selection, context.picker, context.frame, x, y, radius))
-            }
+        kind == ToolKind.REMOVE && removeNear(x, y, radius) -> {
+            Unit
         }
 
-        Tool.SPEED_LIMIT -> {
+        kind == ToolKind.SPEED_LIMIT -> {
             routeClick(context, x, y, radius) { speedLimitAction(selection, context, it) }
         }
 
-        // Fahrradstraße wie eine Baustelle: Anfang und Ende anklicken
-        Tool.BIKE_CROSSING -> {
-            if (selection.bikeStreet) {
-                routeClick(context, x, y, radius) { path ->
-                    val segments = path.flatMap { context.picker.stretches.stretchOf(it) }.distinct()
-                    roadworksAction(GameCommand.SetBikeStreet(segments, on = true), context)
-                }
-            } else {
-                plan(context, commandFor(selection, context.picker, context.frame, x, y, radius))
-            }
-        }
-
-        Tool.ROADWORKS -> {
+        kind in STRETCH_KINDS -> {
+            // Baustelle, Sperrung, Fahrradstraße: Anfang und Ende anklicken, ganze Strecken
             routeClick(context, x, y, radius) { path ->
                 val segments = path.flatMap { context.picker.stretches.stretchOf(it) }.distinct()
-                roadworksAction(roadworksCommand(selection.closure, segments, on = true), context)
+                roadworksAction(stretchCommand(kind, segments), context)
             }
         }
 
-        Tool.SIGNAL_TIMING -> {
-            val kmh = selection.signalPreset.waveKmh
-            if (kmh != null) {
-                routeClick(context, x, y, radius, directed = true) { greenWaveAction(kmh, context, it) }
-            } else {
-                splitClick(selection.signalPreset, context, x, y, radius)
-            }
+        wave != null -> {
+            routeClick(context, x, y, radius, directed = true) { greenWaveAction(wave, context, it) }
+        }
+
+        share != null -> {
+            splitClick(share, context, x, y, radius)
         }
 
         else -> {
@@ -164,6 +148,19 @@ internal fun Plan.click(
         }
     }
 }
+
+/** Arten, die ganze Strecken von Anfang bis Ende betreffen. */
+private val STRETCH_KINDS = setOf(ToolKind.ROADWORKS, ToolKind.CLOSURE, ToolKind.BIKE_STREET)
+
+private fun stretchCommand(
+    kind: ToolKind,
+    segments: List<Int>,
+): GameCommand =
+    when (kind) {
+        ToolKind.CLOSURE -> GameCommand.SetRoadClosure(segments, closed = true)
+        ToolKind.BIKE_STREET -> GameCommand.SetBikeStreet(segments, on = true)
+        else -> GameCommand.SetRoadworks(segments, active = true)
+    }
 
 /**
  * Zwei Klicks entlang einer Straße: erster Klick = Anfang, zweiter = Ende; dieselbe Strecke zweimal = nur bis zur
@@ -200,13 +197,12 @@ private fun Plan.routeClick(
 
 /** Grünzeit einer Ampelanlage aufteilen: die nächste Ampel im Umkreis. */
 private fun Plan.splitClick(
-    preset: SignalPreset,
+    share: Double,
     context: PlanContext,
     x: Float,
     y: Float,
     radius: Float,
 ) {
-    val share = preset.mainShare ?: return
     val roads = context.city.roads
     val node =
         context.frame

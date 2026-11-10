@@ -10,6 +10,11 @@ coroutines = "1.11.0"
 osmpbf = "1.8.0"
 protobuf = "4.36.2"
 kryo = "5.6.2"
+# Android (nur gebaut, wenn ein Android-SDK gefunden wird)
+agp = "9.5.1"
+android-compileSdk = "37"
+android-minSdk = "28"
+activity-compose = "1.12.2"
 
 [libraries]
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
@@ -25,7 +30,10 @@ kryo = { module = "com.esotericsoftware:kryo", version.ref = "kryo" }
 osmpbf = { module = "org.openstreetmap.pbf:osmpbf", version.ref = "osmpbf" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+
 # Gradle-Plugins für build-logic
+android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 compose-gradle-plugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "compose" }
 kotlin-serialization-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }

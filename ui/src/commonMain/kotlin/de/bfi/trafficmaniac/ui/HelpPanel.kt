@@ -28,18 +28,13 @@ private val CONTROLS =
         translatable("Ziehen") to translatable("Karte verschieben"),
         translatable("Leertaste") to translatable("Pause"),
         "1 – 4" to translatable("Zeitraffer 1×/2×/4×/8× (nachts automatisch schneller)"),
-        "Esc · Q W E" to translatable("Ansehen, Tempolimit, Ampel, Blitzer"),
-        "E E …" to
-            translatable(
-                "Blitzer-Art wechseln: fest, Laser, Anhänger, Rotlicht, Rotlicht + Tempo, Anzeigetafel",
-            ),
+        "Esc · Q · X" to translatable("Ansehen, Tempolimit, Abbauen"),
+        "W E A B" to
+            translatable("Gruppen: Ampel, Überwachung, Verkehrsführung, Baustelle – Kachel klappt die Liste auf"),
+        "E E …" to translatable("Gruppentaste noch einmal: nächste Art der Gruppe"),
+        "1 – 9" to translatable("Bei offener Liste: Art wählen"),
         "E" to translatable("Anhänger umsetzen: aufgestellten Anhänger anklicken, dann die neue Straße"),
-        "A S D X" to translatable("Vorfahrt, Radweg-Querung, Umleitung, Abbauen"),
-        "K" to
-            translatable("Polizeikontrolle für drei Stunden: Tempo, Mängel, Handy – auf Fahrradstraßen auch Überholer"),
-        "S" to translatable("Radweg-Querung oder Fahrradstraße (Tempo 30, Überholverbot) – Anfang und Ende anklicken"),
-        "B" to translatable("Baustelle (Tempo 30, kostet täglich) oder Vollsperrung – Anfang und Ende anklicken"),
-        "G" to translatable("Ampelprogramm: Grünzeit aufteilen oder grüne Welle (Anfang und Ende anklicken)"),
+        "A" to translatable("Fahrradstraße, Baustelle, Sperrung, grüne Welle: Anfang und Ende anklicken"),
         "Enter" to translatable("Tagesabschluss schließen"),
         "M · N" to translatable("Ton bzw. Musik aus/an"),
         "F5" to translatable("Schnell speichern (Laden im Startmenü)"),
