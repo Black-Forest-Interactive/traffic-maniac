@@ -136,21 +136,21 @@ internal fun DrawScope.drawCameras(
 ) {
     val size = max(CAMERA_SIZE_METERS, CAMERA_MIN_PIXELS / scale)
     val ink = Stroke(max(INK_METERS, 1.5f / scale))
-    for (camera in cameras) {
+    // Anzeigetafeln zeichnet drawDisplays (mit Zahl)
+    for (camera in cameras.filter { !it.display }) {
         val c = Offset(camera.x, camera.y)
         if (camera.trailer) {
             drawTrailer(c, size, scale, ink, sprites)
             continue
         }
-        val name = if (camera.mobile) "camera_laser" else "camera_fixed"
-        if (drawSprite(sprites, name, c, size * SPRITE_CAMERA_WIDTH, size, scale)) continue
+        if (drawSprite(sprites, cameraSprite(camera), c, size * SPRITE_CAMERA_WIDTH, size, scale)) continue
         if (camera.mobile) {
             // Stativ
             for (dx in TRIPOD_LEGS) {
                 drawLine(MapStyle.ink, c, c + Offset(dx * size, -size * TRIPOD), ink.width)
             }
         }
-        val body = if (camera.mobile) MapStyle.laser else MapStyle.camera
+        val body = cameraBody(camera)
         val topLeft = c - Offset(size / 2, size * BODY_HEIGHT / 2)
         val bodySize = Size(size, size * BODY_HEIGHT)
         drawRoundRect(body, topLeft, bodySize, CornerRadius(size * CORNER))
@@ -165,6 +165,21 @@ internal fun DrawScope.drawCameras(
         drawCircle(Color.White, size * GLINT, c + Offset(size * GLINT, size * GLINT))
     }
 }
+
+private fun cameraSprite(camera: SpeedCamera): String =
+    when {
+        camera.redLight -> "camera_red_light"
+        camera.mobile -> "camera_laser"
+        else -> "camera_fixed"
+    }
+
+/** Rotlichtblitzer rot, Laser blau, feste grau. */
+private fun cameraBody(camera: SpeedCamera): Color =
+    when {
+        camera.redLight -> MapStyle.redLightCamera
+        camera.mobile -> MapStyle.laser
+        else -> MapStyle.camera
+    }
 
 /** Blitzeranhänger: Grafik `camera_trailer`, sonst Anhänger mit Rädern und Deichsel, der Blitzer obendrauf. */
 private fun DrawScope.drawTrailer(

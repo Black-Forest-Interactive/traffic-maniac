@@ -139,6 +139,19 @@ class SignalSystem(
         return byKey.size
     }
 
+    /** Sekunden seit Beginn der Rotphase für [link] (nach Gelb), NaN bei Grün, Gelb oder ohne Ampel. */
+    fun redSeconds(
+        link: Int,
+        time: Double,
+    ): Double {
+        val group = linkGroup[link]
+        if (group == NO_GROUP || groupFailed[group]) return Double.NaN
+        val t = ((time + groupOffset[group]) % CYCLE_SECONDS + CYCLE_SECONDS) % CYCLE_SECONDS
+        val inPhase = (t - greenStartInCycle(link) + CYCLE_SECONDS) % CYCLE_SECONDS
+        val redSince = inPhase - groupGreen[linkPhase[link]][group] - YELLOW_SECONDS
+        return if (redSince >= 0) redSince else Double.NaN
+    }
+
     /** Sekunde im Umlauf (ohne Versatz), zu der die Grünphase von [link] beginnt. */
     fun greenStartInCycle(link: Int): Double {
         val group = linkGroup[link]

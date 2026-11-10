@@ -273,6 +273,15 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
                 LegendEntry(translatable("Lasermessung (mobil, kostet täglich Personal)"), 1.5f) { s, _, sp ->
                     drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f, mobile = true)), s, sp)
                 },
+                LegendEntry(
+                    translatable("Rotlichtblitzer an der Haltelinie (auch mit Tempomessung)"),
+                    1.5f,
+                ) { s, _, sp ->
+                    drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f, redLight = true)), s, sp)
+                },
+                LegendEntry(translatable("Anzeigetafel: Anteil der zu Schnellen, blitzt nicht"), 1.5f) { s, m, _ ->
+                    drawDisplays(listOf(SpeedCamera(0, 0, 0f, 0f, mobile = true, display = true)), s, m)
+                },
                 LegendEntry(translatable("Vorfahrtsstraße / Radweg-Querung"), 1.5f) { s, _, sp ->
                     drawRoadMarkers(listOf(-MARKER_GAP to 0f), listOf(MARKER_GAP to 0f), s, sp)
                 },

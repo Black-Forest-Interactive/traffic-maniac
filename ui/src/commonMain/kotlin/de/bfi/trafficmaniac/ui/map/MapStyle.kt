@@ -41,6 +41,7 @@ object MapStyle {
     val chargingFree = Color(0xFF2DC653)
     val chargingFull = Color(0xFF8D99AE)
     val laser = Color(0xFF3A86FF)
+    val redLightCamera = Color(0xFFC62B3B)
     val trailer = Color(0xFFE9ECEF)
     val priorityYellow = Color(0xFFFFC300)
     val bikeGreen = Color(0xFF2A9D8F)
