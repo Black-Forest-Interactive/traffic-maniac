@@ -1,10 +1,7 @@
 package de.bfi.trafficmaniac.android
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -13,9 +10,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.HighscoreEntry
 import de.bfi.trafficmaniac.game.Highscores
@@ -23,9 +17,10 @@ import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.i18n.I18n
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.CityChoice
+import de.bfi.trafficmaniac.ui.FitToDesign
 import de.bfi.trafficmaniac.ui.MainMenu
-import de.bfi.trafficmaniac.ui.ScaledUi
-import de.bfi.trafficmaniac.ui.TrafficManiacApp
+import de.bfi.trafficmaniac.ui.TouchCallbacks
+import de.bfi.trafficmaniac.ui.TouchGameApp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,9 +52,10 @@ fun AndroidGame(
         }
     }
     val current = session
-    FitWidth {
-        key(language) {
-            if (current == null) {
+    key(language) {
+        if (current == null) {
+            // Das Menü ist für große Bildschirme gezeichnet und wird auf dem Handy eingepasst
+            FitToDesign {
                 Menu(
                     content,
                     MenuState(settings, { settings = it }, highscores, loading),
@@ -68,11 +64,11 @@ fun AndroidGame(
                     start,
                     onQuit,
                 )
-            } else {
-                Playing(current, settings.uiScale, onMenu = { session = null }) {
-                    highscores = highscores.add(it)
-                    data.save(highscores)
-                }
+            }
+        } else {
+            Playing(current, onMenu = { session = null }) {
+                highscores = highscores.add(it)
+                data.save(highscores)
             }
         }
     }
@@ -126,7 +122,6 @@ private fun Menu(
 @Composable
 private fun Playing(
     current: Session,
-    uiScale: Int,
     onMenu: () -> Unit,
     onHighscore: (HighscoreEntry) -> Unit,
 ) {
@@ -134,37 +129,18 @@ private fun Playing(
     BackHandler { current.runner.setSpeed(0) }
     LaunchedEffect(current) { current.runner.run() }
     LaunchedEffect(current) { current.result()?.let(onHighscore) }
-    ScaledUi(uiScale) {
-        TrafficManiacApp(
-            city = current.city.map,
-            traffic = current.runner.frames,
-            rules = current.game.rules,
-            onCommand = { current.game.submit(it) },
-            onContinueDay = { current.runner.acknowledgeReport() },
-            onMenu = onMenu,
-            tutorial = current.scenario.tutorial,
-            onSpeed = current.runner::setSpeed,
-            input = current.input,
-        )
-    }
+    TouchGameApp(
+        city = current.city.map,
+        traffic = current.runner.frames,
+        rules = current.game.rules,
+        callbacks =
+            TouchCallbacks(
+                onCommand = { current.game.submit(it) },
+                onContinueDay = { current.runner.acknowledgeReport() },
+                onSpeed = current.runner::setSpeed,
+                onMenu = onMenu,
+            ),
+        tutorial = current.scenario.tutorial,
+        input = current.input,
+    )
 }
-
-/**
- * Das Spiel ist für mindestens [MIN_WIDTH_DP] × [MIN_HEIGHT_DP] gezeichnet; auf kleineren Bildschirmen (Handy im
- * Querformat) wird alles passend verkleinert. Vorläufig, bis die Touch-Oberfläche eigene Layouts für kleine
- * Bildschirme hat.
- */
-@Composable
-private fun FitWidth(content: @Composable () -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val base = LocalDensity.current
-        val factor = minOf(maxWidth.value / MIN_WIDTH_DP, maxHeight.value / MIN_HEIGHT_DP, 1f)
-        CompositionLocalProvider(
-            LocalDensity provides Density(base.density * factor, base.fontScale),
-            content = content,
-        )
-    }
-}
-
-private const val MIN_WIDTH_DP = 1200f
-private const val MIN_HEIGHT_DP = 700f

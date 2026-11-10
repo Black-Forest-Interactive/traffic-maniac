@@ -121,7 +121,7 @@ internal class HudState(
 
 /** Tasten und Anfragen aus dem Fenster: Werkzeug (Blitzer zweimal = nächste Art) und Fenster rechts. */
 @Composable
-private fun InputRequests(
+internal fun InputRequests(
     input: HudInput,
     hud: HudState,
 ) {
@@ -281,7 +281,7 @@ private fun MapArea(
 
 /** Die Karte ohne UI-Skalierung: Zoom, Linien und Sprites bleiben gleich, nur die Bedienung wächst. */
 @Composable
-private fun MapLayer(
+internal fun MapLayer(
     city: CityMap,
     traffic: StateFlow<TrafficFrame?>?,
     hud: HudState,
@@ -289,6 +289,8 @@ private fun MapLayer(
     rules: GameRules,
     sprites: SpriteSource,
     network: NetworkDebug?,
+    /** Fangradius für Klicks in Bildpunkten – mit dem Finger größer als mit der Maus. */
+    pickRadiusPixels: Float = PICK_RADIUS_PIXELS,
 ) {
     val route = remember(city) { StreetRoute(city) }
     Unscaled {
@@ -304,7 +306,7 @@ private fun MapLayer(
             showCondition = hud.toggles.showCondition || hud.selection.kind == ToolKind.DETOUR,
             onZoom = { hud.zoomLevel[0] = it },
             onMapClick = { x, y, metersPerPixel ->
-                val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)
+                val radius = max(MIN_PICK_RADIUS_METERS, pickRadiusPixels * metersPerPixel)
                 if (network != null) {
                     hud.networkPick = network.pick(x, y, radius)
                 } else {
@@ -325,7 +327,7 @@ private fun MapLayer(
 }
 
 /** Planungsleiste, solange etwas geplant ist; „Bauen“ schickt alle Befehle in der geplanten Reihenfolge. */
-private fun planBar(
+internal fun planBar(
     plan: Plan,
     balance: Long,
     command: (GameCommand) -> Unit,
@@ -376,7 +378,7 @@ private fun BoxScope.DeveloperOverlays(
  * [zoom] hält die aktuelle Zoomstufe der Karte für die Lautstärke der Geräuschkulisse.
  */
 @Composable
-private fun rememberHudFrame(
+internal fun rememberHudFrame(
     traffic: StateFlow<TrafficFrame?>?,
     sound: SoundBoard,
     zoom: FloatArray,
@@ -394,7 +396,7 @@ private fun rememberHudFrame(
 
 /** Wertung am Ende der Amtszeit bzw. Tagesabschluss mit Zeitung. */
 @Composable
-private fun EndOfDayOverlays(
+internal fun EndOfDayOverlays(
     frame: TrafficFrame,
     onContinueDay: () -> Unit,
     onMenu: (() -> Unit)?,

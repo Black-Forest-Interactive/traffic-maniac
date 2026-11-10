@@ -70,16 +70,50 @@ class Screenshots {
                 }
             }
         }
+        touch(out, city, frame)
+    }
+
+    /** Touch-Oberfläche wie auf einem Handy im Querformat (Galaxy A25: 2340 × 1080 Pixel, Dichte 2,81). */
+    private fun touch(
+        out: File,
+        city: CityMap,
+        frame: TrafficFrame,
+    ) {
+        val cases =
+            listOf(
+                Triple("tutorial", SidePanel.NONE, null),
+                Triple("camera", SidePanel.NONE, Tool.CAMERA),
+                Triple("budget", SidePanel.BUDGET, null),
+            )
+        for ((name, panel, list) in cases) {
+            val input =
+                HudInput().apply {
+                    panelRequest = panel
+                    listRequest = list
+                }
+            shoot(File(out, "touch-$name.png"), PHONE_WIDTH, PHONE_HEIGHT, PHONE_DENSITY) {
+                TouchGameApp(
+                    city,
+                    MutableStateFlow(frame),
+                    de.bfi.trafficmaniac.game
+                        .GameRules(),
+                    TouchCallbacks({}, {}, {}, onMenu = {}),
+                    tutorial = name == "tutorial",
+                    input = input,
+                )
+            }
+        }
     }
 
     private fun shoot(
         file: File,
         width: Int,
         height: Int,
+        density: Float = 1f,
         content: @Composable () -> Unit,
     ) {
         val scale = System.getenv("TM_UI_SCALE")?.toIntOrNull() ?: 0
-        val scene = ImageComposeScene(width, height, Density(1f)) { ScaledUi(scale) { content() } }
+        val scene = ImageComposeScene(width, height, Density(density)) { ScaledUi(scale) { content() } }
         try {
             // Ein paar Frames, damit Effekte (Fenster öffnen, Kartenbild im Hintergrund) ankommen
             var image = scene.render(0)
@@ -152,5 +186,8 @@ class Screenshots {
         const val FRAME_PAUSE_MILLIS = 150L
         const val FRAME_NANOS = 16_000_000L
         const val WARMUP_TICKS = 600
+        const val PHONE_WIDTH = 2340
+        const val PHONE_HEIGHT = 1080
+        const val PHONE_DENSITY = 2.8125f
     }
 }
