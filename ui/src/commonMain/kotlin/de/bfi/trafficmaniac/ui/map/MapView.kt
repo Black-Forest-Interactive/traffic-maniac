@@ -2,8 +2,8 @@ package de.bfi.trafficmaniac.ui.map
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -277,7 +277,7 @@ private class ViewState {
     var height by mutableStateOf(0f)
 }
 
-/** Klick (Werkzeug), Ziehen (Verschieben) und Mausrad (Zoom um den Mauszeiger). */
+/** Klick/Tippen (Werkzeug), Ziehen (Verschieben), Mausrad und zwei Finger (Zoom um Mauszeiger bzw. Fingermitte). */
 private fun Modifier.mapGestures(
     key: Any,
     view: ViewState,
@@ -294,7 +294,12 @@ private fun Modifier.mapGestures(
             }
         }
     }.pointerInput(key) {
-        detectDragGestures { _, drag -> view.camera = view.camera?.pan(drag.x, drag.y) }
+        detectTransformGestures { centroid, pan, zoom, _ ->
+            view.camera =
+                view.camera
+                    ?.pan(pan.x, pan.y)
+                    ?.let { if (zoom == 1f) it else it.zoomAt(zoom, centroid.x, centroid.y, view.width, view.height) }
+        }
     }.pointerInput(key) {
         awaitPointerEventScope {
             while (true) {

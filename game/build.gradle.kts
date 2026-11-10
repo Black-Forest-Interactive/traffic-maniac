@@ -8,6 +8,7 @@ kotlin {
         commonMain.dependencies {
             api(project(":sim-engine"))
             api(libs.kotlinx.coroutines.core)
+            api(libs.kotlinx.serialization.json)
         }
     }
 }
