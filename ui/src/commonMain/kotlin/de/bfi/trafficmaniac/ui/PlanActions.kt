@@ -147,6 +147,15 @@ internal fun Plan.cameraAction(
             single(command, "trailer:${command.segment}", position, tr("Anhänger"), trailerCost(context))
         }
 
+        is GameCommand.PlaceDisplay -> {
+            val position = context.picker.midpoint(command.segment)
+            single(command, "camera:${command.segment}", position, tr("Anzeigetafel"), context.rules.displayCost)
+        }
+
+        is GameCommand.PlaceRedLightCamera -> {
+            redLightAction(command, context)
+        }
+
         is GameCommand.RemoveCamera -> {
             context.frame?.current?.cameras?.firstOrNull { it.id == command.cameraId }?.let { camera ->
                 val key = if (camera.trailer) "pickup:${camera.id}" else "remove:${camera.id}"
@@ -159,6 +168,19 @@ internal fun Plan.cameraAction(
             null
         }
     }
+
+/** Rotlichtblitzer an der Haltelinie der Zufahrt – dort, wo die Simulation die Ampel zeigt. */
+private fun redLightAction(
+    command: GameCommand.PlaceRedLightCamera,
+    context: PlanContext,
+): PlannedAction? {
+    val markers = context.frame?.current?.signalMarkers ?: return null
+    val i = markers.links.indexOf(command.link).takeIf { it >= 0 } ?: return null
+    val label = if (command.withSpeed) tr("Rotlicht + Tempo") else tr("Rotlicht")
+    val rules = context.rules
+    val cost = if (command.withSpeed) rules.redLightSpeedCameraCost else rules.redLightCameraCost
+    return single(command, "red:${command.link}", markers.x[i] to markers.y[i], label, cost)
+}
 
 internal fun segmentAction(
     command: GameCommand,

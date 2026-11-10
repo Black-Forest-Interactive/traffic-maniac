@@ -231,7 +231,9 @@ private fun Plan.plan(
                 signalAction(command, context)
             }
 
-            is GameCommand.PlaceCamera, is GameCommand.PlaceTrailer, is GameCommand.RemoveCamera -> {
+            is GameCommand.PlaceCamera, is GameCommand.PlaceTrailer, is GameCommand.RemoveCamera,
+            is GameCommand.PlaceDisplay, is GameCommand.PlaceRedLightCamera,
+            -> {
                 cameraAction(command, context)
             }
 

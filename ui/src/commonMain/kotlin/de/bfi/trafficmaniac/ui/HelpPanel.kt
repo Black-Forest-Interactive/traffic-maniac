@@ -28,8 +28,12 @@ private val CONTROLS =
         translatable("Ziehen") to translatable("Karte verschieben"),
         translatable("Leertaste") to translatable("Pause"),
         "1 – 4" to translatable("Zeitraffer 1×/2×/4×/8× (nachts automatisch schneller)"),
-        "Esc · Q W E R T" to translatable("Ansehen, Tempolimit, Ampel, Blitzer, Laser, Anhänger"),
-        "T" to translatable("Anhänger umsetzen: aufgestellten Anhänger anklicken, dann die neue Straße"),
+        "Esc · Q W E" to translatable("Ansehen, Tempolimit, Ampel, Blitzer"),
+        "E E …" to
+            translatable(
+                "Blitzer-Art wechseln: fest, Laser, Anhänger, Rotlicht, Rotlicht + Tempo, Anzeigetafel",
+            ),
+        "E" to translatable("Anhänger umsetzen: aufgestellten Anhänger anklicken, dann die neue Straße"),
         "A S D X" to translatable("Vorfahrt, Radweg-Querung, Umleitung, Abbauen"),
         "B" to translatable("Baustelle (Tempo 30, kostet täglich) oder Vollsperrung – Anfang und Ende anklicken"),
         "G" to translatable("Ampelprogramm: Grünzeit aufteilen oder grüne Welle (Anfang und Ende anklicken)"),

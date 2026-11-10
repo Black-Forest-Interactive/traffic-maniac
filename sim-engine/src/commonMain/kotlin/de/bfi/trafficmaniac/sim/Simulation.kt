@@ -157,6 +157,7 @@ class Simulation(
                     ((config.startSecondOfDay % GameTime.SECONDS_PER_DAY + time) / GameTime.SECONDS_PER_DAY)
                         .toInt()
                 vehicle.summerTyres = random.nextDouble() < weather.summerTyreShare(termDay)
+                vehicle.runsRedLights = random.nextDouble() < config.redLightRunnerShare * vehicle.driver.speedingFactor
                 router.planFor(vehicle, trip)
                 charging.planTrip(vehicle)
                 parking.planTrip(vehicle, trip)
@@ -330,6 +331,7 @@ class Simulation(
             return false
         }
         router.observe(link, time - vehicle.linkEnterTime)
+        speedControl.stopLine(vehicle, link, signals.redSeconds(link, time))
         infrastructure.vehiclePassed(link, vehicle)
         vehicle.routeIndex++
         vehicle.lane = lane

@@ -31,6 +31,11 @@ data class GameRules(
     /** … und kostet dann so viel Reputation. */
     val fakeRoadworksReputationLoss: Double = 3.0,
     val cameraCost: Long = 90_000,
+    /** Rotlichtblitzer an einer Ampelzufahrt, mit Tempomessung teurer. */
+    val redLightCameraCost: Long = 70_000,
+    val redLightSpeedCameraCost: Long = 120_000,
+    /** Geschwindigkeits-Anzeigetafel (blitzt nicht). */
+    val displayCost: Long = 2_500,
     /** Wählbare Tempolimits; 7 km/h steht für Schrittgeschwindigkeit. */
     val speedLimitOptions: List<Int> = DEFAULT_SPEED_LIMITS,
     /** Fester Haushalt, der jede Woche (Sonntag um Mitternacht) überwiesen wird. */

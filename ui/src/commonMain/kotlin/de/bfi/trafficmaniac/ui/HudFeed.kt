@@ -330,4 +330,4 @@ internal const val FEED_WIDTH = 270
 private const val VISIBLE_GROUPS = 5
 
 /** Längerer Text vor dem ersten Doppelpunkt ist kein Titel, sondern ein Satz. */
-private const val MAX_TITLE_LENGTH = 40
+private const val MAX_TITLE_LENGTH = 50

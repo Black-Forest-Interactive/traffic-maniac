@@ -30,7 +30,10 @@ internal class JunctionRules(
         time: Double,
     ): Boolean =
         when (signals.state(link, time)) {
-            SignalState.RED, SignalState.RED_YELLOW -> true
+            // Wer zu Rotlicht-Sünden neigt, fährt in den ersten Sekunden nach Gelb noch durch
+            SignalState.RED -> !(vehicle.runsRedLights && signals.redSeconds(link, time) < RED_GRACE_SECONDS)
+
+            SignalState.RED_YELLOW -> true
 
             // Bei Gelb hält, wer noch bequem zum Stehen kommt
             SignalState.YELLOW -> remaining > vehicle.speed * vehicle.speed / (2 * vehicle.comfortableDeceleration)
@@ -69,6 +72,9 @@ internal class JunctionRules(
 
     private companion object {
         const val YIELD_CHECK_DISTANCE = 40.0
+
+        /** So lange nach Gelb fährt ein Rotlicht-Sünder noch durch. */
+        const val RED_GRACE_SECONDS = 2.5
         const val PRIORITY_NEAR_DISTANCE = 8.0
         const val PRIORITY_TIME_GAP = 4.0
         const val PRIORITY_WAIT_LIMIT = 10.0
