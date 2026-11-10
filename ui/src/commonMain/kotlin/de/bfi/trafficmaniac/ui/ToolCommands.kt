@@ -32,6 +32,10 @@ internal fun commandFor(
             cameraCommand(selection.cameraKind, picker, frame, x, y, radius)
         }
 
+        Tool.POLICE_CHECK -> {
+            picker.nearestSegment(x, y, radius)?.let { GameCommand.PlacePoliceCheck(it) }
+        }
+
         // Für die Umleitung kommen auch Nebenstraßen in Frage
         Tool.DETOUR -> {
             picker.nearestSegment(x, y, radius, allowPassive = { true })?.let {
@@ -88,6 +92,7 @@ private fun playerWorksRemoval(
     val game = frame?.game ?: return null
     val stretch = picker.stretches.stretchOf(segment)
     return when (segment) {
+        in game.bikeStreets -> GameCommand.SetBikeStreet(stretch.filter { it in game.bikeStreets }, on = false)
         in game.roadClosures -> GameCommand.SetRoadClosure(stretch.filter { it in game.roadClosures }, closed = false)
         in game.roadworks -> GameCommand.SetRoadworks(stretch.filter { it in game.roadworks }, active = false)
         else -> null

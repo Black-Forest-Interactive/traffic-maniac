@@ -35,6 +35,9 @@ private val CONTROLS =
             ),
         "E" to translatable("Anhänger umsetzen: aufgestellten Anhänger anklicken, dann die neue Straße"),
         "A S D X" to translatable("Vorfahrt, Radweg-Querung, Umleitung, Abbauen"),
+        "K" to
+            translatable("Polizeikontrolle für drei Stunden: Tempo, Mängel, Handy – auf Fahrradstraßen auch Überholer"),
+        "S" to translatable("Radweg-Querung oder Fahrradstraße (Tempo 30, Überholverbot) – Anfang und Ende anklicken"),
         "B" to translatable("Baustelle (Tempo 30, kostet täglich) oder Vollsperrung – Anfang und Ende anklicken"),
         "G" to translatable("Ampelprogramm: Grünzeit aufteilen oder grüne Welle (Anfang und Ende anklicken)"),
         "Enter" to translatable("Tagesabschluss schließen"),

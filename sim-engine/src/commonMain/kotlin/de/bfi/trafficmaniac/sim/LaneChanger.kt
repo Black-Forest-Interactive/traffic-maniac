@@ -14,7 +14,13 @@ internal class LaneChanger(
             val desired = graph.linkSpeedLimit[link].toDouble()
             makeWayForEmergencies(link)
             for (queue in lanes[link]) {
-                val candidates = queue.filter { (it.id + tick) % INTERVAL_TICKS == 0L && wantsToChange(it) }
+                // Fahrradstraße: Überholverbot – nur wer es ignoriert, wechselt die Spur
+                val bikeStreet = graph.linkBikeStreet[link]
+                val candidates =
+                    queue.filter {
+                        (it.id + tick) % INTERVAL_TICKS == 0L && wantsToChange(it) &&
+                            (!bikeStreet || it.ignoresOvertakingBan)
+                    }
                 for (vehicle in candidates) tryChangeLane(vehicle, link, desired)
             }
         }

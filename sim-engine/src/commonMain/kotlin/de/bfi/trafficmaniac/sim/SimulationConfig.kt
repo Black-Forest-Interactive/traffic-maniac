@@ -97,6 +97,10 @@ data class SimulationConfig(
     val defaultCurbFee: Double = 0.0,
     /** Anteil der Fahrer, die bei frischem Rot noch durchfahren (mal [DriverProfile.speedingFactor]). */
     val redLightRunnerShare: Double = 0.05,
+    /** Anteil der Fahrer, die auf Fahrradstraßen trotzdem überholen (mal [DriverProfile.speedingFactor]). */
+    val overtakingBanIgnoreShare: Double = 0.12,
+    /** Bei einer Polizeikontrolle: Anteil der Angehaltenen mit Mängeln oder Handy am Steuer. */
+    val checkFindingRate: Double = 0.04,
     /** Wetter (Schnee, Sommerreifen, Räumdienst); `null` = trocken. */
     val weather: WeatherConfig? = null,
 ) {

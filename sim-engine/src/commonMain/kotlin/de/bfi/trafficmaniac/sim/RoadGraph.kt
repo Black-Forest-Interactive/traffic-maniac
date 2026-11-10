@@ -209,6 +209,16 @@ class RoadGraph(
     /** Radweg quert die Straße (noch ohne Radfahrer – ein weiterer Reiz für die Fahrer). */
     private val linkBikeCrossing = BooleanArray(linkCount)
 
+    /** Fahrradstraße: Kfz dürfen Radfahrer nicht überholen (fahren im Radtempo, kein Spurwechsel). */
+    internal val linkBikeStreet = BooleanArray(linkCount)
+
+    fun setSegmentBikeStreet(
+        segment: Int,
+        on: Boolean,
+    ) {
+        for (link in segmentLinks[segment]) linkBikeStreet[link] = on
+    }
+
     fun setSegmentPriority(
         segment: Int,
         priority: Boolean,

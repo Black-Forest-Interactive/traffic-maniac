@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
+import de.bfi.trafficmaniac.sim.CheckFinding
 import de.bfi.trafficmaniac.sim.SpeedCamera
 
 /**
@@ -42,11 +43,39 @@ enum class FineTier(
         points = 2,
         drivingBanDays = 1,
     ),
+
+    /** Funde der Polizeikontrolle (ohne Überschreitung in km/h). */
+    CHECK_DEFECT(
+        translatable("Mängel am Fahrzeug"),
+        "Mängel",
+        maxExcessKmh = Double.NaN,
+        fine = 55,
+        points = 0,
+        drivingBanDays = 0,
+    ),
+    PHONE(
+        translatable("Handy am Steuer"),
+        "Handy",
+        maxExcessKmh = Double.NaN,
+        fine = 100,
+        points = 1,
+        drivingBanDays = 0,
+    ),
+    OVERTAKING(
+        translatable("Überholen in der Fahrradstraße"),
+        "Überholen",
+        maxExcessKmh = Double.NaN,
+        fine = 70,
+        points = 1,
+        drivingBanDays = 0,
+    ),
     ;
 
     val label: String get() = tr(labelText)
     val shortLabel: String get() = tr(shortLabelText)
-    val isRedLight: Boolean get() = maxExcessKmh.isNaN()
+
+    /** Geschwindigkeitsverstoß (sonst Rotlicht oder ein Fund der Polizeikontrolle). */
+    val isSpeed: Boolean get() = !maxExcessKmh.isNaN()
 
     companion object {
         fun of(excessKmh: Double): FineTier = entries.first { excessKmh <= it.maxExcessKmh }
@@ -55,7 +84,15 @@ enum class FineTier(
         fun ofRedLight(redSeconds: Double): FineTier = if (redSeconds > LATE_RED_SECONDS) RED_LIGHT_LATE else RED_LIGHT
 
         /** Die Stufen für zu schnelles Fahren (ohne Rotlicht). */
-        val SPEED: List<FineTier> get() = entries.filter { !it.isRedLight }
+        val SPEED: List<FineTier> get() = entries.filter { it.isSpeed }
+
+        /** Funde der Polizeikontrolle. */
+        fun of(finding: CheckFinding): FineTier =
+            when (finding) {
+                CheckFinding.DEFECT -> CHECK_DEFECT
+                CheckFinding.PHONE -> PHONE
+                CheckFinding.OVERTAKING -> OVERTAKING
+            }
 
         private const val LATE_RED_SECONDS = 1.0
     }
@@ -80,6 +117,9 @@ data class CameraRecord(
     val display: Boolean = false,
     val passed: Int = 0,
     val speeding: Int = 0,
+    /** Polizeikontrolle und wie viele Minuten sie noch läuft. */
+    val policeCheck: Boolean = false,
+    val minutesLeft: Int? = null,
 ) {
     /** Anteil der zu Schnellen an einer Anzeigetafel (0..1). */
     val speedingShare: Double get() = if (passed == 0) 0.0 else speeding.toDouble() / passed
@@ -98,6 +138,9 @@ internal class CameraCounter(
     /** Gerät in der Simulation – für die Zählung der Anzeigetafel und die Art des Blitzers. */
     private val camera: SpeedCamera? = null,
 ) {
+    /** Restlaufzeit einer Polizeikontrolle in Minuten (sonst `null`). */
+    var minutesLeft: Int? = null
+
     /** Anzeigetafel – zählt nicht als Blitzer. */
     val isDisplay: Boolean get() = camera?.display == true
 
@@ -113,7 +156,7 @@ internal class CameraCounter(
     ) {
         counts[tier.ordinal]++
         revenue[tier.ordinal] += tier.fine.toLong()
-        if (!tier.isRedLight && measuredKmh - limitKmh > fastestKmh - fastestLimit) {
+        if (tier.isSpeed && measuredKmh - limitKmh > fastestKmh - fastestLimit) {
             fastestKmh = measuredKmh
             fastestLimit = limitKmh
         }
@@ -135,5 +178,7 @@ internal class CameraCounter(
             display = camera?.display == true,
             passed = camera?.passed ?: 0,
             speeding = camera?.speeding ?: 0,
+            policeCheck = camera?.policeCheck == true,
+            minutesLeft = minutesLeft,
         )
 }

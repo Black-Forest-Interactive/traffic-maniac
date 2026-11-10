@@ -35,6 +35,11 @@ internal class Roadworks(
 
     val roadworks: Set<Int> get() = sites.keys
 
+    /** Fahrradstraßen je Abschnitt mit dem Tempolimit, das vorher galt. */
+    private val bikeStreetLimits = LinkedHashMap<Int, Int?>()
+
+    val bikeStreets: Set<Int> get() = bikeStreetLimits.keys
+
     private class Site(
         val day: Int,
         val previousLimit: Int?,
@@ -44,6 +49,7 @@ internal class Roadworks(
         when (command) {
             is GameCommand.SetRoadworks -> setRoadworks(command.segments, command.active)
             is GameCommand.SetRoadClosure -> setClosure(command.segments, command.closed)
+            is GameCommand.SetBikeStreet -> setBikeStreet(command.segments, command.on)
             else -> Unit
         }
     }
@@ -109,6 +115,33 @@ internal class Roadworks(
                 tr("Vollsperrung: {street}", "street" to street)
             } else {
                 tr("Sperrung aufgehoben: {street}", "street" to street)
+            },
+        )
+    }
+
+    /** Fahrradstraße: Tempo 30, und Kfz dürfen Radfahrer nicht überholen; bezahlt wird je Strecke. */
+    private fun setBikeStreet(
+        segments: List<Int>,
+        on: Boolean,
+    ) {
+        val changing = segments.filter { (it in bikeStreetLimits) != on }
+        if (changing.isEmpty()) return
+        if (on && !treasury.pay(rules.bikeStreetCost * stretchCount(changing), tr("Fahrradstraße"))) return
+        for (segment in changing) {
+            simulation.graph.setSegmentBikeStreet(segment, on)
+            if (on) {
+                bikeStreetLimits[segment] = works.speedLimits[segment]
+                works.warningSignLimit(segment, ROADWORKS_LIMIT)
+            } else {
+                restoreLimit(segment, bikeStreetLimits.remove(segment))
+            }
+        }
+        val street = streetOf(changing)
+        message(
+            if (on) {
+                tr("Fahrradstraße: {street} – Kfz dürfen nicht überholen", "street" to street)
+            } else {
+                tr("Fahrradstraße aufgehoben: {street}", "street" to street)
             },
         )
     }

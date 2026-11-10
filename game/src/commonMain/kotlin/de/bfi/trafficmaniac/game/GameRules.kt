@@ -36,6 +36,12 @@ data class GameRules(
     val redLightSpeedCameraCost: Long = 120_000,
     /** Geschwindigkeits-Anzeigetafel (blitzt nicht). */
     val displayCost: Long = 2_500,
+    /** Polizeikontrolle: Einsatz für [policeCheckHours] Stunden, höchstens [maxPoliceChecks] gleichzeitig. */
+    val policeCheckCost: Long = 1_200,
+    val policeCheckHours: Double = 3.0,
+    val maxPoliceChecks: Int = 2,
+    /** Fahrradstraße einrichten (Markierung, Schilder), je Strecke. */
+    val bikeStreetCost: Long = 5_000,
     /** Wählbare Tempolimits; 7 km/h steht für Schrittgeschwindigkeit. */
     val speedLimitOptions: List<Int> = DEFAULT_SPEED_LIMITS,
     /** Fester Haushalt, der jede Woche (Sonntag um Mitternacht) überwiesen wird. */

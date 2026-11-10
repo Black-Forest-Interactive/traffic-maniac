@@ -311,6 +311,12 @@ class Vehicle internal constructor(
     /** Fährt bei frischem Rot noch durch („war doch noch gelb“). */
     internal var runsRedLights = false
 
+    /** Hält sich nicht an das Überholverbot der Fahrradstraße. */
+    internal var ignoresOvertakingBan = false
+
+    /** Link, auf dem der Fahrer gerade verbotenerweise Radfahrer überholt (Fahrradstraße), sonst -1. */
+    internal var overtakingLink = -1
+
     /** Einsatz, zu dem ein Einsatzfahrzeug unterwegs ist, oder -1. */
     internal var incidentId = -1
 

@@ -64,6 +64,7 @@ enum class Tool(
     SIGNAL(translatable("Ampel"), Icons.TrafficLight, Key.W, "W"),
     SIGNAL_TIMING(translatable("Ampelprogramm"), Icons.Timer, Key.G, "G", translatable("Programm")),
     CAMERA(translatable("Blitzer"), Icons.Camera, Key.E, "E"),
+    POLICE_CHECK(translatable("Polizeikontrolle"), Icons.Shield, Key.K, "K", translatable("Kontrolle")),
     PRIORITY(translatable("Vorfahrt"), Icons.Diamond, Key.A, "A"),
     BIKE_CROSSING(translatable("Radweg-Querung"), Icons.Bike, Key.S, "S", translatable("Radweg")),
     DETOUR(translatable("Umleitung"), Icons.Detour, Key.D, "D"),
@@ -94,6 +95,8 @@ data class ToolSelection(
     val closure: Boolean = false,
     /** Art des Blitzers (fest, Laser, Anhänger, Rotlicht, Anzeigetafel). */
     val cameraKind: CameraKind = CameraKind.FIXED,
+    /** Radweg-Werkzeug: Fahrradstraße statt Radweg-Querung. */
+    val bikeStreet: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_SPEED_LIMIT = 30
@@ -148,6 +151,7 @@ internal fun ToolDock(
             CameraOptions(state.selection, rules, state.idleTrailers, state.onSelect)
         }
         if (state.selection.tool == Tool.SIGNAL_TIMING) SignalTimingOptions(state.selection, state.onSelect)
+        if (state.selection.tool == Tool.BIKE_CROSSING) BikeOptions(state.selection, rules, state.onSelect)
         if (state.selection.tool == Tool.ROADWORKS) RoadworksOptions(state.selection, rules, state.onSelect)
         Row(
             Modifier.shadow(12.dp, DockShape, spotColor = DockShadow).background(TmColors.Ink, DockShape).padding(6.dp),
@@ -338,6 +342,10 @@ private fun price(
 
         Tool.SIGNAL_TIMING -> {
             formatEuro(rules.signalProgramCost)
+        }
+
+        Tool.POLICE_CHECK -> {
+            formatEuro(rules.policeCheckCost)
         }
 
         Tool.BIKE_CROSSING -> {
