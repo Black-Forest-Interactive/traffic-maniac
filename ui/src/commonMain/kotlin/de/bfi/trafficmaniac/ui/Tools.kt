@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,6 +35,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,87 +45,105 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import de.bfi.trafficmaniac.game.GameRules
-import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.ui.components.Icon
 import de.bfi.trafficmaniac.ui.components.Icons
 import de.bfi.trafficmaniac.ui.components.MinTouch
-import de.bfi.trafficmaniac.ui.components.TmIcon
 
-/** Werkzeuge im Dock, mit Icon und Tastenkürzel. */
+/**
+ * Gruppen im Werkzeug-Dock, je mit Taste. Die Arten einer Gruppe ([ToolKind]) wählt man in der Ausklappliste über
+ * der Kachel; die Kachel zeigt die zuletzt gewählte.
+ */
 enum class Tool(
     private val labelText: String,
-    internal val icon: TmIcon,
-    /** Taste, die das Werkzeug wählt, und ihre Beschriftung im Dock. */
+    /** Taste, die die Gruppe wählt (erneut gedrückt: die nächste Art), und ihre Beschriftung. */
     val key: Key,
     internal val keyLabel: String,
-    /** Kürzerer Name fürs Dock, wenn der volle umbrechen würde; der volle steht dann im Tooltip. */
-    private val shortText: String? = null,
 ) {
-    LOOK(translatable("Ansehen"), Icons.Eye, Key.Escape, "Esc"),
-    SPEED_LIMIT(translatable("Tempolimit"), Icons.Gauge, Key.Q, "Q"),
-    SIGNAL(translatable("Ampel"), Icons.TrafficLight, Key.W, "W"),
-    SIGNAL_TIMING(translatable("Ampelprogramm"), Icons.Timer, Key.G, "G", translatable("Programm")),
-    CAMERA(translatable("Blitzer"), Icons.Camera, Key.E, "E"),
-    POLICE_CHECK(translatable("Polizeikontrolle"), Icons.Shield, Key.K, "K", translatable("Kontrolle")),
-    PRIORITY(translatable("Vorfahrt"), Icons.Diamond, Key.A, "A"),
-    BIKE_CROSSING(translatable("Radweg-Querung"), Icons.Bike, Key.S, "S", translatable("Radweg")),
-    DETOUR(translatable("Umleitung"), Icons.Detour, Key.D, "D"),
-    ROADWORKS(translatable("Baustelle"), Icons.Barrier, Key.B, "B"),
-    REMOVE(translatable("Abbauen"), Icons.Eraser, Key.X, "X"),
+    LOOK(translatable("Ansehen"), Key.Escape, "Esc"),
+    SPEED_LIMIT(translatable("Tempolimit"), Key.Q, "Q"),
+    SIGNAL(translatable("Ampel"), Key.W, "W"),
+    CAMERA(translatable("Überwachung"), Key.E, "E"),
+    ROUTE(translatable("Verkehrsführung"), Key.A, "A"),
+    ROADWORKS(translatable("Baustelle"), Key.B, "B"),
+    REMOVE(translatable("Abbauen"), Key.X, "X"),
     ;
 
     val label: String get() = tr(labelText)
 
-    /** Name im Dock – einzeilig. */
-    internal val dockLabel: String get() = tr(shortText ?: labelText)
+    /** Die Arten dieser Gruppe in Listenreihenfolge. */
+    val kinds: List<ToolKind> get() = ToolKind.entries.filter { it.group == this }
+
+    /** Mehrere Arten: Kachel mit Pfeil und Ausklappliste. */
+    val isGroup: Boolean get() = kinds.size > 1
 
     companion object {
-        /** Werkzeug zur Taste, sonst `null`. */
+        /** Gruppe zur Taste, sonst `null`. */
         fun forKey(key: Key): Tool? = entries.firstOrNull { it.key == key }
     }
 }
 
-/** Gewählter Wert des Tempolimit-Werkzeugs; `null` = ursprüngliches Limit wiederherstellen. */
+/**
+ * Was gerade gewählt ist: die Gruppe, je Gruppe die zuletzt gewählte Art und die Einstellungen des Tempolimits
+ * ([speedLimit] `null` = ursprüngliches Limit wiederherstellen).
+ */
 data class ToolSelection(
     val tool: Tool = Tool.LOOK,
     val speedLimit: Int? = DEFAULT_SPEED_LIMIT,
     /** Tempolimit nur nachts (22–6 Uhr). */
     val nightOnly: Boolean = false,
-    /** Gewähltes Ampelprogramm. */
-    val signalPreset: SignalPreset = SignalPreset.MAIN,
-    /** Baustelle mit Tempo 30 oder Vollsperrung. */
-    val closure: Boolean = false,
-    /** Art des Blitzers (fest, Laser, Anhänger, Rotlicht, Anzeigetafel). */
-    val cameraKind: CameraKind = CameraKind.FIXED,
-    /** Radweg-Werkzeug: Fahrradstraße statt Radweg-Querung. */
-    val bikeStreet: Boolean = false,
+    /** Zuletzt gewählte Art je Gruppe; ohne Eintrag die erste. */
+    val chosen: Map<Tool, ToolKind> = emptyMap(),
 ) {
+    /** Die Art, mit der ein Klick auf die Karte gerade plant. */
+    val kind: ToolKind get() = chosen[tool] ?: tool.kinds.first()
+
+    /** Art in ihrer Gruppe wählen (und die Gruppe aktiv machen). */
+    fun with(kind: ToolKind): ToolSelection = copy(tool = kind.group, chosen = chosen + (kind.group to kind))
+
+    /** Die nächste Art der Gruppe (Gruppentaste erneut gedrückt). */
+    fun next(): ToolSelection = tool.kinds.let { with(it[(it.indexOf(kind) + 1) % it.size]) }
+
     companion object {
         const val DEFAULT_SPEED_LIMIT = 30
+
+        fun of(kind: ToolKind): ToolSelection = ToolSelection().with(kind)
     }
 }
 
 /**
- * Eingaben aus dem Fenster an die Spieloberfläche: Werkzeug per Taste, die Entwickler-Anzeige (F3) und der
- * Straßennetz-Modus (F4). Das Fenster
- * setzt die Werte, die Oberfläche übernimmt sie.
+ * Eingaben aus dem Fenster an die Spieloberfläche: Werkzeug per Taste, Art per Ziffer bei offener Liste, die
+ * Entwickler-Anzeige (F3) und der Straßennetz-Modus (F4). Das Fenster setzt die Werte, die Oberfläche übernimmt sie.
  */
 class HudInput {
     var toolRequest by mutableStateOf<Tool?>(null)
     var debug by mutableStateOf(false)
     var network by mutableStateOf(false)
 
+    /** Ausklappliste offen: Ziffern wählen dann eine Art statt das Tempo. */
+    var listOpen by mutableStateOf(false)
+
+    /** Ziffer 1–9 bei offener Liste: die Art an dieser Stelle. */
+    var kindRequest by mutableStateOf<Int?>(null)
+
     /** Fenster rechts öffnen (z. B. für Screenshots); die Oberfläche übernimmt es und setzt es zurück. */
     internal var panelRequest by mutableStateOf<SidePanel?>(null)
+
+    /** Ausklappliste einer Gruppe öffnen (z. B. für Screenshots), wie ein Klick auf ihre Kachel. */
+    internal var listRequest by mutableStateOf<Tool?>(null)
 }
 
-/** Was das Dock braucht: Auswahl, freigeschaltete Werkzeuge, freie Anhänger und was bei einer Auswahl passiert. */
+/** Was das Dock braucht: Auswahl, freigeschaltete Gruppen, freie Anhänger, offene Liste und die Rückmeldungen. */
 internal class ToolDockState(
     val selection: ToolSelection,
     val available: Set<Tool>,
     val idleTrailers: Int,
+    /** Gruppe, deren Ausklappliste offen ist. */
+    val openGroup: Tool?,
+    /** Kachel angeklickt: Gruppe wählen bzw. ihre Liste auf- oder zuklappen. */
+    val onTile: (Tool) -> Unit,
+    /** Art in der Liste gewählt (oder Tempolimit-Einstellung geändert). */
     val onSelect: (ToolSelection) -> Unit,
     /** Planungsleiste über dem Dock, solange etwas geplant ist. */
     val plan: PlanBarState? = null,
@@ -131,74 +153,101 @@ private val DockShape = RoundedCornerShape(16.dp)
 private val TileShape = RoundedCornerShape(11.dp)
 private val DockShadow = TmColors.Ink.copy(alpha = 0.32f)
 
-/** Werkzeug-Dock unten mittig, darüber die Optionen des gewählten Werkzeugs. */
+/** Werkzeug-Dock unten mittig; darüber die Ausklappliste der offenen Gruppe bzw. die Tempolimit-Schilder. */
 @Composable
 internal fun ToolDock(
     state: ToolDockState,
     rules: GameRules,
     modifier: Modifier = Modifier,
 ) {
+    val tools = Tool.entries.filter { it in state.available }
     Column(
         modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         state.plan?.let { PlanBar(it) }
-        if (state.selection.tool == Tool.SPEED_LIMIT) SpeedLimitOptions(state.selection, rules, state.onSelect)
-        if (state.selection.tool ==
-            Tool.CAMERA
-        ) {
-            CameraOptions(state.selection, rules, state.idleTrailers, state.onSelect)
+        val open = state.openGroup?.takeIf { it in tools }
+        if (open != null) {
+            // Über der eigenen Kachel: Abstand der Kachelmitte zur Dockmitte
+            val shift = (tools.indexOf(open) - (tools.size - 1) / 2f) * (TILE_WIDTH + TILE_GAP)
+            ToolFlyout(open, state.selection, rules, state.idleTrailers, state.onSelect, Modifier.offset(x = shift.dp))
+        } else if (state.selection.tool == Tool.SPEED_LIMIT) {
+            SpeedLimitOptions(state.selection, rules, state.onSelect)
         }
-        if (state.selection.tool == Tool.SIGNAL_TIMING) SignalTimingOptions(state.selection, state.onSelect)
-        if (state.selection.tool == Tool.BIKE_CROSSING) BikeOptions(state.selection, rules, state.onSelect)
-        if (state.selection.tool == Tool.ROADWORKS) RoadworksOptions(state.selection, rules, state.onSelect)
         Row(
             Modifier.shadow(12.dp, DockShape, spotColor = DockShadow).background(TmColors.Ink, DockShape).padding(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(TILE_GAP.dp),
         ) {
-            for (tool in Tool.entries.filter { it in state.available }) {
-                ToolTile(tool, state.selection.tool == tool, price(tool, rules, state.selection, state.idleTrailers)) {
-                    state.onSelect(state.selection.copy(tool = tool))
-                }
+            for (tool in tools) {
+                val kind = state.selection.chosen[tool] ?: tool.kinds.first()
+                val look =
+                    when {
+                        state.selection.tool == tool -> TileLook.ACTIVE
+                        state.openGroup == tool -> TileLook.OPEN
+                        else -> TileLook.IDLE
+                    }
+                ToolTile(tool, kind, look, kind.price(rules, state.idleTrailers, short = true)) { state.onTile(tool) }
             }
         }
     }
 }
 
+private enum class TileLook { IDLE, OPEN, ACTIVE }
+
 @Composable
 private fun ToolTile(
     tool: Tool,
-    active: Boolean,
+    kind: ToolKind,
+    look: TileLook,
     price: String,
     onClick: () -> Unit,
 ) {
+    val active = look == TileLook.ACTIVE
     val color = if (active) TmColors.Ink else TmColors.OnDark
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
+    val background =
+        when {
+            active -> TmColors.Active
+            look == TileLook.OPEN -> TmColors.Ink3
+            hovered -> TmColors.Ink2
+            else -> Color.Transparent
+        }
     // Alle Kacheln gleich hoch: Icon, Name (einzeilig), Preis – auch wenn es keinen gibt
     Box(
         Modifier
             .width(TILE_WIDTH.dp)
             .height(TILE_HEIGHT.dp)
             .clip(TileShape)
-            .background(if (active) TmColors.Active else Color.Transparent)
+            .background(background)
             .hoverable(interaction)
-            .clickable(interaction, LocalIndication.current, role = Role.RadioButton, onClick = onClick),
+            .clickable(interaction, LocalIndication.current, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = tool.label + ": " + kind.label },
     ) {
         BasicText(
             tool.keyLabel,
             style = TmType.mono(10.sp, color = color.copy(alpha = KEY_ALPHA)),
             modifier = Modifier.padding(start = 6.dp, top = 3.dp),
         )
+        // Gruppe: kleiner Pfeil – ein Klick klappt die Liste auf
+        if (tool.isGroup) {
+            Icon(
+                Icons.ChevronUp,
+                null,
+                Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 5.dp),
+                tint = color.copy(alpha = CHEVRON_ALPHA),
+                size = 12.dp,
+            )
+        }
         Column(
             Modifier.fillMaxSize().padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Icon(tool.icon, null, tint = color, size = 22.dp)
+            Icon(kind.icon, null, tint = color, size = 22.dp)
             BasicText(
-                tool.dockLabel,
+                kind.short,
                 style = TmType.text(11.sp, FontWeight.SemiBold, color).copy(textAlign = TextAlign.Center),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -209,7 +258,95 @@ private fun ToolTile(
                 maxLines = 1,
             )
         }
-        if (hovered) ToolTooltip("${tool.label} (${tool.keyLabel})")
+        if (hovered && look != TileLook.OPEN) ToolTooltip("${tool.label}: ${kind.label} (${tool.keyLabel})")
+    }
+}
+
+private val FlyoutShape = RoundedCornerShape(14.dp)
+private val RowShape = RoundedCornerShape(10.dp)
+
+/**
+ * Ausklappliste einer Gruppe: je Art Ziffer, Icon, Name, eine Zeile Erklärung und Preis; die gewählte blau
+ * umrandet. Immer gleich breit – egal wie viele Arten die Gruppe hat.
+ */
+@Composable
+private fun ToolFlyout(
+    group: Tool,
+    selection: ToolSelection,
+    rules: GameRules,
+    idleTrailers: Int,
+    onSelect: (ToolSelection) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val current = selection.chosen[group] ?: group.kinds.first()
+    Column(
+        modifier
+            .width(FLYOUT_WIDTH.dp)
+            .shadow(10.dp, FlyoutShape, spotColor = DockShadow)
+            .background(TmColors.Surface, FlyoutShape)
+            .border(1.dp, TmColors.Line, FlyoutShape),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            BasicText(group.label.uppercase(), style = TmType.eyebrow)
+            BasicText(
+                tr("{key} wechselt · 1–{count} wählt", "key" to group.keyLabel, "count" to group.kinds.size),
+                style = TmType.mono(11.sp, bold = false, color = TmColors.Muted),
+            )
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(TmColors.LineSoft))
+        Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            group.kinds.forEachIndexed { index, kind ->
+                FlyoutRow(
+                    index + 1,
+                    kind,
+                    kind == current,
+                    kind.price(rules, idleTrailers),
+                ) { onSelect(selection.with(kind)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FlyoutRow(
+    number: Int,
+    kind: ToolKind,
+    selected: Boolean,
+    price: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = ROW_HEIGHT.dp)
+            .clip(RowShape)
+            .background(if (selected) TmColors.PrimaryTint else Color.Transparent)
+            .then(if (selected) Modifier.border(2.dp, TmColors.Primary, RowShape) else Modifier)
+            .clickable(role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        BasicText(
+            "$number",
+            style = TmType.mono(11.sp, color = TmColors.Muted).copy(textAlign = TextAlign.Center),
+            modifier =
+                Modifier
+                    .width(
+                        22.dp,
+                    ).background(TmColors.Ground, RoundedCornerShape(6.dp))
+                    .padding(vertical = 3.dp),
+        )
+        Icon(kind.icon, null, tint = TmColors.Ink, size = 20.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            BasicText(kind.label, style = TmType.text(14.sp, FontWeight.SemiBold))
+            BasicText(kind.note, style = TmType.text(12.sp, color = TmColors.Muted))
+        }
+        BasicText(price, style = TmType.mono(12.sp, bold = false), maxLines = 1)
     }
 }
 
@@ -312,53 +449,12 @@ internal fun OptionChip(
     ) { BasicText(text, style = TmType.text(12.sp, FontWeight.SemiBold)) }
 }
 
-/** Preis eines Werkzeugs für das Dock; leer, wenn es nichts kostet. */
-private fun price(
-    tool: Tool,
-    rules: GameRules,
-    selection: ToolSelection,
-    idleTrailers: Int,
-): String =
-    when (tool) {
-        Tool.SPEED_LIMIT -> {
-            formatEuro(rules.speedLimitSignCost)
-        }
-
-        Tool.SIGNAL -> {
-            formatEuro(rules.signalCost)
-        }
-
-        Tool.CAMERA -> {
-            selection.cameraKind.price(rules, idleTrailers)
-        }
-
-        Tool.PRIORITY -> {
-            formatEuro(rules.priorityRoadCost)
-        }
-
-        Tool.ROADWORKS -> {
-            formatEuro(rules.roadworksSetupCost)
-        }
-
-        Tool.SIGNAL_TIMING -> {
-            formatEuro(rules.signalProgramCost)
-        }
-
-        Tool.POLICE_CHECK -> {
-            formatEuro(rules.policeCheckCost)
-        }
-
-        Tool.BIKE_CROSSING -> {
-            formatEuro(rules.bikeCrossingCost)
-        }
-
-        else -> {
-            ""
-        }
-    }
-
 internal const val WALKING_SPEED = 7
 private const val TILE_WIDTH = 78
 private const val TILE_HEIGHT = 68
+private const val TILE_GAP = 2
 private const val KEY_ALPHA = 0.6f
+private const val CHEVRON_ALPHA = 0.7f
 private const val TOOLTIP_OFFSET = 34
+private const val FLYOUT_WIDTH = 340
+private const val ROW_HEIGHT = 52

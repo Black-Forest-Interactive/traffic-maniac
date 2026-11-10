@@ -96,6 +96,27 @@ internal class HudState(
     fun show(place: MapPlace) {
         focus = MapFocus(place.x, place.y)
     }
+
+    /** Gruppe, deren Ausklappliste über dem Dock offen ist. */
+    var openGroup by mutableStateOf<Tool?>(null)
+
+    /** Neue Auswahl; eine andere Art bricht ein angefangenes „Anfang gesetzt“ ab. */
+    fun select(next: ToolSelection) {
+        if (next.kind != selection.kind) plan.routeStart = null
+        selection = next
+    }
+
+    /** Kachel angeklickt: Gruppe wählen; bei mehreren Arten die Liste auf- bzw. zuklappen. */
+    fun tile(tool: Tool) {
+        openGroup = if (tool.isGroup && openGroup != tool) tool else null
+        select(selection.copy(tool = tool))
+    }
+
+    /** Art in der Liste gewählt: übernehmen und die Liste schließen. */
+    fun pick(next: ToolSelection) {
+        select(next)
+        openGroup = null
+    }
 }
 
 /** Tasten und Anfragen aus dem Fenster: Werkzeug (Blitzer zweimal = nächste Art) und Fenster rechts. */
@@ -105,27 +126,30 @@ private fun InputRequests(
     hud: HudState,
 ) {
     LaunchedEffect(input.toolRequest) {
-        input.toolRequest?.let { tool ->
+        input.toolRequest?.takeIf { it in hud.availableTools }?.let { tool ->
             val selection = hud.selection
-            hud.selection =
-                when {
-                    tool !in hud.availableTools -> {
-                        selection
-                    }
-
-                    // Blitzer schon gewählt: E noch einmal wechselt die Art
-                    tool == Tool.CAMERA && selection.tool == Tool.CAMERA -> {
-                        selection.copy(
-                            cameraKind = selection.cameraKind.next,
-                        )
-                    }
-
-                    else -> {
-                        selection.copy(tool = tool)
-                    }
-                }
+            // Gruppentaste noch einmal: die nächste Art; sonst die Gruppe wählen (Liste zu)
+            if (tool == selection.tool &&
+                tool.isGroup
+            ) {
+                hud.select(selection.next())
+            } else {
+                hud.pick(selection.copy(tool = tool))
+            }
         }
         input.toolRequest = null
+    }
+    // Ziffer bei offener Liste: die Art an dieser Stelle
+    LaunchedEffect(input.kindRequest) {
+        val group = hud.openGroup
+        val kind = input.kindRequest?.let { group?.kinds?.getOrNull(it - 1) }
+        if (kind != null) hud.pick(hud.selection.with(kind))
+        input.kindRequest = null
+    }
+    LaunchedEffect(hud.openGroup) { input.listOpen = hud.openGroup != null }
+    LaunchedEffect(input.listRequest) {
+        input.listRequest?.let { hud.tile(it) }
+        input.listRequest = null
     }
     LaunchedEffect(input.panelRequest) {
         input.panelRequest?.let { hud.panel = it }
@@ -241,11 +265,15 @@ private fun MapArea(
             }
             DeveloperOverlays(frame, hud, network, input)
             val dock =
-                ToolDockState(hud.selection, hud.availableTools, game.idleTrailers, {
-                    // Werkzeugwechsel bricht ein angefangenes Tempolimit (Anfang gesetzt) ab
-                    if (it.tool != hud.selection.tool) hud.plan.routeStart = null
-                    hud.selection = it
-                }, planBar(hud.plan, game.balance, command))
+                ToolDockState(
+                    hud.selection,
+                    hud.availableTools,
+                    game.idleTrailers,
+                    hud.openGroup,
+                    hud::tile,
+                    hud::pick,
+                    planBar(hud.plan, game.balance, command),
+                )
             ToolDock(dock, rules, Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
         }
     }
@@ -273,7 +301,7 @@ private fun MapLayer(
             onFps = { hud.fps = it },
             showMoods = hud.toggles.showMoods,
             environmentLayer = hud.toggles.environmentLayer,
-            showCondition = hud.toggles.showCondition || hud.selection.tool == Tool.DETOUR,
+            showCondition = hud.toggles.showCondition || hud.selection.kind == ToolKind.DETOUR,
             onZoom = { hud.zoomLevel[0] = it },
             onMapClick = { x, y, metersPerPixel ->
                 val radius = max(MIN_PICK_RADIUS_METERS, PICK_RADIUS_PIXELS * metersPerPixel)

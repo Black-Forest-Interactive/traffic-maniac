@@ -79,12 +79,6 @@ internal fun estimatedPlants(
     return clusters.size
 }
 
-internal fun roadworksCommand(
-    closure: Boolean,
-    segments: List<Int>,
-    on: Boolean,
-): GameCommand = if (closure) GameCommand.SetRoadClosure(segments, on) else GameCommand.SetRoadworks(segments, on)
-
 /** Maßnahme, die ganze Strecken betrifft: Abschnitte, an oder ab, Kennung, Name und Preis je Strecke. */
 private class StretchMeasure(
     val segments: List<Int>,

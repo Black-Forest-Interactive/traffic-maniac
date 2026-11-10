@@ -56,7 +56,7 @@ class Screenshots {
                     HudInput().apply {
                         panelRequest = panel
                         // Ohne Fenster: das Ampelprogramm-Werkzeug mit seiner Auswahl zeigen
-                        toolRequest = if (panel == SidePanel.NONE) Tool.BIKE_CROSSING else Tool.POLICE_CHECK
+                        listRequest = if (panel == SidePanel.NONE) Tool.CAMERA else Tool.ROUTE
                     }
                 shoot(File(out, "game-${panel.name.lowercase()}-$suffix.png"), width, height) {
                     TrafficManiacApp(
