@@ -8,7 +8,7 @@ import kotlin.math.hypot
 
 /** Findet Straßenabschnitte und Knoten in der Nähe eines Klicks (Weltkoordinaten in Metern). */
 class MapPicker(
-    private val city: CityMap,
+    val city: CityMap,
 ) {
     /**
      * Nächster Straßenabschnitt innerhalb von [maxDistance] Metern oder `null`.

@@ -17,6 +17,7 @@ internal class Surveillance(
         when (command) {
             is GameCommand.PlaceRedLightCamera -> placeRedLight(command.link, command.withSpeed)
             is GameCommand.PlaceDisplay -> placeDisplay(command.segment)
+            is GameCommand.PlacePoliceCheck -> placePoliceCheck(command.segment)
             else -> Unit
         }
     }
@@ -50,5 +51,52 @@ internal class Surveillance(
         message(tr("Anzeigetafel aufgestellt: {street}", "street" to streetName(segment)))
     }
 
+    /** Laufende Polizeikontrollen: Blitzer-ID → Ende (Simulationszeit). */
+    private val checks = LinkedHashMap<Int, Double>()
+
+    private fun placePoliceCheck(segment: Int) {
+        if (checks.size >= rules.maxPoliceChecks) {
+            return message(
+                tr(
+                    "Mehr Streifen hat das Revier nicht – höchstens {max} Kontrollen gleichzeitig",
+                    "max" to rules.maxPoliceChecks,
+                ),
+            )
+        }
+        if (works.cameraCounters.values.any { it.segment == segment }) return message(tr("Hier blitzt es schon"))
+        if (!treasury.pay(rules.policeCheckCost, tr("Polizeikontrolle"))) return
+        val camera = simulation.speedControl.placePoliceCheck(segment)
+        works.cameraCounters[camera.id] = CameraCounter(camera.id, segment, streetName(segment), camera = camera)
+        checks[camera.id] = simulation.time + rules.policeCheckHours * SECONDS_PER_HOUR
+        message(tr("Polizeikontrolle: {street}", "street" to streetName(segment)))
+    }
+
+    /** Jeden Schritt: Restzeit der Kontrollen fortschreiben, abgelaufene beenden. */
+    fun update() {
+        if (checks.isEmpty()) return
+        val now = simulation.time
+        val over = checks.filterValues { it <= now }.keys
+        for ((id, end) in checks) works.cameraCounters[id]?.minutesLeft = ((end - now) / SECONDS_PER_MINUTE).toInt()
+        for (id in over) {
+            checks.remove(id)
+            simulation.speedControl.removeCamera(id)
+            val counter = works.cameraCounters.remove(id) ?: continue
+            val record = counter.toRecord()
+            message(
+                tr(
+                    "Polizeikontrolle beendet: {street} ({count} Verstöße, {revenue})",
+                    "street" to record.streetName,
+                    "count" to record.totalCount,
+                    "revenue" to formatEuro(record.totalRevenue),
+                ),
+            )
+        }
+    }
+
     private fun streetName(segment: Int): String = city.roads.segments[segment].name ?: tr("Straße ohne Namen")
+
+    private companion object {
+        const val SECONDS_PER_HOUR = 3_600.0
+        const val SECONDS_PER_MINUTE = 60.0
+    }
 }

@@ -131,6 +131,18 @@ internal fun Plan.click(
             routeClick(context, x, y, radius) { speedLimitAction(selection, context, it) }
         }
 
+        // Fahrradstraße wie eine Baustelle: Anfang und Ende anklicken
+        Tool.BIKE_CROSSING -> {
+            if (selection.bikeStreet) {
+                routeClick(context, x, y, radius) { path ->
+                    val segments = path.flatMap { context.picker.stretches.stretchOf(it) }.distinct()
+                    roadworksAction(GameCommand.SetBikeStreet(segments, on = true), context)
+                }
+            } else {
+                plan(context, commandFor(selection, context.picker, context.frame, x, y, radius))
+            }
+        }
+
         Tool.ROADWORKS -> {
             routeClick(context, x, y, radius) { path ->
                 val segments = path.flatMap { context.picker.stretches.stretchOf(it) }.distinct()
@@ -232,7 +244,7 @@ private fun Plan.plan(
             }
 
             is GameCommand.PlaceCamera, is GameCommand.PlaceTrailer, is GameCommand.RemoveCamera,
-            is GameCommand.PlaceDisplay, is GameCommand.PlaceRedLightCamera,
+            is GameCommand.PlaceDisplay, is GameCommand.PlaceRedLightCamera, is GameCommand.PlacePoliceCheck,
             -> {
                 cameraAction(command, context)
             }

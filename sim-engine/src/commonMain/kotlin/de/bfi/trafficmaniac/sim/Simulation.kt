@@ -158,6 +158,8 @@ class Simulation(
                         .toInt()
                 vehicle.summerTyres = random.nextDouble() < weather.summerTyreShare(termDay)
                 vehicle.runsRedLights = random.nextDouble() < config.redLightRunnerShare * vehicle.driver.speedingFactor
+                vehicle.ignoresOvertakingBan =
+                    random.nextDouble() < config.overtakingBanIgnoreShare * vehicle.driver.speedingFactor
                 router.planFor(vehicle, trip)
                 charging.planTrip(vehicle)
                 parking.planTrip(vehicle, trip)

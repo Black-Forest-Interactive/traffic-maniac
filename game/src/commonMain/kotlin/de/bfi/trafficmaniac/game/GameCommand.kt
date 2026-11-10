@@ -59,6 +59,17 @@ sealed interface GameCommand {
         val withSpeed: Boolean,
     ) : GameCommand
 
+    /** Polizeikontrolle an [segment] für einige Stunden. */
+    data class PlacePoliceCheck(
+        val segment: Int,
+    ) : GameCommand
+
+    /** Fahrradstraße auf [segments] einrichten (Tempo 30, Überholverbot für Kfz) bzw. aufheben. */
+    data class SetBikeStreet(
+        val segments: List<Int>,
+        val on: Boolean,
+    ) : GameCommand
+
     /** Geschwindigkeits-Anzeigetafel an [segment]: misst nur, blitzt nicht. */
     data class PlaceDisplay(
         val segment: Int,

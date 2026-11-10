@@ -88,7 +88,7 @@ class SurveillanceTest {
         val camera = game.state().cameras.single()
         assertTrue(camera.redLight)
         assertEquals(game.rules.redLightCameraCost, game.state().expenses)
-        val red = FineTier.entries.filter { it.isRedLight }.sumOf { camera.countPerTier[it.ordinal] }
+        val red = listOf(FineTier.RED_LIGHT, FineTier.RED_LIGHT_LATE).sumOf { camera.countPerTier[it.ordinal] }
         val speed = FineTier.SPEED.sumOf { camera.countPerTier[it.ordinal] }
         assertTrue(red > 0, "Rotlichtfotos: ${camera.countPerTier}")
         assertEquals(0, speed, "Ohne Tempomessung keine Tempofotos")
@@ -106,5 +106,41 @@ class SurveillanceTest {
         assertTrue(display.passed > 0 && display.speedingShare > 0.0, "${display.speeding}/${display.passed}")
         assertEquals(0, display.totalCount, "Keine Fotos")
         assertEquals(game.rules.speedLimitSignCost + game.rules.displayCost, game.state().expenses)
+    }
+
+    @Test
+    fun aPoliceCheckRunsThreeHoursCatchesOffendersAndEnds() {
+        val game = CityGame(crossroads(), config.copy(checkFindingRate = 0.1))
+        game.submit(GameCommand.PlacePoliceCheck(0))
+        game.submit(GameCommand.PlacePoliceCheck(1))
+        game.submit(GameCommand.PlacePoliceCheck(2))
+        game.step()
+        assertEquals(2, game.state().cameras.count { it.policeCheck }, "Höchstens zwei Kontrollen")
+        assertTrue(game.state().messages.any { it.text.startsWith("Mehr Streifen hat das Revier nicht") })
+
+        repeat(60 * 60 * config.ticksPerSecond) { game.step() }
+        val running = game.state().cameras.first { it.policeCheck }
+        assertTrue(running.minutesLeft in 100..125, "Restzeit ${running.minutesLeft} min")
+        val findings = listOf(FineTier.CHECK_DEFECT, FineTier.PHONE).sumOf { running.countPerTier[it.ordinal] }
+        assertTrue(findings > 0, "Funde: ${running.countPerTier}")
+
+        repeat(2 * 60 * 60 * config.ticksPerSecond) { game.step() }
+        assertTrue(game.state().cameras.none { it.policeCheck }, "Nach drei Stunden vorbei")
+        assertTrue(game.state().messages.any { it.text.startsWith("Polizeikontrolle beendet") })
+    }
+
+    @Test
+    fun aBikeStreetBringsTempoThirtyAndGivesTheOldLimitBack() {
+        val game = CityGame(crossroads(), config)
+        game.submit(GameCommand.SetBikeStreet(listOf(2), on = true))
+        game.step()
+        assertEquals(mapOf(2 to 30), game.state().speedLimits)
+        assertEquals(setOf(2), game.state().bikeStreets)
+        assertEquals(game.rules.bikeStreetCost, game.state().expenses)
+
+        game.submit(GameCommand.SetBikeStreet(listOf(2), on = false))
+        game.step()
+        assertTrue(game.state().speedLimits.isEmpty())
+        assertTrue(game.state().bikeStreets.isEmpty())
     }
 }

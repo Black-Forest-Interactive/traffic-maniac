@@ -145,6 +145,7 @@ private fun TierDistribution(cameras: List<CameraRecord>) {
 private fun CameraRow(camera: CameraRecord) {
     val kind =
         when {
+            camera.policeCheck -> tr("Polizeikontrolle · noch {minutes} min", "minutes" to (camera.minutesLeft ?: 0))
             camera.display -> tr("Anzeigetafel")
             camera.redLight && camera.measuresSpeed -> tr("Rotlicht + Tempo")
             camera.redLight -> tr("Rotlicht")
