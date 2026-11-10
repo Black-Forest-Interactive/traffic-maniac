@@ -91,6 +91,7 @@ private fun TrafficStatus(frame: TrafficFrame) {
             )
             Icon(if (open) Icons.ChevronUp else Icons.ChevronDown, null, tint = TmColors.Muted, size = 16.dp)
         }
+        WeatherLine(frame)
         if (open) {
             Column(
                 Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp),
@@ -114,6 +115,27 @@ private fun TrafficStatus(frame: TrafficFrame) {
             }
         }
     }
+}
+
+/** Schnee auf einen Blick: ob es schneit, wie hoch er liegt, wie viele Räumfahrzeuge unterwegs sind. */
+@Composable
+private fun WeatherLine(frame: TrafficFrame) {
+    val weather = frame.current.weather
+    if (weather.snow.isEmpty()) return
+    val covered = weather.snow.filter { it > 0f }
+    val mean = if (covered.isEmpty()) 0.0 else covered.average()
+    val text =
+        tr(
+            "{state} · Ø {cm} cm · {ploughs} Räumfahrzeuge",
+            "state" to if (weather.snowing) tr("Es schneit") else tr("Schnee"),
+            "cm" to formatDecimal(mean, 1),
+            "ploughs" to weather.ploughs,
+        )
+    BasicText(
+        text,
+        style = TmType.text(12.sp, FontWeight.SemiBold, if (weather.snowing) TmColors.Primary else TmColors.Muted),
+        modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
+    )
 }
 
 @Composable

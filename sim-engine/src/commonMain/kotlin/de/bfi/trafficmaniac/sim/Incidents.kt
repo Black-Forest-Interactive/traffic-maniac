@@ -15,6 +15,7 @@ enum class IncidentKind(
     OIL_SPILL(translatable("Ölspur")),
     ACCIDENT(translatable("Unfall")),
     TRUCK_STUCK(translatable("LKW eingeklemmt")),
+    STUCK_IN_SNOW(translatable("Im Schnee stecken geblieben")),
     ;
 
     val label: String get() = tr(labelText)
@@ -63,6 +64,7 @@ internal class Incidents(
     private val spawn: (Vehicle) -> Unit,
     private val statistics: DayStatistics,
     private val infrastructure: Infrastructure,
+    private val weather: Weather,
 ) {
     private val depots = facilities.groupBy { it.kind }
     private val incidents = ArrayList<Incident>()
@@ -98,12 +100,20 @@ internal class Incidents(
         }
     }
 
-    /** Softwarepanne (moderne Autos, im Stau häufiger) oder Ölverlust (alte Autos). `true` bei Panne. */
+    /**
+     * Schnee (Rutschunfall, Steckenbleiben), Softwarepanne (moderne Autos, im Stau häufiger) oder Ölverlust (alte
+     * Autos). `true`, wenn das Fahrzeug jetzt steht.
+     */
     private fun rollTechnicalProblems(
         vehicle: Vehicle,
         link: Int,
         time: Double,
     ): Boolean {
+        // Schnee: wegrutschen oder (Sommerreifen) stecken bleiben
+        val slip = weather.roll(vehicle, link, random)
+        if (slip == IncidentKind.ACCIDENT) accident(vehicle, link, time)
+        if (slip != null && slip != IncidentKind.ACCIDENT) breakdown(vehicle, slip, time)
+        if (slip != null) return true
         val hours = config.ticksPerSecondInverse() / SECONDS_PER_HOUR
         val moving = vehicle.speed > MOVING
         val overloaded = vehicle.waitingTime > OVERLOAD_WAIT
@@ -265,7 +275,8 @@ internal class Incidents(
     fun sweep(vehicles: List<Vehicle>) {
         val open = incidents.mapTo(HashSet()) { it.id }
         for (vehicle in vehicles) {
-            if (vehicle.role == VehicleRole.PRIVATE || vehicle.role.isEvent || vehicle.incidentId in open) continue
+            val ownDuty = vehicle.role.isEvent || vehicle.role == VehicleRole.SNOW_PLOUGH
+            if (vehicle.role == VehicleRole.PRIVATE || ownDuty || vehicle.incidentId in open) continue
             lanes[vehicle.link][vehicle.lane].remove(vehicle)
             vehicle.active = false
             vehicle.removedByIncident = true

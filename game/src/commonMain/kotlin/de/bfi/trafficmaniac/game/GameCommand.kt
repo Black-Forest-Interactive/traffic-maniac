@@ -36,6 +36,11 @@ sealed interface GameCommand {
         val closed: Boolean,
     ) : GameCommand
 
+    /** Winterdienst: so viele Räumfahrzeuge sollen unterwegs sein. */
+    data class SetPloughs(
+        val count: Int,
+    ) : GameCommand
+
     /** Grüne Welle entlang [segments] (zusammenhängend, vom ersten zum letzten) für [kmh]. */
     data class SetGreenWave(
         val segments: List<Int>,

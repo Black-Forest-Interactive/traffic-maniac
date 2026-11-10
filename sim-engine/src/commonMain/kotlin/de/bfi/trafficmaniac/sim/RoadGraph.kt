@@ -147,6 +147,9 @@ class RoadGraph(
     /** Tempo-Faktor durch den Straßenzustand und Baustellen (1 = normal). */
     internal val linkRoadFactor = FloatArray(linkCount) { 1f }
 
+    /** Tempo-Faktor durch Schnee (1 = trocken), gesetzt vom [Weather]. */
+    internal val linkWeatherFactor = FloatArray(linkCount) { 1f }
+
     /** Gibt es irgendwo ein Gewichtslimit? Nur dann lohnt sich für LKW eine eigene Route. */
     var hasWeightLimits: Boolean = linkMaxWeightTons.any { it.isFinite() }
         internal set
