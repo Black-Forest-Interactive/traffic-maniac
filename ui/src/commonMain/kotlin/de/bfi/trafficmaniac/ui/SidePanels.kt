@@ -90,6 +90,29 @@ internal fun SidePanelSlot(
 }
 
 @Composable
+private fun MaintenanceSlot(
+    game: de.bfi.trafficmaniac.game.GameState,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+    picker: MapPicker,
+    onShow: (MapPlace) -> Unit,
+    onClose: () -> Unit,
+) {
+    MaintenancePanel(
+        game.maintenance,
+        rules,
+        onCommand,
+        onClose = onClose,
+        onShow = { report ->
+            // Ampelmeldungen haben keinen Abschnitt – dann zur Ampel selbst
+            val place = if (report.node >= 0) picker.placeOfNode(report.node) else picker.place(report.segments)
+            place?.let(onShow)
+        },
+        ploughs = game.ploughs.takeIf { game.winterService },
+    )
+}
+
+@Composable
 private fun PanelContent(
     panel: SidePanel,
     frame: TrafficFrame,
@@ -122,11 +145,7 @@ private fun PanelContent(
         }
 
         SidePanel.MAINTENANCE -> {
-            MaintenancePanel(game.maintenance, rules, onCommand, onClose = onClose, onShow = { report ->
-                // Ampelmeldungen haben keinen Abschnitt – dann zur Ampel selbst
-                val place = if (report.node >= 0) picker.placeOfNode(report.node) else picker.place(report.segments)
-                place?.let(onShow)
-            })
+            MaintenanceSlot(frame.game, rules, onCommand, picker, onShow, onClose)
         }
 
         SidePanel.PARKING -> {

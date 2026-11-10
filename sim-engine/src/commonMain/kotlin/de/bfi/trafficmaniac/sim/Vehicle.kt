@@ -229,6 +229,7 @@ enum class VehicleRole(
     BIKE_CORSO(translatable("Rad-Korso")),
     FIRE_BRIGADE(translatable("Feuerwehr")),
     HEAVY_TRANSPORT(translatable("Schwertransport")),
+    SNOW_PLOUGH(translatable("Räumfahrzeug")),
     ;
 
     val label: String get() = tr(labelText)
@@ -303,6 +304,9 @@ class Vehicle internal constructor(
 
     /** Vom Abschleppdienst entfernt bzw. Einsatz beendet (zählt weder als angekommen noch als aufgegeben). */
     internal var removedByIncident = false
+
+    /** Noch mit Sommerreifen unterwegs (nur bei Schnee von Belang). */
+    internal var summerTyres = false
 
     /** Einsatz, zu dem ein Einsatzfahrzeug unterwegs ist, oder -1. */
     internal var incidentId = -1

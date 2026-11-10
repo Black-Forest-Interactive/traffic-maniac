@@ -21,6 +21,9 @@ data class GameRules(
     val roadworksDailyCost: Long = 200,
     /** Vollsperrung durch den Spieler, je Strecke. */
     val closureCost: Long = 500,
+    /** Räumfahrzeug im Winterdienst, je Tag. */
+    val ploughDailyCost: Long = 1_500,
+    val maxPloughs: Int = 12,
     /** Ab so vielen Tagen fällt auf, dass an einer Baustelle niemand arbeitet … */
     val fakeRoadworksGraceDays: Int = 2,
     /** … mit dieser Wahrscheinlichkeit je Tag … */

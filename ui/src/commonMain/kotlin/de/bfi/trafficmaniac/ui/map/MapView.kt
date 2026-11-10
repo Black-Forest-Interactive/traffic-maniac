@@ -151,12 +151,25 @@ fun MapView(
                     focus?.let { drawPing(currentCamera, it, (nanos - ping[0]) / NANOS_PER_SECOND.toDouble()) }
                 }
             }
+            SnowfallCanvas(traffic, frameTick)
         }
         if (plan != null && currentCamera != null) {
             Canvas(Modifier.fillMaxSize()) { drawPlan(plan, currentCamera, picker, segmentPaths, textMeasurer) }
         }
         if (network != null) NetworkCanvas(network, currentCamera, textMeasurer, networkPick, traffic)
         Attribution(city.attribution, Modifier.align(Alignment.BottomEnd))
+    }
+}
+
+/** Fallende Flocken über der Karte, solange es schneit. */
+@Composable
+private fun SnowfallCanvas(
+    traffic: () -> TrafficFrame?,
+    frameTick: State<Long>,
+) {
+    Canvas(Modifier.fillMaxSize()) {
+        val seconds = frameTick.value / NANOS_PER_SECOND.toDouble()
+        if (traffic()?.current?.weather?.snowing == true) drawSnowfall(seconds)
     }
 }
 
@@ -409,6 +422,8 @@ private fun DrawScope.drawTraffic(
     effects: TrafficEffects,
 ) = inWorld(camera) {
     effects.flow.draw(this, traffic.current.segmentFlow, camera.scale)
+    // Schnee über den Staufarben – sonst sähe man in der Gesamtansicht nichts davon
+    drawSnow(effects.flow.paths, traffic.current.weather, camera.scale)
     drawIncidents(traffic.current.incidents, camera.scale, effects.sprites)
     drawDamage(traffic.game.maintenance.reports, picker, camera.scale, effects.sprites)
     drawInfrastructureIcons(traffic.current.infrastructure, picker, camera.scale, effects.sprites)

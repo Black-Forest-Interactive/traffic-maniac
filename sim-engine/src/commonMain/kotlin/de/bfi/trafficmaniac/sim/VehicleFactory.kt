@@ -100,8 +100,8 @@ internal class VehicleFactory(
                 when (role) {
                     VehicleRole.TOW_TRUCK, VehicleRole.STREET_SERVICE -> VehicleType.VAN
 
-                    // Löschfahrzeug: so groß wie ein LKW
-                    VehicleRole.FIRE_BRIGADE -> VehicleType.TRUCK
+                    // Löschfahrzeug und Räumfahrzeug: so groß wie ein LKW
+                    VehicleRole.FIRE_BRIGADE, VehicleRole.SNOW_PLOUGH -> VehicleType.TRUCK
 
                     else -> VehicleType.CAR
                 },
@@ -152,6 +152,7 @@ internal class VehicleFactory(
             mapOf(
                 VehicleRole.AMBULANCE to 0xFFFFFFFF.toInt(),
                 VehicleRole.POLICE to 0xFF1E6FD9.toInt(),
+                VehicleRole.SNOW_PLOUGH to 0xFFF28C28.toInt(),
                 VehicleRole.FIRE_BRIGADE to 0xFFC1121F.toInt(),
                 VehicleRole.TOW_TRUCK to 0xFFFFD60A.toInt(),
                 VehicleRole.STREET_SERVICE to 0xFFFFA500.toInt(),

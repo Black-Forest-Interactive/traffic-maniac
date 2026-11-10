@@ -55,6 +55,8 @@ class SimulationSnapshot(
      * Stillstand) – für die Staufarben in der Gesamtansicht.
      */
     val segmentFlow: FloatArray = FloatArray(0),
+    /** Schnee und Räumdienst (leer ohne Wetter). */
+    val weather: WeatherSnapshot = WeatherSnapshot.NONE,
 ) {
     val vehicleCount: Int get() = ids.size
 }

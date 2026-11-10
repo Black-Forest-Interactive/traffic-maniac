@@ -51,4 +51,5 @@ internal fun RoadGraph.setSegmentWeightLimit(
 }
 
 /** Gesamter Tempo-Faktor aus Vorfällen, Straßenzustand und Baustellen. */
-internal fun RoadGraph.speedFactor(link: Int): Float = linkSlowdown[link] * linkRoadFactor[link]
+internal fun RoadGraph.speedFactor(link: Int): Float =
+    linkSlowdown[link] * linkRoadFactor[link] * linkWeatherFactor[link]

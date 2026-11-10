@@ -28,6 +28,7 @@ class CityGame(
     private val timing = SignalTiming(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
     private val roadworks =
         Roadworks(city, simulation, rules, treasury, works) { message(it, kind = MessageKind.ACTION) }
+    private val winter = WinterService(simulation, rules, treasury) { message(it, kind = MessageKind.PROBLEM) }
     private val citizens = Citizens(city.zones, rules)
     private val drivers = DriverRegistry(rules, citizens)
     private val office = FineOffice(rules, treasury, citizens, drivers) { message(it, kind = MessageKind.ACTION) }
@@ -98,6 +99,7 @@ class CityGame(
         val reportsBefore = simulation.dayReports.size
         simulation.step()
         collectFines()
+        winter.update()
         achievements.checkLive(
             simulation.incidentsToday[IncidentKind.TRUCK_STUCK] ?: 0,
             recordRatioToday,
@@ -122,6 +124,8 @@ class CityGame(
             greenWaves = timing.greenWaves.toList(),
             roadworks = roadworks.roadworks.toSet(),
             roadClosures = roadworks.closed.toSet(),
+            winterService = winter.enabled,
+            ploughs = winter.ploughs,
             cameras = works.cameraCounters.values.map { it.toRecord() },
             messages = messages.toList(),
             prContract = prContract,
@@ -265,6 +269,7 @@ class CityGame(
         recordRatioToday = 0.0
         if (works.laserCount > 0) treasury.charge(works.laserCount * rules.laserDailyCost)
         politics.press(roadworks.dayEnded(report.day))
+        winter.dayEnded()
         if (report.weekday == Weekday.SUNDAY) budgetRound()
         if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
     }
@@ -315,10 +320,11 @@ class CityGame(
 
             // Ampelprogramme und eigene Baustellen – jede Stelle übernimmt nur ihre Befehle
             is GameCommand.SetSignalProgram, is GameCommand.SetGreenWave,
-            is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure,
+            is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure, is GameCommand.SetPloughs,
             -> {
                 timing.execute(command)
                 roadworks.execute(command)
+                winter.execute(command)
             }
 
             is GameCommand.RemoveSignal -> {

@@ -42,7 +42,9 @@ import de.bfi.trafficmaniac.ui.components.OptionButton
 import de.bfi.trafficmaniac.ui.components.PanelScaffold
 import de.bfi.trafficmaniac.ui.components.PanelSection
 import de.bfi.trafficmaniac.ui.components.SegmentedControl
+import de.bfi.trafficmaniac.ui.components.SettingRow
 import de.bfi.trafficmaniac.ui.components.StatTile
+import de.bfi.trafficmaniac.ui.components.Stepper
 import de.bfi.trafficmaniac.ui.components.TmButton
 import kotlin.math.roundToInt
 
@@ -62,6 +64,8 @@ fun MaintenancePanel(
     /** „Auf Karte zeigen“: die Karte fliegt zur Stelle. */
     onShow: (DamageReport) -> Unit = {},
     onClose: (() -> Unit)? = null,
+    /** Räumfahrzeuge im Winterdienst; `null` = Szenario ohne Schnee. */
+    ploughs: Int? = null,
 ) {
     PanelScaffold(tr("Amt"), tr("Bauamt"), modifier, onClose, floating = false) {
         PanelSection(divider = false) {
@@ -87,7 +91,33 @@ fun MaintenancePanel(
                 detail = { formatEuro(budgetCost(it, rules)) },
             )
         }
+        ploughs?.let { WinterService(it, rules, onCommand) }
         DamageList(state, rules, onCommand, onShow)
+    }
+}
+
+/** Winterdienst: wie viele Räumfahrzeuge räumen und streuen (kosten je Tag). */
+@Composable
+private fun WinterService(
+    ploughs: Int,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+) {
+    PanelSection(title = tr("Winterdienst")) {
+        SettingRow(
+            tr("Räumfahrzeuge"),
+            hint =
+                tr(
+                    "{cost}/Tag je Fahrzeug · Hauptstraßen zuerst, im Stau stecken sie mit fest",
+                    "cost" to formatEuro(rules.ploughDailyCost),
+                ),
+        ) {
+            Stepper(
+                "$ploughs",
+                onMinus = { onCommand(GameCommand.SetPloughs(ploughs - 1)) }.takeIf { ploughs > 0 },
+                onPlus = { onCommand(GameCommand.SetPloughs(ploughs + 1)) }.takeIf { ploughs < rules.maxPloughs },
+            )
+        }
     }
 }
 

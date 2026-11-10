@@ -101,6 +101,10 @@ internal fun vehicleSpriteName(
             "tow_truck"
         }
 
+        VehicleRole.SNOW_PLOUGH -> {
+            "snow_plough"
+        }
+
         VehicleRole.STREET_SERVICE -> {
             "road_service"
         }

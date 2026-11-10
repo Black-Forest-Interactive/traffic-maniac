@@ -85,7 +85,7 @@ internal fun DrawScope.drawVehicles(
  * Je Snapshot werden die Abschnitte einmal in wenige Farbstufen gebündelt; gezeichnet wird dann ein Pfad je Stufe.
  */
 internal class FlowLayer(
-    private val paths: SegmentPaths,
+    val paths: SegmentPaths,
 ) {
     private var source: FloatArray? = null
     private val bins = Array(FLOW_BINS) { Path() }
@@ -301,13 +301,22 @@ private class SpriteBuilder(
                 // Abschleppwagen gelb (wie die Pannenhilfe), Straßenmeisterei orange
                 VehicleRole.TOW_TRUCK -> TOW_YELLOW
 
-                VehicleRole.STREET_SERVICE -> SERVICE_ORANGE
+                VehicleRole.STREET_SERVICE, VehicleRole.SNOW_PLOUGH -> SERVICE_ORANGE
 
                 else -> v.color
             }
         when (v.type) {
             VehicleType.TRUCK -> {
-                quad(v, 0f, CARGO_END, -1f, 1f, if (v.role == VehicleRole.FIRE_BRIGADE) FIRE_RED else CARGO)
+                val cargo =
+                    when (v.role) {
+                        VehicleRole.FIRE_BRIGADE -> FIRE_RED
+
+                        // Streuer hinten: orange wie das ganze Räumfahrzeug
+                        VehicleRole.SNOW_PLOUGH -> SERVICE_ORANGE
+
+                        else -> CARGO
+                    }
+                quad(v, 0f, CARGO_END, -1f, 1f, cargo)
                 quad(v, CAB_START, 1f, -CAB_WIDTH, CAB_WIDTH, body)
             }
 
@@ -365,6 +374,11 @@ private class SpriteBuilder(
 
             VehicleRole.TOW_TRUCK -> {
                 drawLine(MapStyle.ink, v.point(0f, 0f), v.point(-HOOK, 0f), v.width * HOOK_WIDTH)
+            }
+
+            // Räumschild vorn, breiter als das Fahrzeug
+            VehicleRole.SNOW_PLOUGH -> {
+                quad(v, 1f, 1f + BLADE_DEPTH, -BLADE_WIDTH, BLADE_WIDTH, BLADE_GRAY)
             }
 
             else -> {
@@ -565,6 +579,9 @@ private val CARGO = Color(0xFFDEE2E6)
 private val FLATBED = Color(0xFF495057)
 private val LOAD = Color(0xFFF4A261)
 private val SERVICE_ORANGE = Color(0xFFFF8C00)
+private val BLADE_GRAY = Color(0xFF586674)
+private const val BLADE_DEPTH = 0.12f
+private const val BLADE_WIDTH = 1.35f
 private val TOW_YELLOW = Color(0xFFFFD60A)
 private val POLICE_SILVER = Color(0xFFDCE1E6)
 private val POLICE_BLUE = Color(0xFF1D4F91)
