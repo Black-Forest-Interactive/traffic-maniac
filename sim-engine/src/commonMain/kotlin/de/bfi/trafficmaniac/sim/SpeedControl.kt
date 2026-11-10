@@ -72,6 +72,18 @@ class SpeedControl internal constructor(
         return camera
     }
 
+    /** Polizeikontrolle in der Mitte von [segment]: beide Richtungen, mobil (niemand kennt sie vorher). */
+    fun placePoliceCheck(segment: Int): SpeedCamera {
+        val links = graph.segmentLinks[segment]
+        val point = FloatArray(LOCATE_SIZE)
+        graph.locate(links.first(), graph.linkLength[links.first()] / 2, 0, point)
+        val camera =
+            SpeedCamera(nextCameraId++, segment, point[LOCATE_X], point[LOCATE_Y], mobile = true, policeCheck = true)
+        cameraList += camera
+        for (link in links) sites[link] += CameraSite(camera, graph.linkLength[link] / 2.0)
+        return camera
+    }
+
     /** Geschwindigkeits-Anzeigetafel in der Mitte von [segment]: misst beide Richtungen, blitzt nicht. */
     fun placeDisplay(segment: Int): SpeedCamera {
         val links = graph.segmentLinks[segment]
@@ -131,6 +143,8 @@ class SpeedControl internal constructor(
         vehicle: Vehicle,
         link: Int,
     ) {
+        // Fahrradstraße: Wer das Überholverbot ignoriert, zieht an den Radfahrern vorbei
+        vehicle.overtakingLink = if (graph.linkBikeStreet[link] && vehicle.ignoresOvertakingBan) link else -1
         val gap = max(0f, graph.linkPerceivedSpeedKmh[link] - graph.speedLimitKmh(link)).toDouble()
         val overlooked = gap > 0 && random.nextDouble() < (1 - vehicle.attention) * config.overlookProbability
         val tendency = vehicle.driver.speedingFactor * (1 + vehicle.irritation)
@@ -184,19 +198,38 @@ class SpeedControl internal constructor(
         val speeding = vehicle.speedingKmh > 0
         var desired = if (speeding) limit + vehicle.speedingKmh / KMH_PER_MS else limit * vehicle.driver.speedFactor
         desired *= graph.speedFactor(link)
-        val fixedCameraAhead =
-            sites[link].any {
-                !it.camera.mobile &&
-                    it.camera.measuresSpeed &&
-                    it.position - vehicle.position in 0.0..CAMERA_BRAKE_ZONE
-            }
-        if (vehicle.knowsCameras && fixedCameraAhead) desired = min(desired, limit * CAMERA_BRAKE_FACTOR)
-        // Vor einer Anzeigetafel nimmt mancher Raser den Fuß vom Gas
-        val displayAhead = sites[link].any { it.camera.display && it.position - vehicle.position in 0.0..DISPLAY_ZONE }
-        if (displayAhead && speeding) desired = min(desired, limit + vehicle.speedingKmh * DISPLAY_EFFECT / KMH_PER_MS)
+        desired = min(desired, localCap(vehicle, link, limit))
         // Unsichere werden vor Kreuzungen langsamer
         if (graph.linkLength[link] - vehicle.position < JUNCTION_ZONE) desired *= vehicle.driver.junctionCaution
         return min(min(desired, vehicle.type.maxSpeed), graph.linkEventSpeedCap[link].toDouble())
+    }
+
+    /**
+     * Was vor Ort bremst: Ortskundige vor festen Blitzern, Radfahrer vor einem auf der Fahrradstraße (außer man
+     * überholt verbotenerweise), die Kelle der Polizeikontrolle, und vor der Anzeigetafel nimmt mancher Raser den Fuß
+     * vom Gas. Ohne all das: unbegrenzt.
+     */
+    private fun localCap(
+        vehicle: Vehicle,
+        link: Int,
+        limit: Double,
+    ): Double {
+        fun ahead(
+            zone: Double,
+            accept: (SpeedCamera) -> Boolean,
+        ) = sites[link].any { accept(it.camera) && it.position - vehicle.position in 0.0..zone }
+        var cap = Double.MAX_VALUE
+        if (vehicle.knowsCameras &&
+            ahead(CAMERA_BRAKE_ZONE) { !it.mobile && it.measuresSpeed }
+        ) {
+            cap = limit * CAMERA_BRAKE_FACTOR
+        }
+        if (graph.linkBikeStreet[link] && vehicle.overtakingLink != link) cap = min(cap, BIKE_PACE / KMH_PER_MS)
+        if (ahead(CHECK_ZONE) { it.policeCheck }) cap = min(cap, CHECK_PACE / KMH_PER_MS)
+        if (vehicle.speedingKmh > 0 && ahead(DISPLAY_ZONE) { it.display }) {
+            cap = min(cap, limit + vehicle.speedingKmh * DISPLAY_EFFECT / KMH_PER_MS)
+        }
+        return cap
     }
 
     /** Prüft, ob [vehicle] auf [link] bei der Fahrt von [oldPosition] aus einen Blitzer passiert hat. */
@@ -217,6 +250,21 @@ class SpeedControl internal constructor(
                     if (measured > limitKmh) camera.speeding++
                     continue
                 }
+                if (camera.policeCheck) {
+                    checkFinding(vehicle, link)?.let { finding ->
+                        violations +=
+                            SpeedViolation(
+                                camera.id,
+                                vehicle.id,
+                                vehicle.homeZone,
+                                vehicle.person,
+                                measured,
+                                limitKmh,
+                                0.0,
+                                finding = finding,
+                            )
+                    }
+                }
                 if (!camera.measuresSpeed) continue
                 val excess = measured - toleranceKmh - limitKmh
                 if (excess >
@@ -236,6 +284,18 @@ class SpeedControl internal constructor(
             }
         }
     }
+
+    /** Was die Polizei bei [vehicle] findet: Überholen in der Fahrradstraße, sonst manchmal Mängel oder Handy. */
+    private fun checkFinding(
+        vehicle: Vehicle,
+        link: Int,
+    ): CheckFinding? =
+        when {
+            vehicle.overtakingLink == link -> CheckFinding.OVERTAKING
+            random.nextDouble() >= config.checkFindingRate -> null
+            random.nextBoolean() -> CheckFinding.DEFECT
+            else -> CheckFinding.PHONE
+        }
 
     companion object {
         /** Messtoleranz innerorts. */
@@ -258,6 +318,15 @@ class SpeedControl internal constructor(
 
         /** Rotlichtblitzer: so weit vor dem Ende der Zufahrt steht er. */
         private const val STOP_LINE_SETBACK = 3f
+
+        /** Tempo hinter Radfahrern auf einer Fahrradstraße. */
+        private const val BIKE_PACE = 22.0
+
+        /** Polizeikontrolle: so weit vorher wird abgebremst … */
+        private const val CHECK_ZONE = 150.0
+
+        /** … auf dieses Tempo. */
+        private const val CHECK_PACE = 25.0
 
         /** Anzeigetafel: so weit vorher sieht man sie … */
         private const val DISPLAY_ZONE = 150.0

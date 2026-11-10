@@ -144,12 +144,7 @@ internal fun DrawScope.drawCameras(
             continue
         }
         if (drawSprite(sprites, cameraSprite(camera), c, size * SPRITE_CAMERA_WIDTH, size, scale)) continue
-        if (camera.mobile) {
-            // Stativ
-            for (dx in TRIPOD_LEGS) {
-                drawLine(MapStyle.ink, c, c + Offset(dx * size, -size * TRIPOD), ink.width)
-            }
-        }
+        drawStand(camera, c, size, ink)
         val body = cameraBody(camera)
         val topLeft = c - Offset(size / 2, size * BODY_HEIGHT / 2)
         val bodySize = Size(size, size * BODY_HEIGHT)
@@ -166,16 +161,39 @@ internal fun DrawScope.drawCameras(
     }
 }
 
+/** Laser auf dem Stativ, Polizeikontrolle mit zwei Leitkegeln davor und dahinter; feste Blitzer stehen frei. */
+private fun DrawScope.drawStand(
+    camera: SpeedCamera,
+    c: Offset,
+    size: Float,
+    ink: Stroke,
+) {
+    when {
+        camera.policeCheck -> {
+            for (dx in CONES) drawCircle(MapStyle.works, size * CONE, c + Offset(dx * size, -size * TRIPOD))
+        }
+
+        camera.mobile -> {
+            for (dx in TRIPOD_LEGS) drawLine(MapStyle.ink, c, c + Offset(dx * size, -size * TRIPOD), ink.width)
+        }
+    }
+}
+
+private val CONES = listOf(-1.1f, 1.1f)
+private const val CONE = 0.22f
+
 private fun cameraSprite(camera: SpeedCamera): String =
     when {
+        camera.policeCheck -> "police_check"
         camera.redLight -> "camera_red_light"
         camera.mobile -> "camera_laser"
         else -> "camera_fixed"
     }
 
-/** Rotlichtblitzer rot, Laser blau, feste grau. */
+/** Polizeikontrolle blau, Rotlichtblitzer rot, Laser hellblau, feste grau. */
 private fun cameraBody(camera: SpeedCamera): Color =
     when {
+        camera.policeCheck -> MapStyle.policeCheck
         camera.redLight -> MapStyle.redLightCamera
         camera.mobile -> MapStyle.laser
         else -> MapStyle.camera

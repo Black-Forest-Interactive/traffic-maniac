@@ -279,6 +279,9 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
                 ) { s, _, sp ->
                     drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f, redLight = true)), s, sp)
                 },
+                LegendEntry(translatable("Polizeikontrolle mit Leitkegeln (läuft drei Stunden)"), 1.5f) { s, _, sp ->
+                    drawCameras(listOf(SpeedCamera(0, 0, 0f, 0f, mobile = true, policeCheck = true)), s, sp)
+                },
                 LegendEntry(translatable("Anzeigetafel: Anteil der zu Schnellen, blitzt nicht"), 1.5f) { s, m, _ ->
                     drawDisplays(listOf(SpeedCamera(0, 0, 0f, 0f, mobile = true, display = true)), s, m)
                 },

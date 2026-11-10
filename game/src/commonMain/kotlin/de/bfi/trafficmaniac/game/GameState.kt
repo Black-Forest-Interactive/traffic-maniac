@@ -45,6 +45,8 @@ data class GameState(
     /** Eigene Baustellen und Vollsperrungen des Spielers (Abschnitte). */
     val roadworks: Set<Int> = emptySet(),
     val roadClosures: Set<Int> = emptySet(),
+    /** Fahrradstraßen (Abschnitte). */
+    val bikeStreets: Set<Int> = emptySet(),
     /** Szenario mit Wetter: Winterdienst einstellbar. */
     val winterService: Boolean = false,
     val ploughs: Int = 0,

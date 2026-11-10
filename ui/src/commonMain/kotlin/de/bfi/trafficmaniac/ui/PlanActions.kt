@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.ui
 
 import de.bfi.trafficmaniac.game.GameCommand
+import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.map.PlanMarker
 import kotlin.math.hypot
@@ -84,17 +85,44 @@ internal fun roadworksCommand(
     on: Boolean,
 ): GameCommand = if (closure) GameCommand.SetRoadClosure(segments, on) else GameCommand.SetRoadworks(segments, on)
 
-/** Baustelle oder Vollsperrung (bzw. ihr Abbau): bezahlt wird je Strecke von Kreuzung zu Kreuzung. */
+/** Maßnahme, die ganze Strecken betrifft: Abschnitte, an oder ab, Kennung, Name und Preis je Strecke. */
+private class StretchMeasure(
+    val segments: List<Int>,
+    val on: Boolean,
+    val kind: String,
+    val name: String,
+    val unitCost: Long,
+)
+
+private fun stretchMeasure(
+    command: GameCommand,
+    rules: GameRules,
+): StretchMeasure? =
+    when (command) {
+        is GameCommand.SetRoadworks -> {
+            StretchMeasure(command.segments, command.active, "works", tr("Baustelle"), rules.roadworksSetupCost)
+        }
+
+        is GameCommand.SetRoadClosure -> {
+            StretchMeasure(command.segments, command.closed, "closure", tr("Sperre"), rules.closureCost)
+        }
+
+        is GameCommand.SetBikeStreet -> {
+            StretchMeasure(command.segments, command.on, "bike-street", tr("Fahrradstraße"), rules.bikeStreetCost)
+        }
+
+        else -> {
+            null
+        }
+    }
+
+/** Baustelle, Vollsperrung oder Fahrradstraße (bzw. ihr Abbau): bezahlt wird je Strecke von Kreuzung zu Kreuzung. */
 internal fun roadworksAction(
     command: GameCommand,
     context: PlanContext,
 ): PlannedAction? {
-    val closure = command is GameCommand.SetRoadClosure
-    val segments =
-        (command as? GameCommand.SetRoadClosure)?.segments ?: (command as? GameCommand.SetRoadworks)?.segments
-            ?: return null
-    if (segments.isEmpty()) return null
-    val on = (command as? GameCommand.SetRoadClosure)?.closed ?: (command as GameCommand.SetRoadworks).active
+    val measure = stretchMeasure(command, context.rules)?.takeIf { it.segments.isNotEmpty() } ?: return null
+    val segments = measure.segments
     val stretches =
         segments
             .map {
@@ -103,14 +131,12 @@ internal fun roadworksAction(
                     .min()
             }.distinct()
             .size
-    val unit = if (closure) context.rules.closureCost else context.rules.roadworksSetupCost
-    val name = if (closure) tr("Sperre") else tr("Baustelle")
     val (x, y) = context.picker.midpoint(segments[segments.size / 2])
     return PlannedAction(
         listOf(command),
-        "${if (closure) "closure" else "works"}:${segments.sorted().joinToString(",")}",
-        PlanMarker(x, y, toggleLabel(name, on), removal = !on, segments = segments),
-        if (on) unit * stretches else 0,
+        "${measure.kind}:${segments.sorted().joinToString(",")}",
+        PlanMarker(x, y, toggleLabel(measure.name, measure.on), removal = !measure.on, segments = segments),
+        if (measure.on) measure.unitCost * stretches else 0,
     )
 }
 
@@ -145,6 +171,11 @@ internal fun Plan.cameraAction(
         is GameCommand.PlaceTrailer -> {
             val position = context.picker.midpoint(command.segment)
             single(command, "trailer:${command.segment}", position, tr("Anhänger"), trailerCost(context))
+        }
+
+        is GameCommand.PlacePoliceCheck -> {
+            val position = context.picker.midpoint(command.segment)
+            single(command, "camera:${command.segment}", position, tr("Kontrolle"), context.rules.policeCheckCost)
         }
 
         is GameCommand.PlaceDisplay -> {

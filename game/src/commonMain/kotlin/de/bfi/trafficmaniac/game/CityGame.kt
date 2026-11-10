@@ -102,6 +102,7 @@ class CityGame(
         simulation.step()
         collectFines()
         winter.update()
+        surveillance.update()
         achievements.checkLive(
             simulation.incidentsToday[IncidentKind.TRUCK_STUCK] ?: 0,
             recordRatioToday,
@@ -126,6 +127,7 @@ class CityGame(
             greenWaves = timing.greenWaves.toList(),
             roadworks = roadworks.roadworks.toSet(),
             roadClosures = roadworks.closed.toSet(),
+            bikeStreets = roadworks.bikeStreets.toSet(),
             winterService = winter.enabled,
             ploughs = winter.ploughs,
             cameras = works.cameraCounters.values.map { it.toRecord() },
@@ -168,12 +170,18 @@ class CityGame(
     private fun collectFines() {
         for (violation in simulation.speedControl.drainViolations()) {
             val red = violation.redSeconds
-            val tier = if (red != null) FineTier.ofRedLight(red) else FineTier.of(violation.excessKmh)
+            val finding = violation.finding
+            val tier =
+                when {
+                    finding != null -> FineTier.of(finding)
+                    red != null -> FineTier.ofRedLight(red)
+                    else -> FineTier.of(violation.excessKmh)
+                }
             works.cameraCounters[violation.cameraId]?.record(tier, violation.measuredKmh, violation.limitKmh)
             office.register(tier, violation.homeZone, violation.person, simulation.time)
             finesToday += tier.fine
             // Tagesrekord und „Raser des Jahres“ zählen nur Tempoverstöße
-            if (red != null) continue
+            if (!tier.isSpeed) continue
             if (violation.limitKmh > 0) {
                 recordRatioToday = maxOf(recordRatioToday, violation.measuredKmh / violation.limitKmh)
             }
@@ -326,7 +334,8 @@ class CityGame(
             // Ampelprogramme und eigene Baustellen – jede Stelle übernimmt nur ihre Befehle
             is GameCommand.SetSignalProgram, is GameCommand.SetGreenWave,
             is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure, is GameCommand.SetPloughs,
-            is GameCommand.PlaceRedLightCamera, is GameCommand.PlaceDisplay,
+            is GameCommand.PlaceRedLightCamera, is GameCommand.PlaceDisplay, is GameCommand.PlacePoliceCheck,
+            is GameCommand.SetBikeStreet,
             -> {
                 timing.execute(command)
                 roadworks.execute(command)

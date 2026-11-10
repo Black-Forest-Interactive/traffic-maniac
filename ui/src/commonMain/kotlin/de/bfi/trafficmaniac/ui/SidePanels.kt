@@ -33,6 +33,7 @@ import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.sim.IncidentKind
 import de.bfi.trafficmaniac.sim.IncidentMarker
+import de.bfi.trafficmaniac.sim.SimulationSnapshot
 import de.bfi.trafficmaniac.ui.components.Badge
 import de.bfi.trafficmaniac.ui.components.BadgeTone
 import de.bfi.trafficmaniac.ui.components.Meter
@@ -173,7 +174,7 @@ private fun PanelContent(
         }
 
         SidePanel.EMERGENCIES -> {
-            EmergencyPanel(frame.current.incidents, frame.current.time, onShow, onClose)
+            EmergencyPanel(frame.current, picker, onShow, onClose)
         }
 
         SidePanel.ACHIEVEMENTS -> {
@@ -194,11 +195,13 @@ private fun PanelContent(
  */
 @Composable
 private fun EmergencyPanel(
-    incidents: List<IncidentMarker>,
-    now: Double,
+    snapshot: SimulationSnapshot,
+    picker: MapPicker,
     onShow: (MapPlace) -> Unit,
     onClose: () -> Unit,
 ) {
+    val incidents = snapshot.incidents
+    val now = snapshot.time
     PanelScaffold(
         tr("Bericht"),
         tr("Einsätze"),
@@ -221,6 +224,7 @@ private fun EmergencyPanel(
                 )
             }
         }
+        PanelSection(divider = false) { ServiceFleet(snapshot, picker.city, picker, onShow) }
     }
 }
 

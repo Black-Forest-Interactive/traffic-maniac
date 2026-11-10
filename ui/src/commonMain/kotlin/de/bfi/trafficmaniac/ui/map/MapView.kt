@@ -407,6 +407,7 @@ private fun DrawScope.drawOverlays(
     val infrastructure = frame.current.infrastructure
     if (overlays.showCondition) drawCondition(segmentPaths, infrastructure, camera.scale)
     drawGreenWaves(segmentPaths, frame.game.greenWaves, camera.scale)
+    drawBikeStreets(segmentPaths, frame.game.bikeStreets, camera.scale)
     drawWorksAndDetours(segmentPaths, infrastructure, camera.scale)
     drawEvents(segmentPaths, frame.current.events, camera.scale, overlays.sprites)
     drawLimitZones(segmentPaths, frame.game.speedLimits.keys, frame.game.nightLimits.keys, camera.scale)

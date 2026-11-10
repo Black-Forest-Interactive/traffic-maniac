@@ -110,3 +110,32 @@ internal fun RoadworksOptions(
         )
     }
 }
+
+/** Auswahl über dem Dock beim Radweg-Werkzeug: Radweg-Querung oder Fahrradstraße (Anfang und Ende anklicken). */
+@Composable
+internal fun BikeOptions(
+    selection: ToolSelection,
+    rules: de.bfi.trafficmaniac.game.GameRules,
+    onSelect: (ToolSelection) -> Unit,
+) {
+    Row(
+        Modifier
+            .shadow(8.dp, OptionsShape, spotColor = OptionsShadow)
+            .background(TmColors.Surface, OptionsShape)
+            .border(1.dp, TmColors.Line, OptionsShape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OptionChip(tr("Radweg-Querung · {cost}", "cost" to formatEuro(rules.bikeCrossingCost)), !selection.bikeStreet) {
+            onSelect(selection.copy(bikeStreet = false))
+        }
+        OptionChip(
+            tr("Fahrradstraße · {cost} je Strecke", "cost" to formatEuro(rules.bikeStreetCost)),
+            selection.bikeStreet,
+        ) {
+            onSelect(selection.copy(bikeStreet = true))
+        }
+        BasicText(tr("Tempo 30, Kfz dürfen Radfahrer nicht überholen"), style = TmType.caption)
+    }
+}

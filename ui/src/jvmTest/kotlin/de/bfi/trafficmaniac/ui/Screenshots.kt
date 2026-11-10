@@ -51,12 +51,12 @@ class Screenshots {
                     cityMap = city,
                 )
             }
-            for (panel in listOf(SidePanel.NONE, SidePanel.OFFICE, SidePanel.CAMERAS)) {
+            for (panel in listOf(SidePanel.NONE, SidePanel.EMERGENCIES, SidePanel.CAMERAS)) {
                 val input =
                     HudInput().apply {
                         panelRequest = panel
                         // Ohne Fenster: das Ampelprogramm-Werkzeug mit seiner Auswahl zeigen
-                        toolRequest = if (panel == SidePanel.NONE) Tool.CAMERA else Tool.ROADWORKS
+                        toolRequest = if (panel == SidePanel.NONE) Tool.BIKE_CROSSING else Tool.POLICE_CHECK
                     }
                 shoot(File(out, "game-${panel.name.lowercase()}-$suffix.png"), width, height) {
                     TrafficManiacApp(
@@ -112,6 +112,14 @@ class Screenshots {
         game.submit(GameCommand.PlaceCamera(main[3]))
         // Anzeigetafel auf einer der Tempo-30-Strecken, Rotlichtblitzer an der ersten Ampelzufahrt
         game.submit(GameCommand.PlaceDisplay(main[1]))
+        // Fahrradstraße mit Polizeikontrolle auf einer Wohnstraße mit Namen
+        city.roads.segments
+            .firstOrNull {
+                !it.passive && it.name != null && it.roadClass.osmValue == "secondary"
+            }?.let {
+                game.submit(GameCommand.SetBikeStreet(listOf(it.id), on = true))
+                game.submit(GameCommand.PlacePoliceCheck(it.id))
+            }
         game.simulation.signals.controlledLinks.firstOrNull()?.let {
             game.submit(GameCommand.PlaceRedLightCamera(it, withSpeed = true))
         }

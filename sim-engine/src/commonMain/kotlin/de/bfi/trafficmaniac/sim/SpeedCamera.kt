@@ -21,6 +21,8 @@ class SpeedCamera(
     val display: Boolean = false,
     /** Zufahrt eines Rotlichtblitzers, sonst -1. */
     val link: Int = -1,
+    /** Polizeikontrolle: hält an, misst Tempo und findet Mängel, Handy am Steuer und Überholer. */
+    val policeCheck: Boolean = false,
 ) {
     /** Anzeigetafel: Fahrzeuge vorbei und davon zu schnell. */
     var passed: Int = 0
@@ -42,7 +44,21 @@ data class SpeedViolation(
     val excessKmh: Double,
     /** Über Rot gefahren: so viele Sekunden nach Beginn der Rotphase (sonst `null`, Tempoverstoß). */
     val redSeconds: Double? = null,
+    /** Fund bei einer Polizeikontrolle (sonst `null`). */
+    val finding: CheckFinding? = null,
 )
+
+/** Was eine Polizeikontrolle außer Tempo noch findet. */
+enum class CheckFinding {
+    /** Mängel am Fahrzeug (Licht, Reifen, Bremsen). */
+    DEFECT,
+
+    /** Handy am Steuer. */
+    PHONE,
+
+    /** Radfahrer in der Fahrradstraße überholt. */
+    OVERTAKING,
+}
 
 /** Messpunkt eines Blitzers auf einem Link. */
 internal class CameraSite(
