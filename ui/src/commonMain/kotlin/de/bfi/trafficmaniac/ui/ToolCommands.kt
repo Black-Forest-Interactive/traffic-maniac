@@ -6,7 +6,7 @@ import de.bfi.trafficmaniac.sim.SpeedCamera
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import kotlin.math.hypot
 
-/** Übersetzt einen Klick auf die Karte mit dem gewählten Werkzeug in einen Spielbefehl. */
+/** Übersetzt einen Klick auf die Karte mit der gewählten Art in einen Spielbefehl. */
 internal fun commandFor(
     selection: ToolSelection,
     picker: MapPicker,
@@ -29,45 +29,35 @@ internal fun commandFor(
         }
 
         Tool.CAMERA -> {
-            cameraCommand(selection.cameraKind, picker, frame, x, y, radius)
-        }
-
-        Tool.POLICE_CHECK -> {
-            picker.nearestSegment(x, y, radius)?.let { GameCommand.PlacePoliceCheck(it) }
-        }
-
-        // Für die Umleitung kommen auch Nebenstraßen in Frage
-        Tool.DETOUR -> {
-            picker.nearestSegment(x, y, radius, allowPassive = { true })?.let {
-                GameCommand.SetDetour(it, it !in frame?.game?.detourSegments.orEmpty())
-            }
+            cameraCommand(selection.kind, picker, frame, x, y, radius)
         }
 
         else -> {
-            // Zugeschaltete Nebenstraßen (Umleitung) lassen sich wie Hauptstraßen beschildern
-            val detour = frame?.game?.detourSegments.orEmpty()
-            picker
-                .nearestSegment(
-                    x,
-                    y,
-                    radius,
-                    allowPassive = { it in detour },
-                )?.let { segmentCommand(selection, it, frame) }
+            routeCommand(selection, picker, frame, x, y, radius)
         }
     }
 
-/** Werkzeuge, die auf einen Straßenabschnitt wirken. */
-private fun segmentCommand(
+/** Tempolimit und Verkehrsführung: Umleitungen dürfen auch auf Nebenstraßen, der Rest auf zugeschaltete. */
+private fun routeCommand(
     selection: ToolSelection,
-    segment: Int,
+    picker: MapPicker,
     frame: TrafficFrame?,
-): GameCommand? =
-    when (selection.tool) {
-        Tool.SPEED_LIMIT -> GameCommand.SetSpeedLimit(segment, selection.speedLimit, selection.nightOnly)
-        Tool.PRIORITY -> GameCommand.SetPriorityRoad(segment, segment !in frame?.game?.priorityRoads.orEmpty())
-        Tool.BIKE_CROSSING -> GameCommand.SetBikeCrossing(segment, segment !in frame?.game?.bikeCrossings.orEmpty())
+    x: Float,
+    y: Float,
+    radius: Float,
+): GameCommand? {
+    val game = frame?.game
+    val detour = game?.detourSegments.orEmpty()
+    val allowAll = selection.kind == ToolKind.DETOUR
+    val segment = picker.nearestSegment(x, y, radius, allowPassive = { allowAll || it in detour }) ?: return null
+    return when (selection.kind) {
+        ToolKind.SPEED_LIMIT -> GameCommand.SetSpeedLimit(segment, selection.speedLimit, selection.nightOnly)
+        ToolKind.DETOUR -> GameCommand.SetDetour(segment, segment !in detour)
+        ToolKind.PRIORITY -> GameCommand.SetPriorityRoad(segment, segment !in game?.priorityRoads.orEmpty())
+        ToolKind.BIKE_CROSSING -> GameCommand.SetBikeCrossing(segment, segment !in game?.bikeCrossings.orEmpty())
         else -> null
     }
+}
 
 /** Nächster Blitzer im Umkreis, der [accept] erfüllt. */
 internal fun nearestCamera(

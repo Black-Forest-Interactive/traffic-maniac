@@ -114,12 +114,12 @@ class PlanningTest {
     @Test
     fun removeToolStrikesAPlannedCameraAndBuildingSendsEverythingInOrder() {
         val plan = Plan()
-        plan.clickMain(3, ToolSelection(tool = Tool.CAMERA))
-        plan.clickMain(1, ToolSelection(tool = Tool.PRIORITY))
-        plan.clickMain(3, ToolSelection(tool = Tool.REMOVE))
+        plan.clickMain(3, ToolSelection.of(ToolKind.CAMERA_FIXED))
+        plan.clickMain(1, ToolSelection.of(ToolKind.PRIORITY))
+        plan.clickMain(3, ToolSelection.of(ToolKind.REMOVE))
         assertEquals(1, plan.actions.size, "Der geplante Blitzer ist gestrichen")
 
-        plan.clickMain(2, ToolSelection(tool = Tool.CAMERA))
+        plan.clickMain(2, ToolSelection.of(ToolKind.CAMERA_FIXED))
         val commands = plan.take()
 
         assertEquals(listOf(GameCommand.SetPriorityRoad(1, true), GameCommand.PlaceCamera(2)), commands)
@@ -129,7 +129,7 @@ class PlanningTest {
     @Test
     fun greenWaveIsPlannedFromStartToEndLikeASpeedLimit() {
         val plan = Plan()
-        val wave = ToolSelection(tool = Tool.SIGNAL_TIMING, signalPreset = SignalPreset.WAVE_50)
+        val wave = ToolSelection.of(ToolKind.WAVE_50)
         plan.clickMain(0, wave)
         plan.clickMain(4, wave)
 
@@ -139,14 +139,14 @@ class PlanningTest {
     @Test
     fun roadworksArePlannedPerStretchAndCostPerStretch() {
         val plan = Plan()
-        val works = ToolSelection(tool = Tool.ROADWORKS)
+        val works = ToolSelection.of(ToolKind.ROADWORKS)
         plan.clickMain(1, works)
         plan.clickMain(2, works)
 
         assertEquals(listOf(GameCommand.SetRoadworks(listOf(1, 2), true)), plan.actions.single().commands)
         assertEquals(2 * rules.roadworksSetupCost, plan.total)
 
-        val closure = works.copy(closure = true)
+        val closure = works.with(ToolKind.CLOSURE)
         plan.clickMain(4, closure)
         plan.clickMain(4, closure)
         assertEquals(
@@ -159,9 +159,19 @@ class PlanningTest {
     }
 
     @Test
+    fun aGroupRemembersItsKindAndTheKeyCyclesThroughIt() {
+        val camera = ToolSelection.of(ToolKind.POLICE_CHECK).copy(tool = Tool.LOOK)
+        assertEquals(ToolKind.LOOK, camera.kind)
+        assertEquals(ToolKind.POLICE_CHECK, camera.copy(tool = Tool.CAMERA).kind, "Die Gruppe merkt sich die Art")
+        // Polizeikontrolle ist die letzte Art – die nächste ist wieder der feste Blitzer
+        assertEquals(ToolKind.CAMERA_FIXED, camera.copy(tool = Tool.CAMERA).next().kind)
+        assertEquals(Tool.entries.size, 7, "Sieben Kacheln im Dock")
+    }
+
+    @Test
     fun undoTakesBackTheStartFirstThenTheLastAction() {
         val plan = Plan()
-        plan.clickMain(0, ToolSelection(tool = Tool.CAMERA))
+        plan.clickMain(0, ToolSelection.of(ToolKind.CAMERA_FIXED))
         plan.clickMain(2)
         plan.undo()
         assertEquals(null, plan.routeStart)
