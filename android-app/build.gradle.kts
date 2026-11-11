@@ -9,7 +9,12 @@ val appVersionCode = providers.gradleProperty("appVersionCode").getOrElse("1").t
 
 // Release-Schlüssel aus Umgebungsvariablen (CI-Secrets bzw. ~/.android/traffic-maniac-release.properties);
 // ohne sie wird auch das Release mit dem Debug-Schlüssel signiert – installierbar, aber nicht updatefähig
-val keystore = providers.environmentVariable("TM_KEYSTORE").orNull?.let(::file)?.takeIf { it.isFile }
+val keystore =
+    providers
+        .environmentVariable("TM_KEYSTORE")
+        .orNull
+        ?.let(::file)
+        ?.takeIf { it.isFile }
 
 android {
     namespace = "de.bfi.trafficmaniac.android"
