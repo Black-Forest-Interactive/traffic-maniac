@@ -43,6 +43,11 @@ oder `~/Android/Sdk`) – ohne SDK bleibt alles beim Desktop. Querformat, ab And
 ./gradlew :android-app:installDebug    # auf das per USB verbundene Handy (USB-Debugging an)
 ```
 
+Release: Ein Tag `v<Version>` (z. B. `v0.2.0`, mit Bindestrich wie `v0.2.0-preview.1` als Vorabversion) baut in
+GitHub Actions die signierte APK und hängt sie an ein GitHub-Release (`.github/workflows/android-release.yml`).
+Der Release-Schlüssel kommt aus den Secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS` und `ANDROID_KEY_PASSWORD`; lokal aus den gleichnamigen `TM_*`-Umgebungsvariablen.
+
 Spielwerte (Kosten, Bußgelder, Schwellen für Bürgerzorn usw.) stehen in `balancing/*.json`.
 
 | Modul         | Inhalt                                                      |

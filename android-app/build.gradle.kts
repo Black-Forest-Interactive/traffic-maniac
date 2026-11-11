@@ -3,12 +3,35 @@ plugins {
     id("trafficmaniac.android-app")
 }
 
+// Version aus dem Release-Tag (-PappVersion=0.2.0 -PappVersionCode=7), sonst die Entwicklerversion
+val appVersion = providers.gradleProperty("appVersion").getOrElse("0.1.0-dev")
+val appVersionCode = providers.gradleProperty("appVersionCode").getOrElse("1").toInt()
+
+// Release-Schlüssel aus Umgebungsvariablen (CI-Secrets bzw. ~/.android/traffic-maniac-release.properties);
+// ohne sie wird auch das Release mit dem Debug-Schlüssel signiert – installierbar, aber nicht updatefähig
+val keystore = providers.environmentVariable("TM_KEYSTORE").orNull?.let(::file)?.takeIf { it.isFile }
+
 android {
     namespace = "de.bfi.trafficmaniac.android"
     defaultConfig {
         applicationId = "de.bfi.trafficmaniac"
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = appVersionCode
+        versionName = appVersion
+    }
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = keystore
+                storePassword = providers.environmentVariable("TM_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("TM_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("TM_KEY_PASSWORD").get()
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+        }
     }
 }
 
