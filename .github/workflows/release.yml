@@ -1,0 +1,85 @@
+name: Release
+
+# Ein Tag wie v0.2.0 (mit Bindestrich, z. B. v0.2.0-preview.1, als Vorabversion) legt ein GitHub-Release an:
+# - Windows-Installer (MSI), gebaut auf einem Windows-Runner – unsigniert, Windows warnt beim ersten Start
+# - Android-APK, aber nur mit Release-Schlüssel in den Secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+#   ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD; ohne sie lädt man die lokal signierte APK von Hand ins Release
+#   (TM_KEYSTORE=… ./gradlew :android-app:assembleRelease, siehe README)
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Installer bauen
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ./gradlew :desktop-app:packageMsi -PappVersion="$VERSION"
+          mkdir -p dist
+          cp desktop-app/build/compose/binaries/main/msi/*.msi "dist/traffic-maniac-$VERSION-windows.msi"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: dist/
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v6
+      - name: APK bauen (nur mit Release-Schlüssel)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          TM_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TM_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          mkdir -p dist
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::notice::Kein Release-Schlüssel hinterlegt – die APK bitte lokal bauen und von Hand anhängen."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export TM_KEYSTORE="$RUNNER_TEMP/release.jks"
+          VERSION="${GITHUB_REF_NAME#v}"
+          ./gradlew :android-app:assembleRelease -PappVersion="$VERSION" -PappVersionCode="$GITHUB_RUN_NUMBER"
+          cp android-app/build/outputs/apk/release/android-app-release.apk "dist/traffic-maniac-$VERSION.apk"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: dist/
+          if-no-files-found: ignore
+
+  release:
+    needs: [ windows, android ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          PRERELEASE=""
+          case "$GITHUB_REF_NAME" in *-*) PRERELEASE="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Traffic Maniac ${GITHUB_REF_NAME#v}" --generate-notes $PRERELEASE
