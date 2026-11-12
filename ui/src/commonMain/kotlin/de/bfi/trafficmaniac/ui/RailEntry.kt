@@ -26,6 +26,7 @@ internal val REPORTS =
         RailEntry(SidePanel.CITIZENS, translatable("Bürger"), Icons.Users),
         RailEntry(SidePanel.EVENTS, translatable("Kalender"), Icons.Calendar),
         RailEntry(SidePanel.EMERGENCIES, translatable("Einsätze"), Icons.Siren),
+        RailEntry(SidePanel.TRANSIT, translatable("ÖPNV"), Icons.Bus),
         RailEntry(SidePanel.ACHIEVEMENTS, translatable("Erfolge"), Icons.Award),
         RailEntry(SidePanel.HELP, translatable("Hilfe"), Icons.Help),
     )

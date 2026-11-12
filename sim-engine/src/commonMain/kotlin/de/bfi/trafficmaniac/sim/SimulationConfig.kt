@@ -34,6 +34,15 @@ data class SimulationConfig(
     val vanDeliveryChance: Double = 0.003,
     val deliveryMinMinutes: Double = 2.0,
     val deliveryMaxMinutes: Double = 6.0,
+    /** Linienbusse: Takt je Linienrichtung tagsüber (6–20 Uhr) und am Rand des Betriebs, in Minuten. */
+    val busHeadwayMinutes: Double = 20.0,
+    val busOffPeakHeadwayMinutes: Double = 30.0,
+    /** Betriebszeit der Busse: erste und letzte Abfahrtsstunde. */
+    val busFirstHour: Int = 5,
+    val busLastHour: Int = 23,
+    /** Haltezeit an einer Haltestelle in Sekunden. */
+    val busDwellMinSeconds: Double = 15.0,
+    val busDwellMaxSeconds: Double = 35.0,
     /** Arbeitszeit am Einsatzort in Minuten. */
     val towMinutes: Double = 10.0,
     val oilCleanupMinutes: Double = 15.0,

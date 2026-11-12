@@ -62,6 +62,10 @@ class Simulation(
     /** Demos, Feste, Märkte, Rad-Korsos und Schwertransporte – ausgelöst vom Spiel. */
     val events = CityEvents(graph, infrastructure.closures, router, factory, lanes) { pending.addLast(it) }
 
+    /** Linienbusse im Takt (eigener Zufall: der übrige Verkehr bleibt wie ohne Busse). */
+    private val transit =
+        Transit(city, graph, config, router, factory, Random(config.seed + TRANSIT_SEED)) { pending.addLast(it) }
+
     private val deliveries = Deliveries(graph, config, random, dayStatistics) { parking.secondRowStop(it) }
 
     /** Parkplätze, Straßenrand, Parksuchverkehr und Falschparker. */
@@ -118,6 +122,7 @@ class Simulation(
         graph.setQuietHours(gameTime.isQuietHours)
         if (clock.tick % STRESS_UPDATE_TICKS == 0L) vehicles.forEach { behavior.updateStress(it, time) }
         generateTrips()
+        transit.update(time, gameTime)
         enterPendingVehicles()
         computeAccelerations()
         move()
@@ -266,7 +271,9 @@ class Simulation(
             val oldPosition = vehicle.position
             moveVehicle(vehicle, leader, offset)
             environment.emit(vehicle, dt)
-            if (!deliveries.update(vehicle, link, time)) incidents.afterMove(vehicle, link, time)
+            // Bus an der Haltestelle oder Lieferwagen in zweiter Reihe: steht, sonst kann etwas passieren
+            val standing = transit.atStop(vehicle, time) || deliveries.update(vehicle, link, time)
+            if (!standing) incidents.afterMove(vehicle, link, time)
             charging.consume(vehicle, dt, time)
             speedControl.measure(vehicle, link, oldPosition)
         }
@@ -462,33 +469,23 @@ class Simulation(
             troubles = ByteArray(count) { vehicles[it].trouble?.let { kind -> (kind.ordinal + 1).toByte() } ?: 0 },
             segmentFlow = router.segmentFlow(),
             weather = weather.snapshot(),
+            transit = transit.snapshot(vehicles),
             stats =
                 SimulationStats(
                     activeVehicles = vehicles.size,
                     pendingVehicles = pending.size,
                     completedTrips = completedTrips,
                     stuckRemovals = stuckRemovals,
-                    meanSpeedKmh =
-                        if (vehicles.isEmpty()) {
-                            0.0
-                        } else {
-                            vehicles.sumOf { it.speed } / vehicles.size *
-                                KMH_PER_MS
-                        },
+                    meanSpeedKmh = vehicles.sumOf { it.speed } / vehicles.size.coerceAtLeast(1) * KMH_PER_MS,
                     meanTripMinutes =
-                        if (completedTrips >
-                            0
-                        ) {
-                            totalTripSeconds / completedTrips / SECONDS_PER_MINUTE
-                        } else {
-                            0.0
-                        },
+                        if (completedTrips > 0) totalTripSeconds / completedTrips / SECONDS_PER_MINUTE else 0.0,
                 ),
         )
     }
 
     private companion object {
         const val SECONDS_PER_HOUR = 3600.0
+        const val TRANSIT_SEED = 7
         const val SECONDS_PER_MINUTE = 60.0
         const val ENTRY_SPEED = 8.0
         const val ENTRY_MARGIN = 2.0

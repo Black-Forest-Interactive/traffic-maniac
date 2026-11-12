@@ -68,6 +68,20 @@ enum class VehicleType(
         axles = 3,
     ),
 
+    /** Linienbus: zwölf Meter, behäbig beim Anfahren. */
+    BUS(
+        12f,
+        2.55f,
+        0.9,
+        1.4,
+        22.0,
+        massKg = 13_000.0,
+        idleFuelPerSecond = 0.0007,
+        noxPerLiter = 18.0,
+        exhaustPmPerLiter = 0.12,
+        noiseBonusDb = 7.0,
+    ),
+
     /** Rad-Korso: ein Pulk Radfahrer, der die Fahrbahn im Schritttempo belegt (ein "Fahrzeug" je Gruppe). */
     BIKE_CORSO(
         14f,
@@ -230,6 +244,7 @@ enum class VehicleRole(
     FIRE_BRIGADE(translatable("Feuerwehr")),
     HEAVY_TRANSPORT(translatable("Schwertransport")),
     SNOW_PLOUGH(translatable("Räumfahrzeug")),
+    BUS(translatable("Linienbus")),
     ;
 
     val label: String get() = tr(labelText)
@@ -281,7 +296,10 @@ class Vehicle internal constructor(
     /** Einsatzfahrzeug arbeitet am Einsatzort. */
     internal var working = false
 
-    /** Lieferwagen hält in zweiter Reihe bis zu diesem Zeitpunkt (0 = fährt). */
+    /** Linienbus: die Fahrt mit Haltestellen und Fahrplan; `null` bei allen anderen. */
+    internal var transitTrip: TransitTrip? = null
+
+    /** Lieferwagen hält in zweiter Reihe bis zu diesem Zeitpunkt (0 = fährt); auch Busse an der Haltestelle. */
     internal var deliveringUntil = 0.0
 
     /** Pro Fahrt hält ein Lieferwagen höchstens einmal. */

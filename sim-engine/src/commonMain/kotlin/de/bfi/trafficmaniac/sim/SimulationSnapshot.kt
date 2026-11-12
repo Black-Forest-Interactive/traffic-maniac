@@ -55,6 +55,8 @@ class SimulationSnapshot(
      * Stillstand) – für die Staufarben in der Gesamtansicht.
      */
     val segmentFlow: FloatArray = FloatArray(0),
+    /** Linienbusse: Pünktlichkeit je Linienrichtung. */
+    val transit: TransitSnapshot = TransitSnapshot(),
     /** Schnee und Räumdienst (leer ohne Wetter). */
     val weather: WeatherSnapshot = WeatherSnapshot.NONE,
 ) {
