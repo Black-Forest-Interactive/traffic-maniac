@@ -59,7 +59,14 @@ val gameResources =
         from(rootProject.file("assets/sprites")) { into("assets/sprites") }
     }
 
-tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(gameResources) }
+tasks.matching { it.name == "prepareAppResources" }.configureEach {
+    dependsOn(gameResources)
+    // Ohne Karte wäre der Installer nutzlos (map.city ist nicht eingecheckt, siehe scripts/import-city.sh)
+    val maps = project.rootProject.fileTree("cities") { include("*/map.city") }
+    doFirst {
+        check(!maps.isEmpty) { "Keine Stadtkarte in cities/*/map.city – erst scripts/import-city.sh <id> ausführen" }
+    }
+}
 
 // Beim Start aus Gradle relativ zum Projektverzeichnis laufen, damit cities/ und balancing/ gefunden werden
 tasks.withType<JavaExec>().configureEach {

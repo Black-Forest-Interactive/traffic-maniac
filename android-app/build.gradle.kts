@@ -71,6 +71,16 @@ abstract class GameAssets : DefaultTask() {
                 }
             }
         }
+        // Ohne Karte wäre die App nutzlos (map.city ist nicht eingecheckt, siehe scripts/import-city.sh)
+        check(
+            outputDirectory
+                .get()
+                .asFile
+                .walk()
+                .any { it.name == "map.city" },
+        ) {
+            "Keine Stadtkarte in cities/*/map.city – erst scripts/import-city.sh <id> ausführen"
+        }
     }
 
     companion object {

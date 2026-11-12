@@ -13,10 +13,33 @@ permissions:
   contents: write
 
 jobs:
+  # Die Karte ist nicht eingecheckt (wird erzeugt): einmal aus dem aktuellen OSM-Auszug importieren
+  map:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Karte importieren
+        run: scripts/import-city.sh pforzheim
+      - uses: actions/upload-artifact@v7
+        with:
+          name: map
+          path: cities/pforzheim/map.city
+          if-no-files-found: error
+
   windows:
+    needs: map
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: map
+          path: cities/pforzheim
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -35,9 +58,14 @@ jobs:
           path: dist/
 
   android:
+    needs: map
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: map
+          path: cities/pforzheim
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -79,6 +107,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          # Die Karte war nur Zwischenstand für die Builds
+          rm -f dist/map.city
           PRERELEASE=""
           case "$GITHUB_REF_NAME" in *-*) PRERELEASE="--prerelease" ;; esac
           gh release create "$GITHUB_REF_NAME" dist/* \
