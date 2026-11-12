@@ -56,6 +56,7 @@ internal enum class SidePanel(
     CITIZENS(translatable("Bürger")),
     EVENTS(translatable("Kalender")),
     EMERGENCIES(translatable("Einsätze")),
+    TRANSIT(translatable("ÖPNV")),
     ACHIEVEMENTS(translatable("Achievements")),
     HELP(translatable("Legende ?")),
     ;
@@ -175,6 +176,10 @@ private fun PanelContent(
 
         SidePanel.EMERGENCIES -> {
             EmergencyPanel(frame.current, picker, onShow, onClose)
+        }
+
+        SidePanel.TRANSIT -> {
+            TransitPanel(frame.current.transit, onClose = onClose)
         }
 
         SidePanel.ACHIEVEMENTS -> {

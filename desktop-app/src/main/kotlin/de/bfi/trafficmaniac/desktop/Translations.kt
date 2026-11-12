@@ -20,14 +20,14 @@ object Translations {
     /** Schaltet das Spiel auf [language] um; eine fehlende oder beschädigte Datei lässt die Texte deutsch. */
     fun use(
         language: Language,
-        directory: File = File(DIRECTORY),
+        directory: File = GameFiles.dir(DIRECTORY),
     ) {
         I18n.use(language, load(language, directory))
     }
 
     fun load(
         language: Language,
-        directory: File = File(DIRECTORY),
+        directory: File = GameFiles.dir(DIRECTORY),
     ): Map<String, String> {
         if (language == Language.DE) return emptyMap()
         val file = File(directory, "${language.code}.json")

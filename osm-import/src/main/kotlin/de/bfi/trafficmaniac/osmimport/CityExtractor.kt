@@ -26,6 +26,8 @@ class CityExtractor(
     private val zoneAreas = ArrayList<ZoneArea>()
     private val motorwayNodes = HashSet<Long>()
     private val facilities = ArrayList<RawFacility>()
+    private val busStops = HashMap<Long, RawStop>()
+    private val busLines = ArrayList<RawLine>()
 
     override fun node(
         id: Long,
@@ -37,6 +39,15 @@ class CityExtractor(
         nodes.add(id, lat, lon)
         if (tags["highway"] == "traffic_signals") signalNodes += id
         facilityKindOf(tags)?.let { facilities += RawFacility(it, projection.x(lon), projection.y(lat), tags) }
+        if (isBusStop(tags)) busStops[id] = RawStop(projection.x(lon), projection.y(lat), tags["name"])
+    }
+
+    override fun relation(
+        id: Long,
+        members: List<RelationMember>,
+        tags: Map<String, String>,
+    ) {
+        rawLineOf(members, tags)?.let { busLines += it }
     }
 
     override fun way(
@@ -101,6 +112,7 @@ class CityExtractor(
             )
         val (network, osmIds) = buildRoadNetwork()
         val motorwayNodeIds = osmIds.indices.filter { osmIds[it] in motorwayNodes }.toSet()
+        val (transitStops, transitLines) = buildTransit(network, busStops, busLines)
         return CityMap(
             name = config.name,
             attribution = ATTRIBUTION,
@@ -109,6 +121,8 @@ class CityExtractor(
             roads = network,
             zones = ZoneBuilder(network, bounds).build(zoneAreas, motorwayNodeIds),
             facilities = buildFacilities(network, facilities),
+            transitStops = transitStops,
+            transitLines = transitLines,
             scenery =
                 Scenery(
                     buildings = scenery.getValue(SceneryKind.BUILDING),

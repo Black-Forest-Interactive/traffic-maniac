@@ -188,6 +188,13 @@ private val SECTIONS: List<Pair<String, List<LegendEntry>>> =
                     scale = 5.5f,
                 ),
                 vehicle(
+                    translatable("Linienbus – hält an jeder Haltestelle und blockiert dabei die Spur"),
+                    VehicleType.BUS,
+                    VehicleRole.BUS,
+                    Color(0xFFD62828),
+                    scale = 5.5f,
+                ),
+                vehicle(
                     translatable("Rettungswagen (Blaulicht: Vorfahrt, Rettungsgasse)"),
                     VehicleType.CAR,
                     VehicleRole.AMBULANCE,

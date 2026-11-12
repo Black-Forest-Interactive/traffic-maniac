@@ -113,7 +113,7 @@ private fun missingCitiesMessage(): String {
     return tr(
         "Keine Stadt mit Karte gefunden (Ordner {absolutePath}).\n\n" +
             "Karte erzeugen mit: scripts/import-city.sh {missing}",
-        "absolutePath" to File(CityPacks.DIRECTORY).absolutePath,
+        "absolutePath" to GameFiles.dir(CityPacks.DIRECTORY).absolutePath,
         "missing" to missing,
     )
 }
@@ -322,7 +322,7 @@ private fun CoroutineScope.save(
 
 /** Grafiken aus `assets/sprites/`; fehlende zeichnet das Spiel selbst. */
 private fun loadSprites(): SvgSprites =
-    SvgSprites(File(SvgSprites.DEFAULT_FOLDER)).also {
+    SvgSprites(GameFiles.dir(SvgSprites.DEFAULT_FOLDER)).also {
         if (it.count > 0) println("${it.count} Grafiken aus ${SvgSprites.DEFAULT_FOLDER} geladen")
     }
 

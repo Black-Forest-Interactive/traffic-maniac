@@ -333,6 +333,13 @@ private class SpriteBuilder(
     }
 
     private fun DrawScope.drawDetails(v: VehicleView) {
+        // Linienbus von oben: Fensterbänder an beiden Seiten, vorn die große Frontscheibe
+        if (v.type == VehicleType.BUS) {
+            quad(v, BUS_WINDOWS_FROM, BUS_WINDOWS_TO, -1f, -BUS_WINDOW_INNER, GLASS, outlined = false)
+            quad(v, BUS_WINDOWS_FROM, BUS_WINDOWS_TO, BUS_WINDOW_INNER, 1f, GLASS, outlined = false)
+            quad(v, BUS_WINDSHIELD, 1f, -WINDOW_WIDTH, WINDOW_WIDTH, GLASS, outlined = false)
+            return
+        }
         val front = if (v.type == VehicleType.CAR) CAR_WINDSHIELD else VAN_WINDSHIELD
         quad(v, front, front + WINDSHIELD_DEPTH, -WINDOW_WIDTH, WINDOW_WIDTH, GLASS, outlined = false)
         if (v.type == VehicleType.CAR) {
@@ -607,6 +614,10 @@ private const val VAN_WINDSHIELD = 0.8f
 private const val WINDSHIELD_DEPTH = 0.15f
 private const val REAR_WINDOW = 0.1f
 private const val WINDOW_WIDTH = 0.72f
+private const val BUS_WINDOWS_FROM = 0.06f
+private const val BUS_WINDOWS_TO = 0.9f
+private const val BUS_WINDOW_INNER = 0.78f
+private const val BUS_WINDSHIELD = 0.95f
 private const val BAND_START = 0.06f
 private const val BAND_END = 0.94f
 private const val BAND_INNER = 0.62f

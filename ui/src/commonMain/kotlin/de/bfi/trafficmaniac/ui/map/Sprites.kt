@@ -84,47 +84,25 @@ internal fun vehicleSpriteName(
     color: Color,
     electric: Boolean,
 ): String =
-    when (role) {
-        VehicleRole.AMBULANCE -> {
-            "ambulance"
-        }
-
-        VehicleRole.POLICE -> {
-            "police"
-        }
-
-        VehicleRole.FIRE_BRIGADE -> {
-            "fire_engine"
-        }
-
-        VehicleRole.TOW_TRUCK -> {
-            "tow_truck"
-        }
-
-        VehicleRole.SNOW_PLOUGH -> {
-            "snow_plough"
-        }
-
-        VehicleRole.STREET_SERVICE -> {
-            "road_service"
-        }
-
-        VehicleRole.BIKE_CORSO -> {
-            "bike_corso"
-        }
-
-        VehicleRole.HEAVY_TRANSPORT -> {
-            "heavy_transport"
-        }
-
-        VehicleRole.PRIVATE -> {
-            when (type) {
-                VehicleType.VAN -> "van"
-                VehicleType.TRUCK -> "truck"
-                else -> if (electric) "car_electric" else "car_" + nearestCarColor(color)
-            }
-        }
+    ROLE_SPRITES[role] ?: when (type) {
+        VehicleType.VAN -> "van"
+        VehicleType.TRUCK -> "truck"
+        else -> if (electric) "car_electric" else "car_" + nearestCarColor(color)
     }
+
+/** Grafiken der Einsatz-, Dienst- und Sonderfahrzeuge; Privatfahrzeuge nach Typ und Farbe. */
+private val ROLE_SPRITES =
+    mapOf(
+        VehicleRole.AMBULANCE to "ambulance",
+        VehicleRole.POLICE to "police",
+        VehicleRole.FIRE_BRIGADE to "fire_engine",
+        VehicleRole.TOW_TRUCK to "tow_truck",
+        VehicleRole.SNOW_PLOUGH to "snow_plough",
+        VehicleRole.BUS to "bus",
+        VehicleRole.STREET_SERVICE to "road_service",
+        VehicleRole.BIKE_CORSO to "bike_corso",
+        VehicleRole.HEAVY_TRANSPORT to "heavy_transport",
+    )
 
 /** Die Autofarben der Grafiken; die Fahrzeugfarbe wird der nächstliegenden zugeordnet. */
 private val CAR_COLORS =
