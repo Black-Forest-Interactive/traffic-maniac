@@ -441,6 +441,7 @@ private fun DrawScope.drawTraffic(
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
         drawChargingStations(traffic.current.chargingStations, camera.scale, effects.sprites)
         drawParkingLots(traffic.current.parkingLots, camera.scale, effects.sprites)
+        drawTransitStops(picker.city.transitStops, camera.scale, viewport)
     }
     drawVehicles(traffic, camera.scale, viewport, seconds, effects.sprites)
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {

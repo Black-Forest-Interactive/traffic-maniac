@@ -133,5 +133,11 @@
     "shortStayHours": 1.0,
     "maxFeeTolerance": 4.0,
     "defaultParkingFee": 1.5,
-    "defaultCurbFee": 0.0
+    "defaultCurbFee": 0.0,
+    "busHeadwayMinutes": 20.0,
+    "busOffPeakHeadwayMinutes": 30.0,
+    "busFirstHour": 5,
+    "busLastHour": 23,
+    "busDwellMinSeconds": 15.0,
+    "busDwellMaxSeconds": 35.0
 }

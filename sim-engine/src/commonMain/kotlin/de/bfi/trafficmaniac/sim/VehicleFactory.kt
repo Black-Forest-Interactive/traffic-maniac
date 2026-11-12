@@ -118,6 +118,28 @@ internal class VehicleFactory(
             role = role,
         ).also { it.incidentId = incidentId }
 
+    /** Linienbus für eine Fahrt; [color] ist die Linienfarbe. */
+    fun createBus(
+        route: IntArray,
+        time: Double,
+        color: Int,
+    ): Vehicle =
+        Vehicle(
+            id = nextId++,
+            type = VehicleType.BUS,
+            driver = DriverProfile.NORMALO,
+            color = color,
+            route = route,
+            destinationNode = -1,
+            departureTime = time,
+            knowsCameras = true,
+            homeZone = -1,
+            person = -1,
+            referenceSeconds = 0.0,
+            drivetrain = Drivetrain.DIESEL,
+            role = VehicleRole.BUS,
+        )
+
     /** Rad-Korso (eine Gruppe) oder Schwertransport für ein Ereignis. */
     fun createEvent(
         role: VehicleRole,

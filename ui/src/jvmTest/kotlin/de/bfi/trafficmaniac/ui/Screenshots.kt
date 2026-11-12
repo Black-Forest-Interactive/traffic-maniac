@@ -51,7 +51,7 @@ class Screenshots {
                     cityMap = city,
                 )
             }
-            for (panel in listOf(SidePanel.NONE, SidePanel.EMERGENCIES, SidePanel.CAMERAS)) {
+            for (panel in listOf(SidePanel.NONE, SidePanel.EMERGENCIES, SidePanel.CAMERAS, SidePanel.TRANSIT)) {
                 val input =
                     HudInput().apply {
                         panelRequest = panel
@@ -71,6 +71,18 @@ class Screenshots {
             }
         }
         touch(out, city, frame)
+        // Nah dran am Marktplatz: Haltestellen und Busse
+        city.transitStops.firstOrNull { it.name == "Marktplatz" }?.let { stop ->
+            shoot(File(out, "map-transit.png"), MAP_SHOT_WIDTH, MAP_SHOT_HEIGHT) {
+                de.bfi.trafficmaniac.ui.map.MapView(
+                    city,
+                    traffic = { frame },
+                    initialCamera =
+                        de.bfi.trafficmaniac.ui.map
+                            .Camera(stop.x, stop.y, MAP_SHOT_SCALE),
+                )
+            }
+        }
     }
 
     /** Touch-Oberfläche wie auf einem Handy im Querformat (Galaxy A25: 2340 × 1080 Pixel, Dichte 2,81). */
@@ -84,6 +96,7 @@ class Screenshots {
                 Triple("tutorial", SidePanel.NONE, null),
                 Triple("camera", SidePanel.NONE, Tool.CAMERA),
                 Triple("budget", SidePanel.BUDGET, null),
+                Triple("transit", SidePanel.TRANSIT, null),
             )
         for ((name, panel, list) in cases) {
             val input =
@@ -185,7 +198,10 @@ class Screenshots {
         const val FRAMES = 8
         const val FRAME_PAUSE_MILLIS = 150L
         const val FRAME_NANOS = 16_000_000L
-        const val WARMUP_TICKS = 600
+        const val WARMUP_TICKS = 6_000
+        const val MAP_SHOT_WIDTH = 1200
+        const val MAP_SHOT_HEIGHT = 800
+        const val MAP_SHOT_SCALE = 2.5f
         const val PHONE_WIDTH = 2340
         const val PHONE_HEIGHT = 1080
         const val PHONE_DENSITY = 2.8125f

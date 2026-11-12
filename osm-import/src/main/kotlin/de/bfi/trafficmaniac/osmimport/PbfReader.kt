@@ -5,7 +5,7 @@ import crosby.binary.Osmformat
 import crosby.binary.file.BlockInputStream
 import java.io.File
 
-/** Liest eine `.osm.pbf`-Datei und reicht Knoten und Wege an einen [OsmHandler] weiter. Relationen werden ignoriert. */
+/** Liest eine `.osm.pbf`-Datei und reicht Knoten, Wege und Relationen an einen [OsmHandler] weiter. */
 object PbfReader {
     fun read(
         file: File,
@@ -60,7 +60,23 @@ object PbfReader {
             }
         }
 
-        override fun parseRelations(relations: List<Osmformat.Relation>) = Unit
+        override fun parseRelations(relations: List<Osmformat.Relation>) {
+            for (relation in relations) {
+                var ref = 0L
+                val members =
+                    List(relation.memidsCount) { i ->
+                        ref += relation.getMemids(i)
+                        val type =
+                            when (relation.getTypes(i)) {
+                                Osmformat.Relation.MemberType.NODE -> "node"
+                                Osmformat.Relation.MemberType.WAY -> "way"
+                                else -> "relation"
+                            }
+                        RelationMember(type, ref, getStringById(relation.getRolesSid(i)))
+                    }
+                handler.relation(relation.id, members, tags(relation.keysList, relation.valsList))
+            }
+        }
 
         override fun parse(header: Osmformat.HeaderBlock) = Unit
 

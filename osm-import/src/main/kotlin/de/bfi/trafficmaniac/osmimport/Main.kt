@@ -63,6 +63,10 @@ fun main(args: Array<String>) {
           Ampeln:      ${map.roads.nodes.count { it.trafficSignals }}
           Zonen:       ${map.zones.groupingBy { it.kind }.eachCount()}
           Einrichtungen: ${map.facilities.groupingBy { it.kind }.eachCount()}
+          ÖPNV:        ${map.transitStops.size} Haltestellen, ${map.transitLines.size} Linienrichtungen (${map.transitLines
+            .map { it.ref }
+            .distinct()
+            .size} Linien)
           Kulisse:     ${map.scenery.buildings.size} Gebäude, ${map.scenery.minorRoads.size} Nebenstraßen, ${map.scenery.green.size} Grünflächen
         """.trimIndent(),
     )

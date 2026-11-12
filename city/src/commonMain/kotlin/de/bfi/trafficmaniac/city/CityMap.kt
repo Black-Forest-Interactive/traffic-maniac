@@ -17,11 +17,17 @@ data class CityMap(
     val scenery: Scenery,
     val zones: List<Zone> = emptyList(),
     val facilities: List<Facility> = emptyList(),
+    /** Bushaltestellen und -linien (ÖPNV). */
+    val transitStops: List<TransitStop> = emptyList(),
+    val transitLines: List<TransitLine> = emptyList(),
     val formatVersion: Int = FORMAT_VERSION,
 ) {
     companion object {
         /** Wird erhöht, sobald sich das Dateiformat inkompatibel ändert. */
-        const val FORMAT_VERSION = 4
+        const val FORMAT_VERSION = 5
+
+        /** Ältere Dateien, die sich noch lesen lassen (ihnen fehlen nur neue, optionale Teile). */
+        const val OLDEST_READABLE_VERSION = 4
     }
 }
 
