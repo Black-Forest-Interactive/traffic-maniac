@@ -43,6 +43,16 @@ oder `~/Android/Sdk`) – ohne SDK bleibt alles beim Desktop. Querformat, ab And
 ./gradlew :android-app:installDebug    # auf das per USB verbundene Handy (USB-Debugging an)
 ```
 
+Release: Ein Tag `v<Version>` (z. B. `v0.2.0`, mit Bindestrich wie `v0.2.0-preview.1` als Vorabversion) legt per
+GitHub Actions ein Release an (`.github/workflows/release.yml`): Windows-Installer (MSI, unsigniert) und – wenn der
+Release-Schlüssel in den Secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+`ANDROID_KEY_PASSWORD` liegt – die signierte APK. Sonst die APK lokal bauen und von Hand anhängen:
+
+```bash
+set -a; . ~/.android/traffic-maniac-release.properties; set +a   # TM_KEYSTORE, TM_KEYSTORE_PASSWORD, …
+./gradlew :android-app:assembleRelease -PappVersion=0.2.0 -PappVersionCode=2
+```
+
 Spielwerte (Kosten, Bußgelder, Schwellen für Bürgerzorn usw.) stehen in `balancing/*.json`.
 
 | Modul         | Inhalt                                                      |

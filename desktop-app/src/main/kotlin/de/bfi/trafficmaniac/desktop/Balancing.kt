@@ -15,12 +15,12 @@ import java.io.File
  * so stehen immer alle Stellschrauben mit ihren aktuellen Werten im Repo.
  */
 object Balancing {
-    fun gameRules(directory: File = File(DIRECTORY)): GameRules =
+    fun gameRules(directory: File = GameFiles.dir(DIRECTORY)): GameRules =
         load(File(directory, "game-rules.json"), GameRules.serializer(), GameRules())
 
     fun simulationConfig(
         overrides: Map<String, String> = emptyMap(),
-        directory: File = File(DIRECTORY),
+        directory: File = GameFiles.dir(DIRECTORY),
     ): SimulationConfig {
         val config = load(File(directory, "simulation.json"), SimulationConfig.serializer(), SimulationConfig())
         if (overrides.isEmpty()) return config
@@ -40,7 +40,7 @@ object Balancing {
     ): T = Overrides.apply(serializer, base, overrides)
 
     /** Szenarien für das Startmenü (`balancing/scenarios.json`, beim ersten Start mit den Standards angelegt). */
-    fun scenarios(directory: File = File(DIRECTORY)): List<Scenario> =
+    fun scenarios(directory: File = GameFiles.dir(DIRECTORY)): List<Scenario> =
         Overrides.scenarios(
             load(File(directory, "scenarios.json"), ListSerializer(Scenario.serializer()), Scenario.DEFAULTS),
         )

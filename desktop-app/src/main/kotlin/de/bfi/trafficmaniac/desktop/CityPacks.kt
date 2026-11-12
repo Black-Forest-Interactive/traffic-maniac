@@ -36,7 +36,7 @@ object CityPacks {
     const val MAP_FILE = "map.city"
 
     /** Alle Pakete mit Karte, alphabetisch; beschädigte Beschreibungen werden gemeldet und übersprungen. */
-    fun discover(root: File = File(DIRECTORY)): List<CityPack> =
+    fun discover(root: File = GameFiles.dir(DIRECTORY)): List<CityPack> =
         root
             .listFiles { file -> File(file, INFO_FILE).isFile }
             .orEmpty()
@@ -44,7 +44,7 @@ object CityPacks {
             .sortedBy { it.name }
 
     /** Pakete, deren Karte noch fehlt (für den Hinweis beim Start). */
-    fun missingMaps(root: File = File(DIRECTORY)): List<File> =
+    fun missingMaps(root: File = GameFiles.dir(DIRECTORY)): List<File> =
         root
             .listFiles { file -> File(file, INFO_FILE).isFile && mapOf(file) == null }
             .orEmpty()
