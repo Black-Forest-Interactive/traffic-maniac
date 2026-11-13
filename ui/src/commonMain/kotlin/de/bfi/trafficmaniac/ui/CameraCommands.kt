@@ -46,6 +46,7 @@ private fun placeCommand(
         ToolKind.LASER -> GameCommand.PlaceCamera(segment, mobile = true)
         ToolKind.DISPLAY -> GameCommand.PlaceDisplay(segment)
         ToolKind.POLICE_CHECK -> GameCommand.PlacePoliceCheck(segment)
+        ToolKind.BUS_LANE_CAMERA -> GameCommand.PlaceBusLaneCamera(segment)
         ToolKind.TRAILER -> GameCommand.PlaceTrailer(segment)
         else -> GameCommand.PlaceCamera(segment)
     }

@@ -105,6 +105,10 @@ private fun stretchMeasure(
             StretchMeasure(command.segments, command.on, "bike-street", tr("Fahrradstraße"), rules.bikeStreetCost)
         }
 
+        is GameCommand.SetBusLane -> {
+            StretchMeasure(command.segments, command.on, "bus-lane", tr("Busspur"), rules.busLaneCost)
+        }
+
         else -> {
             null
         }
@@ -151,6 +155,17 @@ internal fun signalAction(
     }
 }
 
+/** Busvorrang an einer Ampelkreuzung einrichten oder aufheben. */
+internal fun Plan.busPriorityAction(
+    command: GameCommand.SetBusPriority,
+    context: PlanContext,
+): PlannedAction {
+    val node = context.city.roads.nodes[command.node]
+    val label = toggleLabel(tr("Busvorrang"), command.on)
+    val cost = if (command.on) context.rules.busPriorityCost else 0L
+    return single(command, "bus-priority:${command.node}", node.x to node.y, label, cost, removal = !command.on)
+}
+
 internal fun Plan.cameraAction(
     command: GameCommand,
     context: PlanContext,
@@ -175,6 +190,17 @@ internal fun Plan.cameraAction(
         is GameCommand.PlaceDisplay -> {
             val position = context.picker.midpoint(command.segment)
             single(command, "camera:${command.segment}", position, tr("Anzeigetafel"), context.rules.displayCost)
+        }
+
+        is GameCommand.PlaceBusLaneCamera -> {
+            val position = context.picker.midpoint(command.segment)
+            single(
+                command,
+                "camera:${command.segment}",
+                position,
+                tr("Busspur-Blitzer"),
+                context.rules.busLaneCameraCost,
+            )
         }
 
         is GameCommand.PlaceRedLightCamera -> {

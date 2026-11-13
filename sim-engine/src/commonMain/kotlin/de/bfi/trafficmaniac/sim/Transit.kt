@@ -124,12 +124,13 @@ internal class Transit(
         val trip = vehicle.transitTrip?.takeIf { vehicle.deliveringUntil <= 0 } ?: return false
         val stops = plans[trip.plan].stops
         while (trip.next < stops.size && stops[trip.next].routeIndex < vehicle.routeIndex) trip.next++
-        val stop =
-            stops
-                .getOrNull(
-                    trip.next,
-                )?.takeIf { it.routeIndex == vehicle.routeIndex && vehicle.position >= it.position }
-                ?: return false
+        // Platz für zwei Busse: Wer bis zu STOP_ZONE Meter davor steht, hält schon
+        val reached: (PlannedStop) -> Boolean = {
+            // … aber erst ganz im Abschnitt, sonst blockiert er die Kreuzung dahinter
+            it.routeIndex == vehicle.routeIndex &&
+                vehicle.position >= max(it.position - STOP_ZONE, vehicle.type.length + STOP_ZONE_ENTRY)
+        }
+        val stop = stops.getOrNull(trip.next)?.takeIf(reached) ?: return false
         tallies[trip.plan].record(time - trip.departure - stop.scheduled)
         trip.next++
         vehicle.speed = 0.0
@@ -267,6 +268,10 @@ private class LinePlanner(
         const val PLAN_DWELL = 25.0
     }
 }
+
+/** Eine Haltestelle bietet Platz für zwei Busse hintereinander. */
+private const val STOP_ZONE = 25f
+private const val STOP_ZONE_ENTRY = 2f
 
 /** Bis zu drei Minuten Verspätung gelten als pünktlich (wie bei der Bahn sechs, beim Bus strenger). */
 private const val PUNCTUAL_SECONDS = 180.0

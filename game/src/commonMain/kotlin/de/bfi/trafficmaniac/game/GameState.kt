@@ -47,6 +47,11 @@ data class GameState(
     val roadClosures: Set<Int> = emptySet(),
     /** Fahrradstraßen (Abschnitte). */
     val bikeStreets: Set<Int> = emptySet(),
+    /** Busspuren (Abschnitte) und Ampelkreuzungen mit Busvorrang (Knoten). */
+    val busLanes: Set<Int> = emptySet(),
+    val busPriorityNodes: Set<Int> = emptySet(),
+    /** Anteil der Autofahrten, die heute mit dem Bus stattfinden (nach der Pünktlichkeit von gestern). */
+    val busModeShift: Double = 0.0,
     /** Szenario mit Wetter: Winterdienst einstellbar. */
     val winterService: Boolean = false,
     val ploughs: Int = 0,

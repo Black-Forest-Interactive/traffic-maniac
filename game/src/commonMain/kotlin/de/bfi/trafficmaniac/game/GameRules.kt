@@ -42,6 +42,19 @@ data class GameRules(
     val maxPoliceChecks: Int = 2,
     /** Fahrradstraße einrichten (Markierung, Schilder), je Strecke. */
     val bikeStreetCost: Long = 5_000,
+    /** Busspur markieren (rote Fahrbahn, Schilder), je Strecke – nur auf mehrspurigen Straßen. */
+    val busLaneCost: Long = 4_000,
+    /** Busspur-Blitzer (fest, misst kein Tempo). */
+    val busLaneCameraCost: Long = 25_000,
+    /** Busvorrang an einer Ampel (Bussignal, Anmeldung per Funk). */
+    val busPriorityCost: Long = 12_000,
+    /** Pünktlichkeit der Busse am Abend: ab diesem Anteil lobt die Presse, darunter schimpft sie. */
+    val busPraiseShare: Double = 0.85,
+    val busComplaintShare: Double = 0.6,
+    /** Reputation je Schlagzeile über die Busse (Lob bzw. Schelte). */
+    val busPressReputation: Double = 2.0,
+    /** Höchstens so viele Autofahrten fallen weg, weil die Leute Bus fahren (bei voller Pünktlichkeit). */
+    val busModeShiftMax: Double = 0.05,
     /** Wählbare Tempolimits; 7 km/h steht für Schrittgeschwindigkeit. */
     val speedLimitOptions: List<Int> = DEFAULT_SPEED_LIMITS,
     /** Fester Haushalt, der jede Woche (Sonntag um Mitternacht) überwiesen wird. */

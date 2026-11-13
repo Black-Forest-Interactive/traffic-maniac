@@ -32,10 +32,29 @@ internal fun commandFor(
             cameraCommand(selection.kind, picker, frame, x, y, radius)
         }
 
+        // Busvorrang gilt für eine Ampelkreuzung, nicht für einen Abschnitt
         else -> {
-            routeCommand(selection, picker, frame, x, y, radius)
+            if (selection.kind == ToolKind.BUS_PRIORITY) {
+                busPriorityCommand(picker, frame, x, y, radius)
+            } else {
+                routeCommand(selection, picker, frame, x, y, radius)
+            }
         }
     }
+
+private fun busPriorityCommand(
+    picker: MapPicker,
+    frame: TrafficFrame?,
+    x: Float,
+    y: Float,
+    radius: Float,
+): GameCommand? {
+    val game = frame?.game ?: return null
+    return picker
+        .nearestNode(x, y, radius)
+        ?.takeIf { it in game.signalNodes }
+        ?.let { GameCommand.SetBusPriority(it, it !in game.busPriorityNodes) }
+}
 
 /** Tempolimit und Verkehrsführung: Umleitungen dürfen auch auf Nebenstraßen, der Rest auf zugeschaltete. */
 private fun routeCommand(
@@ -83,6 +102,7 @@ private fun playerWorksRemoval(
     val stretch = picker.stretches.stretchOf(segment)
     return when (segment) {
         in game.bikeStreets -> GameCommand.SetBikeStreet(stretch.filter { it in game.bikeStreets }, on = false)
+        in game.busLanes -> GameCommand.SetBusLane(stretch.filter { it in game.busLanes }, on = false)
         in game.roadClosures -> GameCommand.SetRoadClosure(stretch.filter { it in game.roadClosures }, closed = false)
         in game.roadworks -> GameCommand.SetRoadworks(stretch.filter { it in game.roadworks }, active = false)
         else -> null
@@ -135,6 +155,11 @@ private fun removeCommandFor(
                 nearest,
                 false,
             )
+        }
+
+        // Erst der Busvorrang, dann die Ampel selbst
+        node != null && node in frame?.game?.busPriorityNodes.orEmpty() -> {
+            GameCommand.SetBusPriority(node, on = false)
         }
 
         node != null -> {

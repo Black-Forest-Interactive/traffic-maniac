@@ -20,6 +20,9 @@ internal class JunctionRules(
             // Blaulicht, Rad-Korso und Schwertransport fahren über Rot und nehmen sich die Vorfahrt
             vehicle.role.ignoresSignals -> false
 
+            // Busvorrang: eigenes Bussignal, der Bus muss an dieser Ampel nicht warten
+            vehicle.role == VehicleRole.BUS && graph.linkBusPriority[link] -> false
+
             else -> signalOrYield(vehicle, link, remaining, time)
         }
 

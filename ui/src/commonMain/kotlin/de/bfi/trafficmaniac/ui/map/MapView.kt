@@ -413,6 +413,7 @@ private fun DrawScope.drawOverlays(
     if (overlays.showCondition) drawCondition(segmentPaths, infrastructure, camera.scale)
     drawGreenWaves(segmentPaths, frame.game.greenWaves, camera.scale)
     drawBikeStreets(segmentPaths, frame.game.bikeStreets, camera.scale)
+    drawBusLanes(segmentPaths, frame.game.busLanes, camera.scale)
     drawWorksAndDetours(segmentPaths, infrastructure, camera.scale)
     drawEvents(segmentPaths, frame.current.events, camera.scale, overlays.sprites)
     drawLimitZones(segmentPaths, frame.game.speedLimits.keys, frame.game.nightLimits.keys, camera.scale)
@@ -442,6 +443,7 @@ private fun DrawScope.drawTraffic(
         drawChargingStations(traffic.current.chargingStations, camera.scale, effects.sprites)
         drawParkingLots(traffic.current.parkingLots, camera.scale, effects.sprites)
         drawTransitStops(picker.city.transitStops, camera.scale, viewport)
+        drawBusPriority(traffic.game.busPriorityNodes.map { picker.city.roads.nodes[it] }, camera.scale)
     }
     drawVehicles(traffic, camera.scale, viewport, seconds, effects.sprites)
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {

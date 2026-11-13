@@ -69,6 +69,16 @@ enum class FineTier(
         points = 1,
         drivingBanDays = 0,
     ),
+
+    /** Auto auf der Busspur (Busspur-Blitzer). */
+    BUS_LANE(
+        translatable("Auto auf der Busspur"),
+        "Busspur",
+        maxExcessKmh = Double.NaN,
+        fine = 55,
+        points = 0,
+        drivingBanDays = 0,
+    ),
     ;
 
     val label: String get() = tr(labelText)
@@ -92,6 +102,7 @@ enum class FineTier(
                 CheckFinding.DEFECT -> CHECK_DEFECT
                 CheckFinding.PHONE -> PHONE
                 CheckFinding.OVERTAKING -> OVERTAKING
+                CheckFinding.BUS_LANE -> BUS_LANE
             }
 
         private const val LATE_RED_SECONDS = 1.0

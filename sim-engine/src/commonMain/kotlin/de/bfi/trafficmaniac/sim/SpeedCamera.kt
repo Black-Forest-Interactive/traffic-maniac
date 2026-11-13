@@ -23,6 +23,8 @@ class SpeedCamera(
     val link: Int = -1,
     /** Polizeikontrolle: hält an, misst Tempo und findet Mängel, Handy am Steuer und Überholer. */
     val policeCheck: Boolean = false,
+    /** Busspur-Blitzer: fotografiert Autos auf der Busspur, misst kein Tempo. */
+    val busLane: Boolean = false,
 ) {
     /** Anzeigetafel: Fahrzeuge vorbei und davon zu schnell. */
     var passed: Int = 0
@@ -58,6 +60,9 @@ enum class CheckFinding {
 
     /** Radfahrer in der Fahrradstraße überholt. */
     OVERTAKING,
+
+    /** Auto auf der Busspur (Busspur-Blitzer). */
+    BUS_LANE,
 }
 
 /** Messpunkt eines Blitzers auf einem Link. */

@@ -31,6 +31,7 @@ class CityGame(
     private val winter = WinterService(simulation, rules, treasury) { message(it, kind = MessageKind.PROBLEM) }
     private val surveillance =
         Surveillance(city, simulation, rules, treasury, works) { message(it, kind = MessageKind.ACTION) }
+    private val buses = BusService(city, simulation, rules, treasury, works) { message(it, kind = MessageKind.ACTION) }
     private val citizens = Citizens(city.zones, rules)
     private val drivers = DriverRegistry(rules, citizens)
     private val office = FineOffice(rules, treasury, citizens, drivers) { message(it, kind = MessageKind.ACTION) }
@@ -128,6 +129,9 @@ class CityGame(
             roadworks = roadworks.roadworks.toSet(),
             roadClosures = roadworks.closed.toSet(),
             bikeStreets = roadworks.bikeStreets.toSet(),
+            busLanes = buses.busLanes.toSet(),
+            busPriorityNodes = buses.priorityNodes.toSet(),
+            busModeShift = buses.modeShift,
             winterService = winter.enabled,
             ploughs = winter.ploughs,
             cameras = works.cameraCounters.values.map { it.toRecord() },
@@ -282,6 +286,7 @@ class CityGame(
         recordRatioToday = 0.0
         if (works.laserCount > 0) treasury.charge(works.laserCount * rules.laserDailyCost)
         politics.press(roadworks.dayEnded(report.day))
+        politics.press(buses.dayEnded())
         winter.dayEnded()
         if (report.weekday == Weekday.SUNDAY) budgetRound()
         if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
@@ -335,12 +340,14 @@ class CityGame(
             is GameCommand.SetSignalProgram, is GameCommand.SetGreenWave,
             is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure, is GameCommand.SetPloughs,
             is GameCommand.PlaceRedLightCamera, is GameCommand.PlaceDisplay, is GameCommand.PlacePoliceCheck,
-            is GameCommand.SetBikeStreet,
+            is GameCommand.SetBikeStreet, is GameCommand.SetBusLane, is GameCommand.PlaceBusLaneCamera,
+            is GameCommand.SetBusPriority,
             -> {
                 timing.execute(command)
                 roadworks.execute(command)
                 winter.execute(command)
                 surveillance.execute(command)
+                buses.execute(command)
             }
 
             is GameCommand.RemoveSignal -> {

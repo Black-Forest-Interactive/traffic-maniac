@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.i18n.formatDecimal
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.TransitLineStatus
 import de.bfi.trafficmaniac.sim.TransitSnapshot
@@ -37,6 +38,8 @@ import kotlin.math.roundToInt
 @Composable
 fun TransitPanel(
     transit: TransitSnapshot,
+    /** Anteil der Autofahrten, die heute mit dem Bus stattfinden. */
+    modeShift: Double = 0.0,
     modifier: Modifier = Modifier,
     onClose: (() -> Unit)? = null,
 ) {
@@ -77,16 +80,7 @@ fun TransitPanel(
             }
             return@PanelScaffold
         }
-        PanelSection {
-            BasicText(
-                tr(
-                    "{buses} Busse unterwegs, {stops} Halte heute. Pünktlich heißt: höchstens drei Minuten zu spät.",
-                    "buses" to transit.lines.sumOf { it.buses },
-                    "stops" to served,
-                ),
-                style = TmType.small,
-            )
-        }
+        TransitSummary(transit, served, modeShift)
         PanelSection(divider = false) {
             val byLine = transit.lines.groupBy { it.ref }
             val refs = byLine.keys.sortedWith(compareBy({ it.length }, { it }))
@@ -95,6 +89,39 @@ fun TransitPanel(
                 LineBlock(ref, byLine.getValue(ref))
             }
         }
+    }
+}
+
+/** Busse unterwegs, Halte heute und was die Pünktlichkeit bewirkt. */
+@Composable
+private fun TransitSummary(
+    transit: TransitSnapshot,
+    served: Int,
+    modeShift: Double,
+) {
+    PanelSection {
+        BasicText(
+            tr(
+                "{buses} Busse unterwegs, {stops} Halte heute. Pünktlich heißt: höchstens drei Minuten zu spät.",
+                "buses" to transit.lines.sumOf { it.buses },
+                "stops" to served,
+            ),
+            style = TmType.small,
+        )
+        BasicText(
+            if (modeShift > 0) {
+                tr(
+                    "Weil die Busse gestern pünktlich waren, bleiben heute {percent} % der Autos stehen.",
+                    "percent" to formatDecimal(modeShift * PERCENT, 1),
+                )
+            } else {
+                tr(
+                    "Ab 60 % Pünktlichkeit lassen die ersten das Auto stehen. " +
+                        "Am meisten hilft Busvorrang an den Ampeln.",
+                )
+            },
+            style = TmType.small.copy(color = TmColors.Muted),
+        )
     }
 }
 

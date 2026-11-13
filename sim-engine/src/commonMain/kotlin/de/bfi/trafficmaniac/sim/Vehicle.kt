@@ -332,6 +332,12 @@ class Vehicle internal constructor(
     /** Hält sich nicht an das Überholverbot der Fahrradstraße. */
     internal var ignoresOvertakingBan = false
 
+    /** Fährt auch auf der Busspur. */
+    internal var ignoresBusLane = false
+
+    /** Darf auf eine Busspur: Busse, Blaulicht und wer sich nicht darum schert. */
+    internal val mayUseBusLane: Boolean get() = role == VehicleRole.BUS || role.isEmergency || ignoresBusLane
+
     /** Link, auf dem der Fahrer gerade verbotenerweise Radfahrer überholt (Fahrradstraße), sonst -1. */
     internal var overtakingLink = -1
 

@@ -97,6 +97,7 @@ class Screenshots {
                 Triple("camera", SidePanel.NONE, Tool.CAMERA),
                 Triple("budget", SidePanel.BUDGET, null),
                 Triple("transit", SidePanel.TRANSIT, null),
+                Triple("route", SidePanel.NONE, Tool.ROUTE),
             )
         for ((name, panel, list) in cases) {
             val input =
@@ -170,6 +171,22 @@ class Screenshots {
         game.simulation.signals.controlledLinks.firstOrNull()?.let {
             game.submit(GameCommand.PlaceRedLightCamera(it, withSpeed = true))
         }
+        // ÖPNV am Marktplatz: Busspur mit Blitzer und Busvorrang an der nächsten Ampel
+        city.transitStops.firstOrNull { it.name == "Marktplatz" }?.let { stop ->
+            val graph = game.simulation.graph
+            val near =
+                city.roads.segments
+                    .filter { !it.passive && graph.segmentLinks[it.id].any { link -> graph.linkLanes[link] >= 2 } }
+                    .sortedBy { kotlin.math.hypot(it.geometry.x(0) - stop.x, it.geometry.y(0) - stop.y) }
+                    .take(BUS_LANE_SEGMENTS)
+                    .map { it.id }
+            game.submit(GameCommand.SetBusLane(near, on = true))
+            near.firstOrNull()?.let { game.submit(GameCommand.PlaceBusLaneCamera(it)) }
+            city.roads.nodes
+                .filter { it.trafficSignals }
+                .minByOrNull { kotlin.math.hypot(it.x - stop.x, it.y - stop.y) }
+                ?.let { game.submit(GameCommand.SetBusPriority(it.id, on = true)) }
+        }
         game.submit(GameCommand.SetDeadlineDays(5))
         // Grüne Welle über die Karlsruher Straße (getrennte Richtungsfahrbahnen, mehrere Ampeln)
         val street = city.roads.segments.filter { !it.passive && it.name == "Karlsruher Straße" }
@@ -199,6 +216,7 @@ class Screenshots {
         const val FRAME_PAUSE_MILLIS = 150L
         const val FRAME_NANOS = 16_000_000L
         const val WARMUP_TICKS = 6_000
+        const val BUS_LANE_SEGMENTS = 6
         const val MAP_SHOT_WIDTH = 1200
         const val MAP_SHOT_HEIGHT = 800
         const val MAP_SHOT_SCALE = 2.5f

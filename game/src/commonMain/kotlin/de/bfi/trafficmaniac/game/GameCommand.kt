@@ -70,6 +70,23 @@ sealed interface GameCommand {
         val on: Boolean,
     ) : GameCommand
 
+    /** Busspur auf [segments] markieren (rechte Spur nur für Busse) bzw. aufheben. */
+    data class SetBusLane(
+        val segments: List<Int>,
+        val on: Boolean,
+    ) : GameCommand
+
+    /** Busspur-Blitzer an [segment]: fotografiert Autos auf der Busspur. */
+    data class PlaceBusLaneCamera(
+        val segment: Int,
+    ) : GameCommand
+
+    /** Busvorrang an der Ampelkreuzung [node] einrichten bzw. aufheben. */
+    data class SetBusPriority(
+        val node: Int,
+        val on: Boolean,
+    ) : GameCommand
+
     /** Geschwindigkeits-Anzeigetafel an [segment]: misst nur, blitzt nicht. */
     data class PlaceDisplay(
         val segment: Int,

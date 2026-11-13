@@ -43,6 +43,7 @@ object MapStyle {
     val laser = Color(0xFF3A86FF)
     val redLightCamera = Color(0xFFC62B3B)
     val policeCheck = Color(0xFF1E3F8A)
+    val busLaneCamera = Color(0xFFB5332E)
     val trailer = Color(0xFFE9ECEF)
     val priorityYellow = Color(0xFFFFC300)
     val bikeGreen = Color(0xFF2A9D8F)

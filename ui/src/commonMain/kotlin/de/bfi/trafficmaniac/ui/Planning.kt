@@ -150,7 +150,7 @@ internal fun Plan.click(
 }
 
 /** Arten, die ganze Strecken von Anfang bis Ende betreffen. */
-private val STRETCH_KINDS = setOf(ToolKind.ROADWORKS, ToolKind.CLOSURE, ToolKind.BIKE_STREET)
+private val STRETCH_KINDS = setOf(ToolKind.ROADWORKS, ToolKind.CLOSURE, ToolKind.BIKE_STREET, ToolKind.BUS_LANE)
 
 private fun stretchCommand(
     kind: ToolKind,
@@ -159,6 +159,7 @@ private fun stretchCommand(
     when (kind) {
         ToolKind.CLOSURE -> GameCommand.SetRoadClosure(segments, closed = true)
         ToolKind.BIKE_STREET -> GameCommand.SetBikeStreet(segments, on = true)
+        ToolKind.BUS_LANE -> GameCommand.SetBusLane(segments, on = true)
         else -> GameCommand.SetRoadworks(segments, active = true)
     }
 
@@ -241,12 +242,17 @@ private fun Plan.plan(
 
             is GameCommand.PlaceCamera, is GameCommand.PlaceTrailer, is GameCommand.RemoveCamera,
             is GameCommand.PlaceDisplay, is GameCommand.PlaceRedLightCamera, is GameCommand.PlacePoliceCheck,
+            is GameCommand.PlaceBusLaneCamera,
             -> {
                 cameraAction(command, context)
             }
 
-            is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure -> {
+            is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure, is GameCommand.SetBusLane -> {
                 roadworksAction(command, context)
+            }
+
+            is GameCommand.SetBusPriority -> {
+                busPriorityAction(command, context)
             }
 
             else -> {

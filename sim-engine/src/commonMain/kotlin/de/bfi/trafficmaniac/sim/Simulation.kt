@@ -97,6 +97,10 @@ class Simulation(
     val finishedTrips = TripLog()
     private val reports = ArrayList<DayReport>()
 
+    /** Anteil der Autofahrten, die stattdessen mit dem Bus stattfinden (vom Spiel nach der Pünktlichkeit gesetzt). */
+    var carTripReduction = 0.0
+    private val shiftRandom = Random(config.seed + SHIFT_SEED)
+
     /** Filter für neue Fahrten, z. B. "kein Führerschein". Wird vom Spiel gesetzt. */
     var tripAllowed: (Trip) -> Boolean = { true }
 
@@ -152,8 +156,8 @@ class Simulation(
         while (tripAccumulator >= 1) {
             tripAccumulator--
             val trip = trips.next(now)
-            // Wer keinen Führerschein mehr hat, fährt nicht – die Fahrt fällt weg
-            if (!tripAllowed(trip)) continue
+            // Wer keinen Führerschein mehr hat, fährt nicht – die Fahrt fällt weg; wer Bus fährt, auch
+            if (!tripAllowed(trip) || shiftRandom.nextDouble() < carTripReduction) continue
             val route = router.route(trip.originNode, trip.destinationNode)
             if (route != null && pending.size < config.maxPendingVehicles) {
                 val vehicle = factory.create(route, trip, time, router.referenceTime(route))
@@ -165,6 +169,8 @@ class Simulation(
                 vehicle.runsRedLights = random.nextDouble() < config.redLightRunnerShare * vehicle.driver.speedingFactor
                 vehicle.ignoresOvertakingBan =
                     random.nextDouble() < config.overtakingBanIgnoreShare * vehicle.driver.speedingFactor
+                vehicle.ignoresBusLane =
+                    random.nextDouble() < config.busLaneIgnoreShare * vehicle.driver.speedingFactor
                 router.planFor(vehicle, trip)
                 charging.planTrip(vehicle)
                 parking.planTrip(vehicle, trip)
@@ -180,7 +186,7 @@ class Simulation(
             // Einsatz schon erledigt, bevor das Einsatzfahrzeug überhaupt losfahren konnte
             if (vehicle.removedByIncident) return@repeat
             val link = vehicle.link
-            val lane = lanes.bestEntryLane(link, vehicle.lane)
+            val lane = lanes.bestEntryLane(link, vehicle.lane, vehicle)
             if (lanes.freeSpaceAtStart(link, lane) > vehicle.type.length + vehicle.driver.minimumGap + ENTRY_MARGIN) {
                 vehicle.lane = lane
                 vehicle.position = vehicle.type.length.toDouble()
@@ -234,7 +240,7 @@ class Simulation(
     ): Double {
         val next = vehicle.nextLink
         val remaining = graph.linkLength[link] - vehicle.position
-        val leader = if (next >= 0) lanes.rearmost(next, vehicle.lane) else null
+        val leader = if (next >= 0) lanes.rearmostFor(next, vehicle) else null
         return when {
             next < 0 -> vehicle.idm(desired, Double.POSITIVE_INFINITY, 0.0)
             junctions.mustStopAtEnd(vehicle, link, remaining, time) -> vehicle.idm(desired, remaining, vehicle.speed)
@@ -263,7 +269,7 @@ class Simulation(
                 if (i > 0) {
                     queue[i - 1]
                 } else if (next >= 0) {
-                    lanes.rearmost(next, vehicle.lane)
+                    lanes.rearmostFor(next, vehicle)
                 } else {
                     null
                 }
@@ -332,7 +338,7 @@ class Simulation(
         if (vehicle.isParked || vehicle.nextLink < 0) return finishRoute(vehicle, length)
         val next = nextOpenLink(vehicle)
         val overflow = vehicle.position - length
-        val lane = if (next >= 0) lanes.bestEntryLane(next, vehicle.lane) else 0
+        val lane = if (next >= 0) lanes.bestEntryLane(next, vehicle.lane, vehicle) else 0
         // Gesperrt oder kein Platz hinter dem Knoten: warten
         if (next < 0 || lanes.freeSpaceAtStart(next, lane) < overflow + STANDSTILL_GAP) {
             vehicle.position = length.toDouble()
@@ -486,6 +492,7 @@ class Simulation(
     private companion object {
         const val SECONDS_PER_HOUR = 3600.0
         const val TRANSIT_SEED = 7
+        const val SHIFT_SEED = 11
         const val SECONDS_PER_MINUTE = 60.0
         const val ENTRY_SPEED = 8.0
         const val ENTRY_MARGIN = 2.0

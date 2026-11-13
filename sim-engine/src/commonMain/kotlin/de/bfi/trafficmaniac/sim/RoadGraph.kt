@@ -212,6 +212,15 @@ class RoadGraph(
     /** Fahrradstraße: Kfz dürfen Radfahrer nicht überholen (fahren im Radtempo, kein Spurwechsel). */
     internal val linkBikeStreet = BooleanArray(linkCount)
 
+    /**
+     * Busspur: Die rechte Spur (höchste Nummer) gehört den Bussen – nur auf Links mit mindestens zwei Spuren, sonst
+     * bliebe für Autos nichts übrig.
+     */
+    internal val linkBusLane = BooleanArray(linkCount)
+
+    /** Busvorrang: Busse bekommen an dieser Ampelzufahrt ihr eigenes Signal und fahren auch bei Rot. */
+    internal val linkBusPriority = BooleanArray(linkCount)
+
     fun setSegmentBikeStreet(
         segment: Int,
         on: Boolean,
