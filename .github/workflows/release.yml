@@ -52,6 +52,20 @@ jobs:
           ./gradlew :desktop-app:packageMsi -PappVersion="$VERSION"
           mkdir -p dist
           cp desktop-app/build/compose/binaries/main/msi/*.msi "dist/traffic-maniac-$VERSION-windows.msi"
+      # Das MSI so prüfen, wie ein Spieler es bekommt: installieren und ohne Fenster starten.
+      # Fehlt die Karte oder startet das Spiel nicht, wird nichts veröffentlicht.
+      - name: Installer testen (Smoke-Test)
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem dist/*.msi).FullName
+          $install = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /l*v msi-install.log" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { Get-Content msi-install.log -Tail 50; throw "MSI-Installation fehlgeschlagen ($($install.ExitCode))" }
+          $exe = Get-ChildItem -Path $env:LOCALAPPDATA, $env:ProgramFiles -Recurse -Filter traffic-maniac.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { throw "traffic-maniac.exe nach der Installation nicht gefunden" }
+          Write-Host "Installiert: $($exe.FullName)"
+          $run = Start-Process $exe.FullName -ArgumentList "--smoke-test" -Wait -PassThru -RedirectStandardOutput smoke.out -RedirectStandardError smoke.err
+          Get-Content smoke.out, smoke.err -ErrorAction SilentlyContinue
+          if ($run.ExitCode -ne 0) { throw "Smoke-Test fehlgeschlagen (Exit $($run.ExitCode): 2 = keine Karte, 3 = Absturz)" }
       - uses: actions/upload-artifact@v7
         with:
           name: windows
@@ -86,7 +100,7 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           export TM_KEYSTORE="$RUNNER_TEMP/release.jks"
           VERSION="${GITHUB_REF_NAME#v}"
-          ./gradlew :android-app:assembleRelease -PappVersion="$VERSION" -PappVersionCode="$GITHUB_RUN_NUMBER"
+          ./gradlew :android-app:assembleRelease -PrequireMap -PappVersion="$VERSION" -PappVersionCode="$GITHUB_RUN_NUMBER"
           cp android-app/build/outputs/apk/release/android-app-release.apk "dist/traffic-maniac-$VERSION.apk"
       - uses: actions/upload-artifact@v7
         with:
@@ -107,8 +121,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          # Die Karte war nur Zwischenstand für die Builds
-          rm -f dist/map.city
+          # Die Karte steckt in Installer und APK und liegt zusätzlich bei – das Spiel lädt sie von hier nach,
+          # wenn sie fehlt (MapDownload: releases/download/<tag>/<stadt>.city)
+          mv dist/map.city dist/pforzheim.city
           PRERELEASE=""
           case "$GITHUB_REF_NAME" in *-*) PRERELEASE="--prerelease" ;; esac
           gh release create "$GITHUB_REF_NAME" dist/* \

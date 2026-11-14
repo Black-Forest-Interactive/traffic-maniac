@@ -19,6 +19,8 @@ val appVersion: String = providers.gradleProperty("appVersion").getOrElse("0.1.0
 compose.desktop {
     application {
         mainClass = "de.bfi.trafficmaniac.desktop.MainKt"
+        // Das installierte Spiel kennt seine Release-Version und lädt fehlende Karten von genau diesem Release (MapDownload)
+        providers.gradleProperty("appVersion").orNull?.let { jvmArgs += "-Dtrafficmaniac.version=$it" }
 
         nativeDistributions {
             packageName = "traffic-maniac"

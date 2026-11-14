@@ -57,6 +57,10 @@ abstract class GameAssets : DefaultTask() {
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
 
+    /** Ohne Karte abbrechen statt nur warnen – im Release-Workflow (`-PrequireMap`), damit keine leere APK erscheint. */
+    @get:Input
+    abstract val requireMap: Property<Boolean>
+
     @get:Inject
     abstract val files: FileSystemOperations
 
@@ -71,16 +75,17 @@ abstract class GameAssets : DefaultTask() {
                 }
             }
         }
-        // Ohne Karte wäre die App nutzlos (map.city ist nicht eingecheckt, siehe scripts/import-city.sh)
-        check(
+        // Ohne Karte ist die App nutzlos (map.city ist nicht eingecheckt, siehe scripts/import-city.sh);
+        // für Tests und den normalen CI-Build reicht eine Warnung, das Release bricht ab
+        val hasMap =
             outputDirectory
                 .get()
                 .asFile
                 .walk()
-                .any { it.name == "map.city" },
-        ) {
-            "Keine Stadtkarte in cities/*/map.city – erst scripts/import-city.sh <id> ausführen"
-        }
+                .any { it.name == "map.city" }
+        val message = "Keine Stadtkarte in cities/*/map.city – erst scripts/import-city.sh <id> ausführen"
+        check(hasMap || !requireMap.get()) { message }
+        if (!hasMap) logger.warn("Warnung: $message – die App findet dann keine Stadt.")
     }
 
     companion object {
@@ -92,6 +97,7 @@ val gameAssets =
     tasks.register<GameAssets>("gameAssets") {
         val folders = listOf("cities", "lang", "balancing").associateWith { rootProject.file(it) }
         this.folders.set(folders)
+        requireMap.set(providers.gradleProperty("requireMap").map { it != "false" }.orElse(false))
         folders.values.forEach { tracked.from(fileTree(it) { include(GameAssets.ASSET_PATTERNS) }) }
     }
 

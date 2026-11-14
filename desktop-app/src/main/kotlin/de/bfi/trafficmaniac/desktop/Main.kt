@@ -29,6 +29,7 @@ import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.CityChoice
+import de.bfi.trafficmaniac.ui.CityDownload
 import de.bfi.trafficmaniac.ui.MainMenu
 import de.bfi.trafficmaniac.ui.NoSound
 import de.bfi.trafficmaniac.ui.SaveSlots
@@ -47,6 +48,7 @@ import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.system.exitProcess
 
 private const val NOTICE_MILLIS = 2_500L
 private val SAVE_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
@@ -68,16 +70,19 @@ private val digitKeys =
  * - `--scenario` startet ohne Menü direkt in ein Szenario (z. B. `erste-amtszeit`, `berufsverkehr`).
  * - `--warmup` simuliert zusätzlich zum Vorlauf des Szenarios vor (volle Straßen).
  * - `--peak-trips` überschreibt die Fahrten pro Stunde in der Spitzenstunde (z. B. für Lasttests).
+ * - `--smoke-test` startet ohne Fenster, prüft Karte und Simulation und beendet sich ([smokeTest]).
  */
 fun main(args: Array<String>) {
+    if ("--smoke-test" in args) exitProcess(smokeTest())
     val options = parseOptions(args)
     Translations.use(Translations.languageFor(UserData().settings().language))
-    val packs = CityPacks.discover()
-    val sound = if (packs.isNotEmpty()) SynthSoundBoard.open() else NoSound
     val sprites = loadSprites()
-    val library =
-        Library(packs, Balancing.scenarios(), UserData(), SaveGames({ id -> packs.firstOrNull { it.id == id }?.map }))
+    val initial = loadLibrary()
     application {
+        // Nach dem Herunterladen einer fehlenden Karte wird neu eingelesen – ohne Neustart
+        var library by remember { mutableStateOf(initial) }
+        val hasCity = library.packs.isNotEmpty()
+        val sound = remember(hasCity) { if (hasCity) SynthSoundBoard.open() else NoSound }
         // Die laufende Partie: Das Fenster leitet Tasten an sie weiter
         val session = remember { mutableStateOf<Session?>(null) }
         val scope = rememberCoroutineScope()
@@ -91,13 +96,19 @@ fun main(args: Array<String>) {
                 } ?: false
             },
         ) {
-            if (packs.isEmpty()) {
-                TrafficManiacApp(city = null, missingCityMessage = missingCitiesMessage())
+            if (library.packs.isEmpty()) {
+                MissingCityScreen(onLoaded = { library = loadLibrary() })
             } else {
                 Game(library, options, sound, sprites, session, ::exitApplication)
             }
         }
     }
+}
+
+private fun loadLibrary(): Library {
+    val packs = CityPacks.discover()
+    val saves = SaveGames({ id -> packs.firstOrNull { it.id == id }?.map })
+    return Library(packs, Balancing.scenarios(), UserData(), saves)
 }
 
 /** Was das Spiel an Inhalten kennt: Städte, Szenarien, Einstellungen und Spielstände. */
@@ -108,14 +119,57 @@ private class Library(
     val saves: SaveGames,
 )
 
-private fun missingCitiesMessage(): String {
-    val missing = CityPacks.missingMaps().joinToString(" ") { it.name }.ifEmpty { "pforzheim" }
-    return tr(
-        "Keine Stadt mit Karte gefunden (Ordner {absolutePath}).\n\n" +
-            "Karte erzeugen mit: scripts/import-city.sh {missing}",
-        "absolutePath" to GameFiles.dir(CityPacks.DIRECTORY).absolutePath,
-        "missing" to missing,
-    )
+/**
+ * Keine Stadt mit Karte gefunden: Im installierten Spiel lädt ein Knopf die fertige Karte vom Release herunter
+ * ([MapDownload]); beim Entwickeln steht da, wie man sie selbst erzeugt.
+ */
+@Composable
+private fun MissingCityScreen(onLoaded: () -> Unit) {
+    val missing = CityPacks.missingMaps().map { it.name }.ifEmpty { listOf("pforzheim") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val message =
+        when {
+            busy -> {
+                tr("Karte wird heruntergeladen …")
+            }
+
+            error != null -> {
+                tr(
+                    "Herunterladen fehlgeschlagen: {error}\n\nBitte Internetverbindung prüfen und erneut versuchen.",
+                    "error" to error.orEmpty(),
+                )
+            }
+
+            MapDownload.isAvailable -> {
+                tr(
+                    "Für {city} fehlt noch die Stadtkarte (einige MB, aus OpenStreetMap).",
+                    "city" to missing.joinToString(),
+                )
+            }
+
+            else -> {
+                tr(
+                    "Keine Stadt mit Karte gefunden (Ordner {absolutePath}).\n\n" +
+                        "Karte erzeugen mit: scripts/import-city.sh {missing}",
+                    "absolutePath" to GameFiles.dir(CityPacks.DIRECTORY).absolutePath,
+                    "missing" to missing.joinToString(" "),
+                )
+            }
+        }
+    val download =
+        CityDownload(label = tr("Karte herunterladen"), busy = busy) {
+            busy = true
+            error = null
+            scope.launch {
+                val results = withContext(Dispatchers.IO) { missing.map { MapDownload.download(it) } }
+                busy = false
+                error = results.firstNotNullOfOrNull { it.exceptionOrNull()?.message }
+                if (results.any { it.isSuccess }) onLoaded()
+            }
+        }.takeIf { MapDownload.isAvailable }
+    TrafficManiacApp(city = null, missingCityMessage = message, cityDownload = download)
 }
 
 /** Menü oder laufendes Spiel; nach der Wertung geht es zurück ins Menü. */

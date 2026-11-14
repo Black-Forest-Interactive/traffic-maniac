@@ -58,8 +58,12 @@ object CityPacks {
             ?.let { CityPack(it, map) }
     }
 
-    /** `map.city` im Paket; ältere Checkouts haben die Karte noch unter `data/cities/<id>.city`. */
+    /**
+     * `map.city` im Paket, sonst eine im Spiel heruntergeladene ([MapDownload]); ältere Checkouts haben die Karte noch
+     * unter `data/cities/<id>.city`.
+     */
     private fun mapOf(directory: File): File? =
         File(directory, MAP_FILE).takeIf { it.isFile }
+            ?: MapDownload.downloaded(directory.name)
             ?: File("data/cities/${directory.name}.city").takeIf { it.isFile }
 }

@@ -37,6 +37,8 @@ import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.SpeedCamera
+import de.bfi.trafficmaniac.ui.components.ButtonKind
+import de.bfi.trafficmaniac.ui.components.TmButton
 import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
 import de.bfi.trafficmaniac.ui.map.MapFocus
 import de.bfi.trafficmaniac.ui.map.MapPicker
@@ -162,6 +164,8 @@ internal fun InputRequests(
 fun TrafficManiacApp(
     city: CityMap?,
     missingCityMessage: String = "",
+    /** Knopf unter dem Hinweis, der die fehlende Karte herunterlädt; `null` = kein Knopf. */
+    cityDownload: CityDownload? = null,
     traffic: StateFlow<TrafficFrame?>? = null,
     rules: GameRules = GameRules(),
     onCommand: (GameCommand) -> Unit = {},
@@ -181,7 +185,7 @@ fun TrafficManiacApp(
     input: HudInput = remember { HudInput() },
 ) {
     if (city == null) {
-        MissingCity(missingCityMessage)
+        MissingCity(missingCityMessage, cityDownload)
         return
     }
     val hud = remember(tutorial) { HudState(tutorial) }
@@ -423,15 +427,29 @@ internal fun EndOfDayOverlays(
 }
 
 @Composable
-private fun MissingCity(message: String) =
-    TmTheme {
-        Box(
-            modifier = Modifier.fillMaxSize().background(BackgroundColor),
-            contentAlignment = Alignment.Center,
-        ) {
+private fun MissingCity(
+    message: String,
+    download: CityDownload?,
+) = TmTheme {
+    Box(
+        modifier = Modifier.fillMaxSize().background(BackgroundColor),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
             BasicText(
                 text = message,
                 style = TmType.text(18.sp, color = TmColors.OnDark).copy(textAlign = TextAlign.Center),
             )
+            download?.let {
+                TmButton(it.label, it.onClick, kind = ButtonKind.PRIMARY, large = true, enabled = !it.busy)
+            }
         }
     }
+}
+
+/** Fehlende Karte herunterladen: Beschriftung, ob gerade geladen wird, und was der Knopf tut. */
+class CityDownload(
+    val label: String,
+    val busy: Boolean,
+    val onClick: () -> Unit,
+)
