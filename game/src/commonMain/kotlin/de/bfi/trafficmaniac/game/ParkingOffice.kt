@@ -159,6 +159,8 @@ internal class ParkingOffice(
             if (violation.kind == ParkingViolationKind.ILLEGAL) {
                 illegal++
                 today.illegal++
+                // Wer keinen (bezahlbaren) Platz findet, ärgert sich – auch ohne Knöllchen
+                citizens.fined(violation.homeZone, rules.parkingFrustrationPain)
             } else {
                 today.secondRow++
             }

@@ -110,7 +110,7 @@ data class Scenario(
                     startHour = 6.0,
                     warmupMinutes = 60,
                     demandFactor = 1.2,
-                    startBudget = 180_000,
+                    startBudget = 110_000,
                 ),
                 Scenario(
                     id = "erster-schnee",
@@ -125,7 +125,7 @@ data class Scenario(
                     startHour = 5.5,
                     warmupMinutes = 60,
                     demandFactor = 1.1,
-                    startBudget = 200_000,
+                    startBudget = 120_000,
                     weather =
                         WeatherConfig(
                             spells =

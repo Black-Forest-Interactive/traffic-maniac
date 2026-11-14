@@ -64,7 +64,7 @@ fun CitizensPanel(
             Bar(tr("Frische Luft"), weighted(moods) { it.airSatisfaction })
         }
         PanelSection(title = tr("Zufriedenheit je Haushaltstyp")) {
-            for (type in HouseholdType.entries) Bar(type.label, weighted(moods) { typeSatisfaction(it, type) })
+            for (type in HouseholdType.entries) Bar(type.label, weighted(moods) { it.satisfactionOf(type) })
         }
         PanelSection(title = tr("Hier brodelt es"), divider = false) {
             for (mood in moods.sortedBy { it.satisfaction }.take(WORST_ZONES)) {
@@ -124,13 +124,6 @@ private fun weighted(
     val total = moods.sumOf { it.area.toDouble() }
     return if (total > 0) moods.sumOf { value(it) * it.area } / total else 1.0
 }
-
-private fun typeSatisfaction(
-    mood: ZoneMood,
-    type: HouseholdType,
-): Double =
-    type.speedWeight * mood.speedSatisfaction + type.mobilityWeight * mood.mobilitySatisfaction +
-        type.quietWeight * mood.quietSatisfaction + type.airWeight * mood.airSatisfaction
 
 private const val PERCENT = 100
 private const val WORST_ZONES = 3

@@ -119,7 +119,7 @@ class CityGameTest {
 
     @Test
     fun refusesWhenMoneyRunsOut() {
-        val game = CityGame(straightRoad(), config, GameRules(startBudget = 100_000))
+        val game = CityGame(straightRoad(), config, GameRules(startBudget = GameRules().cameraCost * 3 / 2))
         game.submit(GameCommand.PlaceCamera(segment = 0))
         game.submit(GameCommand.PlaceCamera(segment = 1))
 

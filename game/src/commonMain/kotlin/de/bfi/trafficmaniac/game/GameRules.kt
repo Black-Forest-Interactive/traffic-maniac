@@ -10,9 +10,9 @@ data class GameRules(
     /** Punkte = Kasse × Faktor; der Faktor wächst linear mit der Reputation von min bis max. */
     val minReputationFactor: Double = 0.5,
     val maxReputationFactor: Double = 2.0,
-    val startBudget: Long = 250_000,
+    val startBudget: Long = 150_000,
     val speedLimitSignCost: Long = 2_000,
-    val signalCost: Long = 60_000,
+    val signalCost: Long = 30_000,
     val signalRemovalCost: Long = 5_000,
     /** Ampelprogramm ändern (Aufteilung der Grünzeit oder grüne Welle), je Anlage. */
     val signalProgramCost: Long = 1_000,
@@ -30,10 +30,10 @@ data class GameRules(
     val fakeRoadworksPressChance: Double = 0.3,
     /** … und kostet dann so viel Reputation. */
     val fakeRoadworksReputationLoss: Double = 3.0,
-    val cameraCost: Long = 90_000,
+    val cameraCost: Long = 45_000,
     /** Rotlichtblitzer an einer Ampelzufahrt, mit Tempomessung teurer. */
-    val redLightCameraCost: Long = 70_000,
-    val redLightSpeedCameraCost: Long = 120_000,
+    val redLightCameraCost: Long = 35_000,
+    val redLightSpeedCameraCost: Long = 60_000,
     /** Geschwindigkeits-Anzeigetafel (blitzt nicht). */
     val displayCost: Long = 2_500,
     /** Polizeikontrolle: Einsatz für [policeCheckHours] Stunden, höchstens [maxPoliceChecks] gleichzeitig. */
@@ -53,7 +53,7 @@ data class GameRules(
     /** Ab diesem Verhältnis ist "schnell am Ziel" völlig unerfüllt. */
     val unbearableDelayRatio: Double = 3.0,
     /** Bußgeld je Fahrt (gleitender Mittelwert in Euro), ab dem "Mobilität" völlig unerfüllt ist. */
-    val unbearableFinePerTrip: Double = 4.0,
+    val unbearableFinePerTrip: Double = 2.0,
     val finePainHalfLifeHours: Double = 24.0,
     /** Bis zu diesem Lärmpegel (dB) ist es ruhig ... */
     val quietGoodDb: Double = 50.0,
@@ -87,10 +87,10 @@ data class GameRules(
     /** Ohne PR-Vertrag berichtet die Presse über Abzocke, sobald pro Stunde so viel Bußgeld eingeht. */
     val ripOffPressFines: Long = 1_500,
     val ripOffReputationLoss: Double = 0.25,
-    val initialStaff: Int = 4,
+    val initialStaff: Int = 6,
     val staffWeeklySalary: Long = 2_500,
-    val hireDelayHours: Int = 48,
-    val casesPerStaffHour: Int = 15,
+    val hireDelayHours: Int = 24,
+    val casesPerStaffHour: Int = 20,
     val officeStartHour: Int = 8,
     val officeEndHour: Int = 16,
     val identificationBase: Double = 0.55,
@@ -109,7 +109,7 @@ data class GameRules(
     /** Texte der Stadt (aus dem Stadtpaket). */
     val city: CityTexts = CityTexts(),
     /** Blitzeranhänger: einmal kaufen, danach gegen eine kleine Gebühr beliebig umsetzen. */
-    val trailerCost: Long = 45_000,
+    val trailerCost: Long = 30_000,
     val trailerMoveCost: Long = 500,
     val priorityRoadCost: Long = 3_000,
     val bikeCrossingCost: Long = 8_000,
@@ -157,8 +157,10 @@ data class GameRules(
     val illegalParkingTicket: Int = 35,
     val secondRowTicket: Int = 55,
     val ticketPayShare: Double = 0.9,
-    /** Parkgebühren ärgern weniger als Bußgelder. */
+    /** Parkgebühren ärgern etwas weniger als Bußgelder (Anteil der Gebühr, der als "Euro Bußgeld" zählt). */
     val parkingFeePainFactor: Double = 0.5,
+    /** Keinen (bezahlbaren) Parkplatz gefunden und falsch geparkt: ärgert das Wohngebiet wie so viel Bußgeld. */
+    val parkingFrustrationPain: Int = 4,
     val parkingFeeOptions: List<Double> = DEFAULT_PARKING_FEES,
     /** Ein Schritt "Parkplätze in Radspuren/Blumenkübel" kostet so viel und nimmt diesen Anteil weg. */
     val curbConversionCost: Long = 15_000,

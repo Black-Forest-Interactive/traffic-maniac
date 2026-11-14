@@ -44,19 +44,34 @@ data class ZoneMood(
     val households: Map<HouseholdType, Double>,
 ) {
     val satisfaction: Double
-        get() =
-            households.entries.sumOf { (type, share) ->
-                share *
-                    (
-                        type.speedWeight * speedSatisfaction + type.mobilityWeight * mobilitySatisfaction +
-                            type.quietWeight * quietSatisfaction + type.airWeight * airSatisfaction
-                    )
-            }
+        get() = households.entries.sumOf { (type, share) -> share * satisfactionOf(type) }
+
+    /**
+     * Zufriedenheit eines Haushaltstyps: das gewichtete Mittel der Bedürfnisse, gedrückt vom am schlechtesten
+     * erfüllten. Ein völlig unerfülltes Bedürfnis lässt sich nicht aufwiegen – je wichtiger es dem Haushaltstyp
+     * ist, desto weniger: Dauerstau allein macht Pendler unzufrieden, Rentner kaum.
+     */
+    fun satisfactionOf(type: HouseholdType): Double {
+        val needs =
+            listOf(
+                type.speedWeight to speedSatisfaction,
+                type.mobilityWeight to mobilitySatisfaction,
+                type.quietWeight to quietSatisfaction,
+                type.airWeight to airSatisfaction,
+            )
+        val mean = needs.sumOf { (weight, satisfied) -> weight * satisfied }
+        val mostImportant = needs.maxOf { it.first }
+        val worst = needs.minOf { (weight, satisfied) -> 1 - weight / mostImportant * (1 - satisfied) }
+        return mean * (WORST_NEED_FLOOR + (1 - WORST_NEED_FLOOR) * worst)
+    }
 
     val isUnhappy: Boolean get() = satisfaction < UNHAPPY_BELOW
 
     companion object {
         const val UNHAPPY_BELOW = 0.55
+
+        /** So viel Zufriedenheit bleibt, wenn das wichtigste Bedürfnis völlig unerfüllt ist (Anteil des Mittels). */
+        const val WORST_NEED_FLOOR = 0.5
     }
 }
 

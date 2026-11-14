@@ -69,11 +69,14 @@ class PoliticsTest {
             citizens.tripFinished(TripResult(homeZone = 1, actualSeconds = 110.0, referenceSeconds = 100.0))
         }
 
-        // Nur Stau reicht nicht: Rentnern und Familien sind Lärm und Luft wichtiger
-        assertFalse(citizens.moods(argumentsCampaign = false)[0].isUnhappy)
+        // Dauerstau allein reicht: Pendlern ist nichts wichtiger – Rentner stört er dagegen kaum
+        val jammed = citizens.moods(argumentsCampaign = false)[0]
+        assertTrue(jammed.isUnhappy)
+        assertTrue(jammed.satisfactionOf(HouseholdType.RETIREE) > jammed.satisfactionOf(HouseholdType.COMMUTER))
+        assertTrue(jammed.satisfactionOf(HouseholdType.RETIREE) > ZoneMood.UNHAPPY_BELOW)
         repeat(100) { citizens.fined(homeZone = 0, euros = 70) }
         val moods = citizens.moods(argumentsCampaign = false)
-        assertTrue(moods[0].isUnhappy)
+        assertTrue(moods[0].satisfaction < jammed.satisfaction)
         assertFalse(moods[1].isUnhappy)
         assertEquals(0.25, citizens.unhappyShare(moods), 1e-9)
 

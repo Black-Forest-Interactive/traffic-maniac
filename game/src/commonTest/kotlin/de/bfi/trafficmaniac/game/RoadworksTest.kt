@@ -97,7 +97,8 @@ class RoadworksTest {
 
     @Test
     fun aRoadworksWithoutWorkersCostsEveryDayAndThePressFindsOut() {
-        val rules = GameRules(fakeRoadworksGraceDays = 0, fakeRoadworksPressChance = 1.0)
+        // Die Teststadt hat keine Parkplätze – ohne Abwahl, sonst endet das Spiel vor Mitternacht
+        val rules = GameRules(fakeRoadworksGraceDays = 0, fakeRoadworksPressChance = 1.0, recallDivisor = 1e9)
         val game = CityGame(straightRoad(), config, rules)
         game.submit(GameCommand.SetRoadworks(listOf(0), active = true))
         game.step()

@@ -133,7 +133,8 @@ class MaintenanceTest {
 
     @Test
     fun warningSignProtectsAgainstLawsuits() {
-        val game = CityGame(road(), config.copy(potholeAccidentsPerHour = 3.0))
+        // Genug Geld, damit das Schild trotz der Klagen der ersten Minute bezahlbar bleibt
+        val game = CityGame(road(), config.copy(potholeAccidentsPerHour = 3.0), GameRules(startBudget = 1_000_000))
         val report = game.damage(Infrastructure.CRATER)
         game.submit(GameCommand.RespondToDamage(report.id, DamageResponse.WarningSign(30)))
         game.run(minutes = 1)
@@ -210,7 +211,8 @@ class MaintenanceTest {
 
     @Test
     fun turboConsortiumRepairsOvernightWithAMaintenanceContract() {
-        val game = CityGame(road(), config)
+        // Die Teststadt hat nur diese eine Straße und keine Parkplätze – ohne Abwahl, sonst endet das Spiel vorher
+        val game = CityGame(road(), config, GameRules(recallDivisor = 1e9))
         val report = game.damage()
         game.submit(GameCommand.RespondToDamage(report.id, DamageResponse.Repair(RepairMethod.TURBO)))
 

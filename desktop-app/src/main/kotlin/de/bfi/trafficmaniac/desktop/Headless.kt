@@ -11,6 +11,7 @@ import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.PrContract
 import de.bfi.trafficmaniac.game.RepairMethod
 import de.bfi.trafficmaniac.game.Strictness
+import de.bfi.trafficmaniac.game.ZoneMood
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.sim.DayReport
 import java.io.File
@@ -88,13 +89,11 @@ private fun play(
             " | geparkt (Rand/Platz) | Presse      | Ereignisse\n",
     )
     for (day in 1..days) {
-        repeat(HOURS_PER_DAY) {
-            playHour(game, strategy, targets, saving = day > days - SAVING_DAYS)
-            repeat(SECONDS_PER_HOUR * config.ticksPerSecond) { game.step() }
-        }
+        if (!playDay(game, strategy, targets, day, days, log)) break
         val state = game.state()
         val report = game.simulation.dayReports.last()
         log.append(dayLine(day, state, report))
+        log.append(moodLine(state))
         state.latestEdition?.let { edition ->
             log.append("      Zeitung: ${edition.headlines.joinToString(" / ")}\n")
             log.append("      Leserbrief: ${edition.letters.firstOrNull().orEmpty()}\n")
@@ -106,6 +105,48 @@ private fun play(
         "Punkte: ${score.points} (verdient ${formatEuro(score.earnings)} × ${"%.2f".format(score.reputationFactor)})\n",
     )
     return log.toString()
+}
+
+/** Spielt einen Tag; false, wenn man mittendrin abgewählt wurde (dann gibt es keinen Tagesbericht mehr). */
+private fun playDay(
+    game: CityGame,
+    strategy: Strategy,
+    targets: ArrayDeque<Int>,
+    day: Int,
+    days: Int,
+    log: StringBuilder,
+): Boolean {
+    val ticksPerHour = SECONDS_PER_HOUR * game.simulation.config.ticksPerSecond
+    for (hour in 0 until HOURS_PER_DAY) {
+        playHour(game, strategy, targets, saving = day > days - SAVING_DAYS)
+        repeat(ticksPerHour) { game.step() }
+        if (game.isGameOver) {
+            val unhappy = (game.state().unhappyShare * PERCENT).roundToInt()
+            log.append("  $day | abgewählt um $hour Uhr, $unhappy % unzufrieden\n")
+            log.append(moodLine(game.state()))
+            return false
+        }
+    }
+    return true
+}
+
+/** Stimmung im Flächenmittel je Bedürfnis – zeigt, woran die Bürger leiden (oder eben nicht). */
+private fun moodLine(state: GameState): String {
+    val moods = state.zoneMoods
+    val total = moods.sumOf { it.area.toDouble() }.coerceAtLeast(1.0)
+
+    fun mean(value: (ZoneMood) -> Double) = moods.sumOf { value(it) * it.area } / total
+    return (
+        "      Stimmung: schnell %.2f, Mobilität %.2f, Ruhe %.2f, Luft %.2f," +
+            " gesamt %.2f (schlechtestes Gebiet %.2f)\n"
+    ).format(
+        mean { it.speedSatisfaction },
+        mean { it.mobilitySatisfaction },
+        mean { it.quietSatisfaction },
+        mean { it.airSatisfaction },
+        mean { it.satisfaction },
+        moods.minOfOrNull { it.satisfaction } ?: 1.0,
+    )
 }
 
 /** Eine Zeile der Tabelle: Kasse, Stimmung, Verwaltung, Parken, Presse und Ereignisse. */
