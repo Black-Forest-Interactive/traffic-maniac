@@ -838,6 +838,7 @@
   "Karte wird heruntergeladen …": "Downloading the map …",
   "Herunterladen fehlgeschlagen: {error}\n\nBitte Internetverbindung prüfen und erneut versuchen.": "Download failed: {error}\n\nPlease check your internet connection and try again.",
   "Für {city} fehlt noch die Stadtkarte (einige MB, aus OpenStreetMap).": "The town map for {city} is still missing (a few MB, from OpenStreetMap).",
+  "Traffic Maniac ist leider abgestürzt:\n{error}\n\nDas Protokoll liegt unter\n{path}\nBitte bei einer Fehlermeldung mitschicken.": "Sorry, Traffic Maniac has crashed:\n{error}\n\nThe log file is at\n{path}\nPlease attach it when reporting the problem.",
   "Karte herunterladen": "Download map",
   "{title}: {name} wird vorbereitet …": "{title}: preparing {name} …",
   "Spielstand wird geladen …": "Loading saved game …",

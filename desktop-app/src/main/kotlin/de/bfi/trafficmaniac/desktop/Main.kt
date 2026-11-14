@@ -73,6 +73,7 @@ private val digitKeys =
  * - `--smoke-test` startet ohne Fenster, prüft Karte und Simulation und beendet sich ([smokeTest]).
  */
 fun main(args: Array<String>) {
+    CrashLog.install()
     if ("--smoke-test" in args) exitProcess(smokeTest())
     val options = parseOptions(args)
     Translations.use(Translations.languageFor(UserData().settings().language))
