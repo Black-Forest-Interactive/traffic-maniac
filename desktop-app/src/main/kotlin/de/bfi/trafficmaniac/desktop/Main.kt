@@ -153,9 +153,9 @@ private fun MissingCityScreen(onLoaded: () -> Unit) {
             else -> {
                 tr(
                     "Keine Stadt mit Karte gefunden (Ordner {absolutePath}).\n\n" +
-                        "Karte erzeugen mit: scripts/import-city.sh {missing}",
+                        "Karte erzeugen mit: ./gradlew importCity -Pcity={missing}",
                     "absolutePath" to GameFiles.dir(CityPacks.DIRECTORY).absolutePath,
-                    "missing" to missing.joinToString(" "),
+                    "missing" to missing.joinToString(","),
                 )
             }
         }

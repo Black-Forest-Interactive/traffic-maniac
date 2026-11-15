@@ -35,6 +35,7 @@ private class TouchState {
     var menu by mutableStateOf<RailMenu?>(null)
     var feed by mutableStateOf(false)
     var views by mutableStateOf(false)
+    var debug by mutableStateOf(false)
 }
 
 /** Wohin die Touch-Oberfläche meldet: Befehle, Tagesabschluss, Tempo, Menü und Speichern. */
@@ -80,7 +81,12 @@ fun TouchGameApp(
             Box(Modifier.fillMaxSize().background(TmColors.Ground)) {
                 Column(Modifier.fillMaxSize()) {
                     hudFrame?.let {
-                        TouchTopBar(it, TopBarActions(callbacks.onSpeed, callbacks.onSave, callbacks.onMenu))
+                        TouchTopBar(
+                            it,
+                            TopBarActions(callbacks.onSpeed, callbacks.onSave, callbacks.onMenu) {
+                                touch.debug = !touch.debug
+                            },
+                        )
                     }
                     Row(Modifier.weight(1f)) {
                         TouchRail(
@@ -154,6 +160,7 @@ private fun BoxScope.TouchOverlays(
         )
     }
     if (touch.views) MapViewSwitcher(hud.toggles, Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
+    frame.warmup?.let { WarmupBanner(it, Modifier.align(Alignment.BottomStart).padding(8.dp)) }
     if (touch.feed && hud.panel == SidePanel.NONE) {
         HudFeed(frame, hud::show, Modifier.align(Alignment.TopEnd).padding(8.dp))
     }
@@ -173,6 +180,7 @@ private fun BoxScope.TouchOverlays(
     ) {
         ToolDock(dock, rules, Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp))
     }
+    if (touch.debug) DebugOverlay(frame, hud.fps, Modifier.align(Alignment.BottomEnd).padding(8.dp))
     touch.menu?.let { menu ->
         // Tipp daneben schließt das Menü
         Box(

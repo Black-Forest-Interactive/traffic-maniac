@@ -40,8 +40,8 @@ class Session(
                     settings.difficulty,
                 )
             val game = CityGame(city.map, config, rules)
-            repeat(scenario.warmupMinutes * SECONDS_PER_MINUTE * config.ticksPerSecond) { game.step() }
-            val runner = GameRunner(game)
+            // Der Vorlauf läuft im Runner, während das Spiel schon zu sehen ist (statt über eine Minute Ladebild)
+            val runner = GameRunner(game, scenario.warmupMinutes * SECONDS_PER_MINUTE * config.ticksPerSecond)
             runner.setSpeed(settings.startSpeed)
             return Session(city, scenario, settings, game, runner)
         }

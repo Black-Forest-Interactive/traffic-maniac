@@ -63,10 +63,12 @@ val gameResources =
 
 tasks.matching { it.name == "prepareAppResources" }.configureEach {
     dependsOn(gameResources)
-    // Ohne Karte wäre der Installer nutzlos (map.city ist nicht eingecheckt, siehe scripts/import-city.sh)
+    // Ohne Karte wäre der Installer nutzlos (map.city ist nicht eingecheckt, siehe ./gradlew importCity)
     val maps = project.rootProject.fileTree("cities") { include("*/map.city") }
     doFirst {
-        check(!maps.isEmpty) { "Keine Stadtkarte in cities/*/map.city – erst scripts/import-city.sh <id> ausführen" }
+        check(
+            !maps.isEmpty,
+        ) { "Keine Stadtkarte in cities/*/map.city – erst ./gradlew importCity -Pcity=<id> ausführen" }
     }
 }
 

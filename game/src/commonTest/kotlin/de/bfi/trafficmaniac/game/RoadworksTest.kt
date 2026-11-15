@@ -15,6 +15,7 @@ import de.bfi.trafficmaniac.sim.DemandProfile
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class RoadworksTest {
@@ -109,8 +110,11 @@ class RoadworksTest {
         repeat(20 * 3600 * config.ticksPerSecond) { game.step() }
 
         val state = game.state()
+        // Um Mitternacht kommen die Tageskosten der Haushaltsrunde dazu (Gehälter usw.)
+        val round = assertNotNull(state.lastBudgetRound)
+        val budgetCosts = round.prCost + round.argumentsCost + round.salaries + round.maintenance
         assertEquals(
-            expenses + rules.roadworksDailyCost,
+            expenses + rules.roadworksDailyCost + budgetCosts,
             state.expenses,
             "Absicherung für einen Tag",
         )

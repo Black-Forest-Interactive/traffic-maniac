@@ -47,7 +47,10 @@ fun BudgetPanel(
                 )
                 StatTile(tr("Reputation"), "${state.reputation.roundToInt()}/100", Modifier.weight(1f))
             }
-            BasicText(tr("Abgerechnet wird sonntags um Mitternacht."), style = TmType.caption)
+            BasicText(
+                tr("Abgerechnet wird jede Nacht um Mitternacht – je ein Siebtel der Wochenbeträge."),
+                style = TmType.caption,
+            )
         }
         PanelSection(title = tr("PR-Agentur")) {
             BasicText(tr("Solange bezahlt wird, schreibt die Lokalzeitung Jubel-Stories."), style = TmType.small)

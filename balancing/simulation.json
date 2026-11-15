@@ -139,5 +139,8 @@
     "busFirstHour": 5,
     "busLastHour": 23,
     "busDwellMinSeconds": 15.0,
-    "busDwellMaxSeconds": 35.0
+    "busDwellMaxSeconds": 35.0,
+    "redLightRunnerShare": 0.05,
+    "overtakingBanIgnoreShare": 0.12,
+    "checkFindingRate": 0.04
 }

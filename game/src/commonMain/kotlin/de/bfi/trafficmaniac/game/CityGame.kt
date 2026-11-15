@@ -8,6 +8,7 @@ import de.bfi.trafficmaniac.sim.Simulation
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import de.bfi.trafficmaniac.sim.Weekday
 import kotlinx.coroutines.channels.Channel
+import kotlin.jvm.Transient
 
 /**
  * Das Spiel um die Simulation: Kasse, Werkzeuge, Bußgeldstelle, Bürger und Politik.
@@ -82,6 +83,14 @@ class CityGame(
 
     val isFinished: Boolean get() = isGameOver || isTermOver
 
+    /**
+     * Zählt die Schritte, in denen Spieleraktionen ausgeführt wurden – der [GameRunner] baut den Spielstand dann
+     * sofort neu statt erst nach seinem Takt. Wird nicht gespeichert.
+     */
+    @Transient
+    var revision = 0
+        private set
+
     fun submit(command: GameCommand) {
         commands.trySend(command)
     }
@@ -95,6 +104,7 @@ class CityGame(
             executed = true
         }
         // Der Schilderwald entsteht durch Werkzeuge – er wird sofort gefeiert, nicht erst zur vollen Stunde
+        if (executed) revision++
         if (executed && PublicWorks.SIGN_FOREST in works.achievements) {
             achievements.check(AchievementFacts(signForest = true), simulation.gameTime.day)
         }
@@ -230,7 +240,7 @@ class CityGame(
         )
     }
 
-    /** Mitternacht: Zeitung drucken, Lasertrupps bezahlen, sonntags Haushaltsrunde. */
+    /** Mitternacht: Zeitung drucken, Lasertrupps bezahlen, Haushaltsrunde. */
     private fun dayEnded() {
         val reports = simulation.dayReports
         val report = reports.last()
@@ -283,22 +293,27 @@ class CityGame(
         if (works.laserCount > 0) treasury.charge(works.laserCount * rules.laserDailyCost)
         politics.press(roadworks.dayEnded(report.day))
         winter.dayEnded()
-        if (report.weekday == Weekday.SUNDAY) budgetRound()
+        budgetRound()
+        if (report.weekday == Weekday.SUNDAY) press.startNewWeek()
         if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
     }
 
-    /** Sonntag um Mitternacht: Haushalt überweisen, PR, Kampagne und Gehälter bezahlen. */
+    /**
+     * Jede Nacht um Mitternacht: ein Siebtel des Wochenhaushalts überweisen, ein Siebtel von PR, Kampagne, Gehältern
+     * und Erhalt bezahlen. Über die Woche ist das dieselbe Summe wie früher sonntags – kommt aber schon am ersten
+     * Spieltag an.
+     */
     private fun budgetRound() {
         val argumentsCost = if (argumentsCampaign) rules.argumentsWeeklyCost else 0
         val round =
             BudgetRound(
                 simulation.gameTime,
-                rules.weeklyAllowance,
-                press.weeklyPrCost(prContract),
-                argumentsCost,
-                office.weeklySalaries() + parkingOffice.weeklySalaries(),
-                maintenance.weeklyCost(),
-                parkingOffice.weeklyPermits(),
+                rules.weeklyAllowance / DAYS_PER_WEEK,
+                press.dailyPrCost(prContract),
+                argumentsCost / DAYS_PER_WEEK,
+                (office.weeklySalaries() + parkingOffice.weeklySalaries()) / DAYS_PER_WEEK,
+                maintenance.weeklyCost() / DAYS_PER_WEEK,
+                parkingOffice.weeklyPermits() / DAYS_PER_WEEK,
             )
         treasury.receiveAllowance(round.allowance)
         treasury.earn(round.permits)

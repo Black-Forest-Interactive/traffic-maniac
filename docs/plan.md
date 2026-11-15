@@ -443,7 +443,7 @@ Der Spieler stellt die **Schärfe** ein, z. B. in drei Stufen (kulant / normal /
 - Die Simulation läuft **Tag für Tag** durch, jeder Tag mit vollem 24-Stunden-Verlauf: Berufsverkehr morgens und abends, Mittagsflaute, Nachtruhe (wichtig für "30 nur nachts").
 - **Zeitraffer**: Pause, 1x, 2x, 4x, 8x; ruhige Phasen (Nacht) laufen automatisch schneller. Ziel: ein Spieltag dauert ca. 5–10 Minuten echte Zeit.
 - **Wochentage** unterscheiden sich: Werktage mit Pendlern, Samstag mit Einkaufsverkehr, Sonntag mit Freizeitverkehr (→ militante Radfahrer).
-- **Haushaltsrunde** einmal pro Spielwoche (z. B. Sonntagabend): Budget verteilen, Personal einstellen, PR-Verträge verlängern.
+- **Haushaltsrunde** jede Nacht um Mitternacht mit einem Siebtel der Wochenbeträge (seit v0.8; vorher sonntags): Haushalt, PR, Gehälter, Erhalt.
 - **Amtszeit** in Spieltagen (z. B. 8 Wochen), pro Szenario einstellbar.
 - **Langsame Prozesse werden auf Spieltage skaliert** – die Spielwelt ist ein "gestauchter" Kalender:
   - Verfall: Schlaglöcher entstehen innerhalb weniger Spieltage, Brücken verfallen über Wochen.

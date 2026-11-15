@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,7 +58,7 @@ internal fun TouchTopBar(
     ) {
         actions.onMenu?.let { BarButton(Icons.Menu, tr("Menü"), onClick = it) }
         TouchClock(frame)
-        actions.onSpeed?.let { SpeedButtons(frame.speed, it) }
+        actions.onSpeed?.let { SpeedButtons(frame.speed, it, actions.onDebug) }
         Spacer(Modifier.weight(1f))
         TouchKpis(frame)
         actions.onSave?.let { BarButton(Icons.Save, tr("Speichern"), onClick = it) }
@@ -89,6 +90,7 @@ private fun TouchClock(frame: TrafficFrame) {
 private fun SpeedButtons(
     speed: Int,
     onSpeed: (Int) -> Unit,
+    onDebug: (() -> Unit)?,
 ) {
     var last by remember { mutableIntStateOf(1) }
     if (speed > 0) last = speed
@@ -108,7 +110,9 @@ private fun SpeedButtons(
                 .height(BUTTON_SIZE.dp)
                 .clip(ButtonShape)
                 .background(if (paused) Color.Transparent else TmColors.Active)
-                .clickable(role = Role.Button) { onSpeed(SPEEDS[(SPEEDS.indexOf(last) + 1) % SPEEDS.size]) },
+                .combinedClickable(role = Role.Button, onLongClick = onDebug) {
+                    onSpeed(SPEEDS[(SPEEDS.indexOf(last) + 1) % SPEEDS.size])
+                },
             contentAlignment = Alignment.Center,
         ) {
             BasicText(

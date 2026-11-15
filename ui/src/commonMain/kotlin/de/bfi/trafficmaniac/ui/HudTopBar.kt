@@ -55,6 +55,8 @@ internal class TopBarActions(
     val onSpeed: ((Int) -> Unit)?,
     val onSave: (() -> Unit)?,
     val onMenu: (() -> Unit)?,
+    /** Langes Tippen aufs Tempo (Handy): Entwickler-Anzeige ein/aus. */
+    val onDebug: (() -> Unit)? = null,
 )
 
 /** Dunkle Kopfleiste: Tag und Uhrzeit, Zeitraffer, Kennzahlen (Kasse, Reputation, Zorn, Abwahl), Speichern, Menü. */

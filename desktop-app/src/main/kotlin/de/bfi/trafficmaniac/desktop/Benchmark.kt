@@ -3,6 +3,8 @@ package de.bfi.trafficmaniac.desktop
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.city.ZoneKind
+import de.bfi.trafficmaniac.game.CityGame
+import de.bfi.trafficmaniac.game.Difficulty
 import de.bfi.trafficmaniac.sim.DemandProfile
 import de.bfi.trafficmaniac.sim.EnvironmentSnapshot
 import de.bfi.trafficmaniac.sim.Pollutant
@@ -26,10 +28,25 @@ private const val LONG_RUN_MINUTES = 6 * 60
  * z. B. `softwareFailuresPerHour=0` (zum Eingrenzen von Effekten).
  * Mit `konstant` läuft die Nachfrage rund um die Uhr auf Spitzenniveau (Lasttest),
  * sonst nach Tagesgang ab Montag 5 Uhr.
+ * Mit `bildkosten` (z. B. `--args="0 150 bildkosten"`) läuft das ganze Spiel [Minuten] lang und misst danach, was ein
+ * veröffentlichtes Bild des `GameRunner` kostet: Simulations-Schnappschuss und Spielstand.
+ * Mit `spielstart` (`--args="0 0 spielstart"`) misst er je Szenario, wie lange der Start dauert: Spiel anlegen und
+ * Vorlauf.
  */
 
 fun main(args: Array<String>) {
     val city = benchmarkCity(args)
+    when {
+        "bildkosten" in args -> measureFrameCost(city, args.getOrNull(1)?.toIntOrNull() ?: DEFAULT_MINUTES)
+        "spielstart" in args -> measureGameStart()
+        else -> measureSimulation(city, args)
+    }
+}
+
+private fun measureSimulation(
+    city: CityMap,
+    args: Array<String>,
+) {
     val peak = args.getOrNull(0)?.toDouble() ?: SimulationConfig().peakTripsPerHour
     val minutes = args.getOrNull(1)?.toInt() ?: DEFAULT_MINUTES
     val profile = if (args.getOrNull(2) == "konstant") DemandProfile.CONSTANT else DemandProfile.DEFAULT
@@ -122,3 +139,62 @@ private val AIR = listOf(Pollutant.NOX, Pollutant.PM_EXHAUST, Pollutant.PM_TIRES
 private fun benchmarkCity(args: Array<String>): CityMap =
     args.firstOrNull { it.endsWith(".city") }?.let { CityMapCodec.decode(File(it).readBytes()) }
         ?: CityPacks.discover().first { it.id == "pforzheim" }.map
+
+private const val FRAME_SAMPLES = 200
+private const val FRAME_WARMUP_SAMPLES = 50
+
+/** Was der `GameRunner` je veröffentlichtem Bild rechnet – gemessen nach [minutes] Spielzeit ab 5 Uhr. */
+private fun measureFrameCost(
+    city: CityMap,
+    minutes: Int,
+) {
+    val game = CityGame(city, Balancing.simulationConfig(), Balancing.gameRules())
+    repeat(minutes * SECONDS_PER_MINUTE * game.simulation.config.ticksPerSecond) { game.step() }
+    val vehicles = game.simulation.snapshot().vehicleCount
+
+    fun millis(block: () -> Unit): Double {
+        repeat(FRAME_WARMUP_SAMPLES) { block() }
+        val mark = TimeSource.Monotonic.markNow()
+        repeat(FRAME_SAMPLES) { block() }
+        return mark.elapsedNow().inWholeNanoseconds / NANOS_PER_MILLI / FRAME_SAMPLES
+    }
+    val snapshot = millis { game.simulation.snapshot() }
+    val state = millis { game.state() }
+    val step = millis { game.step() }
+    println(
+        "%s, %d Fahrzeuge: Schnappschuss %.3f ms, Spielstand %.3f ms, Schritt %.3f ms".format(
+            game.simulation.gameTime.clockText,
+            vehicles,
+            snapshot,
+            state,
+            step,
+        ),
+    )
+}
+
+/** Spielstart je Szenario: Spiel anlegen und Vorlauf – auf dem Handy etwa zehnmal so lang. */
+private fun measureGameStart() {
+    val pack = CityPacks.discover().first { it.id == "pforzheim" }
+    for (scenario in Balancing.scenarios()) {
+        val (config, rules) =
+            scenario.apply(
+                pack.simulationConfig(Balancing.simulationConfig()),
+                pack.gameRules(Balancing.gameRules()),
+                Difficulty.NORMAL,
+            )
+        val created = TimeSource.Monotonic.markNow()
+        val game = CityGame(pack.map, config, rules)
+        val createMillis = created.elapsedNow().inWholeMilliseconds
+        val warm = TimeSource.Monotonic.markNow()
+        repeat(scenario.warmupMinutes * SECONDS_PER_MINUTE * config.ticksPerSecond) { game.step() }
+        println(
+            "%-20s anlegen %5d ms, Vorlauf %3d min: %6d ms (%d Fahrzeuge danach)".format(
+                scenario.id,
+                createMillis,
+                scenario.warmupMinutes,
+                warm.elapsedNow().inWholeMilliseconds,
+                game.simulation.snapshot().vehicleCount,
+            ),
+        )
+    }
+}

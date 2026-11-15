@@ -49,6 +49,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 
 private const val ZOOM_PER_SCROLL_STEP = 1.2f
 private const val NANOS_PER_SECOND = 1_000_000_000L
@@ -141,6 +142,7 @@ fun MapView(
             Canvas(Modifier.fillMaxSize()) {
                 val nanos = frameTick.value
                 val frame = traffic()
+                val drawStart = TimeSource.Monotonic.markNow()
                 if (currentCamera != null && frame != null) {
                     val overlays = Overlays(environmentLayer, environmentCache, showMoods, showCondition, sprites)
                     drawOverlays(currentCamera, frame, segmentPaths, overlays)
@@ -149,6 +151,7 @@ fun MapView(
                     effects.flashes.update(frame.game.cameras, seconds)
                     drawTraffic(currentCamera, frame, picker, textMeasurer, viewport, seconds, effects)
                     focus?.let { drawPing(currentCamera, it, (nanos - ping[0]) / NANOS_PER_SECOND.toDouble()) }
+                    MapDrawTime.record(drawStart.elapsedNow().inWholeMicroseconds)
                 }
             }
             SnowfallCanvas(traffic, frameTick)
@@ -464,4 +467,20 @@ private fun DrawScope.drawTraffic(
     val priority = traffic.game.priorityRoads.map { picker.midpoint(it) }
     val crossings = traffic.game.bikeCrossings.map { picker.midpoint(it) }
     drawRoadMarkers(priority, crossings, camera.scale, effects.sprites)
+}
+
+/**
+ * Wie lange das Zeichnen des Verkehrs (Überlagerungen, Fahrzeuge, Effekte) je Bild dauert, gleitend gemittelt – für
+ * die Entwickler-Anzeige. Gemessen wird das Aufzeichnen der Zeichenbefehle, nicht die Grafikkarte.
+ */
+object MapDrawTime {
+    var millis = 0.0
+        private set
+
+    internal fun record(micros: Long) {
+        millis = millis * (1 - BLEND) + micros / MICROS_PER_MILLI * BLEND
+    }
+
+    private const val BLEND = 0.05
+    private const val MICROS_PER_MILLI = 1_000.0
 }

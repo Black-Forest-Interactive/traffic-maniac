@@ -5,7 +5,7 @@ Jede Stadt ist ein Ordner `cities/<id>/`:
 | Datei | Inhalt |
 |-------|--------|
 | `city.json` | Name und Texte (Zeitung, Anrede, Spitzname, Unterzeile im Menü), Beschreibung für die Stadtauswahl, Feinabstimmung und woher die Kartendaten kommen |
-| `map.city` | die Karte – **nicht im Repository**, wird erzeugt: `scripts/import-city.sh <id>` |
+| `map.city` | die Karte – **nicht im Repository**, wird erzeugt: `./gradlew importCity -Pcity=<id>` |
 | `LICENSE-ODbL.txt` | Lizenzhinweis zu den Kartendaten (OpenStreetMap, ODbL); gehört zu jeder ausgelieferten Karte |
 
 Das Spiel bietet alle Pakete mit Karte im Startmenü zur Auswahl an.
@@ -35,4 +35,4 @@ Die Szenarien legen ihre Faktoren (z. B. `demandFactor`) darüber.
    OSM-Auszug von [Geofabrik](https://download.geofabrik.de/), `import.bbox` der Ausschnitt
    `minLon,minLat,maxLon,maxLat` (Stadtgebiet mit etwas Rand).
 2. `LICENSE-ODbL.txt` mitkopieren.
-3. `scripts/import-city.sh <id>` erzeugt `map.city`.
+3. `./gradlew importCity -Pcity=<id>` lädt den Auszug nach `data/raw/` (nur beim ersten Mal, `-Prefresh` lädt neu) und erzeugt `map.city` – unter Windows mit `gradlew.bat`.

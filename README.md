@@ -29,7 +29,7 @@ Voraussetzung: JDK 25 (Gradle lädt sich selbst über den Wrapper).
 ./gradlew :desktop-app:run --args="--warmup 60"   # mit einer Stunde Vorlauf (volle Straßen)
 ./gradlew :desktop-app:benchmark --args="5000 60" # Simulation ohne Oberfläche messen (Spitzen-Fahrten/h, Minuten)
 ./gradlew :desktop-app:headless --args="7"        # Strategien ohne Oberfläche durchspielen (Balancing)
-scripts/import-city.sh pforzheim # OSM-Extrakt laden (155 MB) und cities/pforzheim/map.city erzeugen
+./gradlew importCity -Pcity=pforzheim  # OSM-Auszug laden (155 MB, nur beim ersten Mal; -Prefresh lädt neu) und cities/pforzheim/map.city erzeugen – auch unter Windows (gradlew.bat)
 ./gradlew ktlintFormat           # Formatierung automatisch korrigieren
 ```
 
@@ -44,13 +44,15 @@ oder `~/Android/Sdk`) – ohne SDK bleibt alles beim Desktop. Querformat, ab And
 ```
 
 Release: Ein Tag `v<Version>` (z. B. `v0.2.0`, mit Bindestrich wie `v0.2.0-preview.1` als Vorabversion) legt per
-GitHub Actions ein Release an (`.github/workflows/release.yml`): Windows-Installer (MSI, unsigniert), die Stadtkarte
+GitHub Actions ein Release an (`.github/workflows/release.yml`): Windows-Installer (MSI, unsigniert), ein ZIP, die Stadtkarte
 `pforzheim.city` und – wenn der Release-Schlüssel in den Secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
 `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` liegt – die signierte APK. Installer und APK enthalten die Karte; das MSI
 wird vor dem Veröffentlichen auf dem Windows-Runner installiert und mit `--smoke-test` gestartet (Exit 0 = ok,
 2 = keine Karte, 3 = Absturz). Fehlt einem installierten Spiel trotzdem eine Karte, lädt es sie per Knopf vom Release
 seiner Version nach `~/.traffic-maniac/cities/`. Windows warnt beim unsignierten MSI („Windows hat den PC geschützt“):
-„Weitere Informationen“ → „Trotzdem ausführen“. Die APK lokal bauen und von Hand anhängen, falls die Secrets fehlen:
+„Weitere Informationen“ → „Trotzdem ausführen“. Wer nicht installieren will oder darf, nimmt das ZIP
+(`traffic-maniac-<Version>-windows.zip`): entpacken, `traffic-maniac\traffic-maniac.exe` starten – es wird genauso
+per Smoke-Test geprüft. Die APK lokal bauen und von Hand anhängen, falls die Secrets fehlen:
 
 ```bash
 set -a; . ~/.android/traffic-maniac-release.properties; set +a   # TM_KEYSTORE, TM_KEYSTORE_PASSWORD, …

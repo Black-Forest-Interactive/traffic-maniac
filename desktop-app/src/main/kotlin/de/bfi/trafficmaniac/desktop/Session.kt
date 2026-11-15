@@ -101,8 +101,8 @@ internal class Session(
             val game = CityGame(pack.map, config, rules)
             val warmupTicks =
                 (scenario.warmupMinutes + options.warmupMinutes) * SECONDS_PER_MINUTE * config.ticksPerSecond
-            repeat(warmupTicks) { game.step() }
-            val runner = GameRunner(game)
+            // Der Vorlauf läuft im Runner, während das Spiel schon zu sehen ist
+            val runner = GameRunner(game, warmupTicks)
             runner.setSpeed(settings.startSpeed)
             return Session(pack, scenario, settings.difficulty, game, runner)
         }
