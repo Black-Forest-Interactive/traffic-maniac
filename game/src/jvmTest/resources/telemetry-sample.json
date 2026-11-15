@@ -1,0 +1,59 @@
+{
+    "schema": 1,
+    "installation": "3f2b6f3c-4b7e-4f0e-9a51-3c1d2e8a7b42",
+    "appVersion": "0.2.0",
+    "platform": "desktop-linux",
+    "deviceClass": "16 cores, 8 GB heap",
+    "language": "de",
+    "city": "pforzheim",
+    "scenario": "erste-amtszeit",
+    "difficulty": "normal",
+    "end": "recalled",
+    "daysPlayed": 2,
+    "realMinutes": 47,
+    "points": 12345,
+    "earnings": 24690,
+    "income": {
+        "fines": 68300,
+        "parking": 0,
+        "tickets": 420,
+        "allowance": 17142
+    },
+    "expenses": 141000,
+    "days": [
+        {
+            "day": 0,
+            "balance": 42343,
+            "unhappyPercent": 4,
+            "anger": 0,
+            "recallIndex": 0,
+            "reputation": 44,
+            "vehicleKm": 412000,
+            "vehicleHours": 14300
+        },
+        {
+            "day": 1,
+            "balance": 45792,
+            "unhappyPercent": 39,
+            "anger": 12,
+            "recallIndex": 4,
+            "reputation": 37,
+            "vehicleKm": 430500,
+            "vehicleHours": 15800
+        }
+    ],
+    "tools": {
+        "PlaceCamera": 5,
+        "SetSpeedLimit": 7
+    },
+    "speeds": {
+        "0": 120,
+        "1": 900,
+        "8": 1800
+    },
+    "performance": {
+        "stepMillis": 0.61,
+        "drawMillis": 2.4,
+        "framesPerSecond": 58
+    }
+}

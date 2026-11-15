@@ -47,9 +47,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Installer bauen
         shell: bash
+        env:
+          # Adresse des Statistik-Servers (Repository-Variable STATS_URL); leer = das Spiel sendet nichts
+          STATS_URL: ${{ vars.STATS_URL }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          ./gradlew :desktop-app:packageMsi :desktop-app:createDistributable -PappVersion="$VERSION"
+          STATS=""
+          if [ -n "$STATS_URL" ]; then STATS="-PstatsUrl=$STATS_URL"; fi
+          ./gradlew :desktop-app:packageMsi :desktop-app:createDistributable -PappVersion="$VERSION" $STATS
           mkdir -p dist
           cp desktop-app/build/compose/binaries/main/msi/*.msi "dist/traffic-maniac-$VERSION-windows.msi"
       # Zum Entpacken statt Installieren (z. B. ohne MSI-Rechte oder wenn SmartScreen das MSI blockiert):

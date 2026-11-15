@@ -33,6 +33,7 @@ Voraussetzung: JDK 25 (Gradle lädt sich selbst über den Wrapper).
 ./gradlew ktlintFormat           # Formatierung automatisch korrigieren
 ```
 
+
 ### Android
 
 Die Android-App wird nur gebaut, wenn ein Android-SDK gefunden wird (`sdk.dir` in `local.properties`, `ANDROID_HOME`
@@ -71,6 +72,18 @@ Spielwerte (Kosten, Bußgelder, Schwellen für Bürgerzorn usw.) stehen in `bala
 | `android-app` | Android-App: gleicher Kern und dieselbe Karte, eigene Hülle (nur mit SDK) |
 | `osm-import`  | Kommandozeilenwerkzeug: OpenStreetMap → Stadtdatei          |
 | `build-logic` | gemeinsame Gradle-Konfiguration (Convention-Plugins)        |
+
+## Anonyme Statistiken
+
+Nach jeder Partie kann das Spiel ein kleines, anonymes Paket senden – **nur, wenn der Spieler beim ersten Start
+zustimmt** (jederzeit änderbar unter Einstellungen). Enthalten sind Version, Plattform, grobe Geräteklasse, Sprache,
+Stadt, Szenario, Schwierigkeit, Dauer, wie die Partie endete, Punkte, Einnahmen und Ausgaben, je Spieltag Kasse,
+Stimmung, Zorn, Abwahlindex, Reputation und Verkehrsbilanz sowie wie oft welche Werkzeuge und Zeitraffer benutzt
+wurden. Keine Namen, keine Spielstände, keine IP-Adressen; eine zufällige Kennung der Installation lässt sich
+zurücksetzen. „Anzeigen, was gesendet wird“ zeigt das letzte Paket im Klartext. Pakete liegen bis zum nächsten Start in
+`~/.traffic-maniac/outbox/`; gesendet wird nur, wenn das Spiel mit einer Server-Adresse gebaut wurde
+(`-PstatsUrl=…`, im Release-Workflow aus der Repository-Variable `STATS_URL`). Der Statistik-Server liegt in einem
+eigenen, nicht öffentlichen Repository.
 
 ## Dokumentation
 
