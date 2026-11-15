@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.game.CameraBalance
 import de.bfi.trafficmaniac.game.CameraRecord
 import de.bfi.trafficmaniac.game.FineTier
 import de.bfi.trafficmaniac.game.formatEuro
@@ -64,6 +65,7 @@ fun CameraStatsPanel(
             return@PanelScaffold
         }
         PanelSection { TierDistribution(cameras) }
+        CameraBalance.smallFishShare(cameras)?.let { PanelSection { RevenueDistribution(cameras) } }
         PanelSection(divider = false) {
             Row(Modifier.fillMaxWidth()) {
                 Header(tr("Standort"), Modifier.weight(2f), TextAlign.Start)
@@ -107,20 +109,7 @@ private fun TierDistribution(cameras: List<CameraRecord>) {
     val counts = FineTier.SPEED.map { tier -> cameras.sumOf { it.countPerTier[tier.ordinal] }.toLong() }
     val total = counts.sum().coerceAtLeast(1)
     BasicText(tr("Wie viel zu schnell? (km/h)"), style = TmType.small)
-    Canvas(
-        Modifier
-            .fillMaxWidth()
-            .height(14.dp)
-            .clip(RoundedCornerShape(7.dp))
-            .background(TmColors.Ground),
-    ) {
-        var x = 0f
-        counts.forEachIndexed { i, count ->
-            val width = size.width * count / total
-            drawRect(TierColors[i], topLeft = Offset(x, 0f), size = Size(width, size.height))
-            x += width
-        }
-    }
+    StackedBar(counts.map { it.toFloat() / total })
     FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         FineTier.SPEED.forEachIndexed { i, tier ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -137,6 +126,37 @@ private fun TierDistribution(cameras: List<CameraRecord>) {
             tr("Über Rot: {count} Fotos, davon {late} länger als 1 s", "count" to red + late, "late" to late),
             style = TmType.text(12.sp, FontWeight.SemiBold, TmColors.DangerText),
         )
+    }
+}
+
+/** Gestapelter Balken der Einnahmen je Stufe und der Satz dazu: Das Geld kommt von den kleinen Fischen. */
+@Composable
+private fun RevenueDistribution(cameras: List<CameraRecord>) {
+    val revenue = CameraBalance.speedRevenue(cameras)
+    val total = revenue.sum().coerceAtLeast(1)
+    BasicText(tr("Woher kam das Geld?"), style = TmType.small)
+    StackedBar(revenue.map { it.toFloat() / total })
+    CameraBalance.summary(cameras)?.let {
+        BasicText(it, style = TmType.text(12.sp, FontWeight.SemiBold, TmColors.Success))
+    }
+}
+
+/** Anteile 0..1 nebeneinander in den Farben der Stufen. */
+@Composable
+private fun StackedBar(shares: List<Float>) {
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(14.dp)
+            .clip(RoundedCornerShape(7.dp))
+            .background(TmColors.Ground),
+    ) {
+        var x = 0f
+        shares.forEachIndexed { i, share ->
+            val width = size.width * share
+            drawRect(TierColors[i], topLeft = Offset(x, 0f), size = Size(width, size.height))
+            x += width
+        }
     }
 }
 

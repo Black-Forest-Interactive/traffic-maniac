@@ -32,5 +32,6 @@ data/cities/
 .DS_Store
 Thumbs.db
 
-# Stadtkarten werden erzeugt (scripts/import-city.sh <id>)
+# Stadtkarten werden erzeugt (./gradlew importCity -Pcity=<id>)
 cities/*/map.city
+desktop-app/balancing/

@@ -9,8 +9,12 @@ import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.Highscores
+import de.bfi.trafficmaniac.game.NewspaperEdition
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.game.TrafficFrame
+import de.bfi.trafficmaniac.sim.DayReport
+import de.bfi.trafficmaniac.sim.GameTime
+import de.bfi.trafficmaniac.sim.Weekday
 import de.bfi.trafficmaniac.ui.map.StreetRoute
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.skia.EncodedImageFormat
@@ -71,6 +75,7 @@ class Screenshots {
             }
         }
         touch(out, city, frame)
+        dayReport(out, frame)
         // Nah dran am Marktplatz: Haltestellen und Busse
         city.transitStops.firstOrNull { it.name == "Marktplatz" }?.let { stop ->
             shoot(File(out, "map-transit.png"), MAP_SHOT_WIDTH, MAP_SHOT_HEIGHT) {
@@ -115,6 +120,38 @@ class Screenshots {
                     input = input,
                 )
             }
+        }
+    }
+
+    /** Tagesabschluss mit Zeitung, Kasten „Aus der Praxis“ und Blitzer-Bilanz. */
+    private fun dayReport(
+        out: File,
+        frame: TrafficFrame,
+    ) {
+        val report =
+            DayReport(
+                day = 0,
+                weekday = Weekday.MONDAY,
+                tripsStartedPerHour = IntArray(GameTime.HOURS_PER_DAY) { (it % 12 + 1) * 300 },
+                tripsCompleted = 41_000,
+                meanTripMinutes = 17.4,
+                peakVehicles = 1_800,
+                peakHour = 7,
+                stuckRemovals = 120,
+            )
+        val edition =
+            NewspaperEdition(
+                day = 0,
+                headlines = listOf("Blitzer-Rekord in der Goethestraße", "Stau am Leopoldplatz", "Tempo 30 kommt"),
+                letters = listOf("„Ich fahre seit 40 Jahren unfallfrei zu schnell.“"),
+            )
+        shoot(File(out, "dayreport.png"), SIZES.first().first, SIZES.first().second) {
+            DayReportOverlay(
+                report,
+                edition,
+                {},
+                cameraSummary = "82 % der Blitzer-Einnahmen stammen aus Verstößen bis 10 km/h.",
+            )
         }
     }
 

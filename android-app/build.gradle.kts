@@ -75,7 +75,7 @@ abstract class GameAssets : DefaultTask() {
                 }
             }
         }
-        // Ohne Karte ist die App nutzlos (map.city ist nicht eingecheckt, siehe scripts/import-city.sh);
+        // Ohne Karte ist die App nutzlos (map.city ist nicht eingecheckt, siehe ./gradlew importCity);
         // für Tests und den normalen CI-Build reicht eine Warnung, das Release bricht ab
         val hasMap =
             outputDirectory
@@ -83,7 +83,7 @@ abstract class GameAssets : DefaultTask() {
                 .asFile
                 .walk()
                 .any { it.name == "map.city" }
-        val message = "Keine Stadtkarte in cities/*/map.city – erst scripts/import-city.sh <id> ausführen"
+        val message = "Keine Stadtkarte in cities/*/map.city – erst ./gradlew importCity -Pcity=<id> ausführen"
         check(hasMap || !requireMap.get()) { message }
         if (!hasMap) logger.warn("Warnung: $message – die App findet dann keine Stadt.")
     }

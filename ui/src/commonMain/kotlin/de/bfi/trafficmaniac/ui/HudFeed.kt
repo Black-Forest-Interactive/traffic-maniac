@@ -41,6 +41,7 @@ import de.bfi.trafficmaniac.ui.components.BadgeTone
 import de.bfi.trafficmaniac.ui.components.Divider
 import de.bfi.trafficmaniac.ui.components.Icon
 import de.bfi.trafficmaniac.ui.components.Icons
+import de.bfi.trafficmaniac.ui.map.MapDrawTime
 import kotlin.math.roundToInt
 
 private val CardShape = RoundedCornerShape(12.dp)
@@ -307,7 +308,10 @@ private fun KindDot(kind: MessageKind) {
     Box(Modifier.padding(top = 5.dp).size(8.dp).background(color, CircleShape))
 }
 
-/** Entwickler-Anzeige (F3): Rechenzeit je Simulationsschritt und Bildrate. */
+/**
+ * Entwickler-Anzeige (F3, auf dem Handy langes Tippen aufs Tempo): Rechenzeit je Simulationsschritt, Zeichenzeit des
+ * Verkehrs je Bild, Bildrate und Fahrzeugzahl.
+ */
 @Composable
 internal fun DebugOverlay(
     frame: TrafficFrame,
@@ -319,7 +323,12 @@ internal fun DebugOverlay(
             "Rechenzeit {stepMillis} ms/Tick · {fps} FPS",
             "stepMillis" to formatDecimal(frame.stepMillis, 2),
             "fps" to fps,
-        ) + " · " + tr("nachts automatisch ×{boost}", "boost" to GameRunner.NIGHT_BOOST),
+        ) + " · " +
+            tr(
+                "Karte {drawMillis} ms/Bild · {vehicles} Fahrzeuge",
+                "drawMillis" to formatDecimal(MapDrawTime.millis, 2),
+                "vehicles" to frame.current.vehicleCount,
+            ) + " · " + tr("nachts automatisch ×{boost}", "boost" to GameRunner.NIGHT_BOOST),
         style = TmType.mono(11.sp, bold = false, color = TmColors.OnDark),
         modifier = modifier.background(TmColors.Ink.copy(alpha = 0.85f), RoundedCornerShape(6.dp)).padding(6.dp),
     )

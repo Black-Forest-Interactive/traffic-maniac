@@ -15,6 +15,7 @@ import de.bfi.trafficmaniac.sim.DemandProfile
 import de.bfi.trafficmaniac.sim.SimulationConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class CityGameTest {
@@ -162,7 +163,10 @@ class CityGameTest {
         assertTrue(game.isFinished)
         assertEquals(1, state.daysPlayed)
         assertTrue(state.latestEdition?.headlines?.isNotEmpty() == true)
-        val earnings = state.balance - game.rules.startBudget
+        // Der Haushalt (seit v0.8 jede Nacht ein Siebtel) zählt nicht als eigener Verdienst
+        val allowance = assertNotNull(state.lastBudgetRound).allowance
+        assertEquals(game.rules.weeklyAllowance / 7, allowance)
+        val earnings = state.balance - game.rules.startBudget - allowance
         assertEquals(earnings, state.score.earnings)
         assertEquals((earnings * state.score.reputationFactor).toLong(), state.score.points)
         // Nach dem Ende passiert nichts mehr
@@ -259,5 +263,24 @@ class CityGameTest {
     fun formatsEuro() {
         assertEquals("1.234.567 €", formatEuro(1_234_567))
         assertEquals("-500 €", formatEuro(-500))
+    }
+
+    @Test
+    fun allowanceArrivesEveryNightNotOnlyOnSunday() {
+        // Start Montag kurz vor Mitternacht: Früher kam der Haushalt erst am Sonntag, jetzt in der ersten Nacht
+        val lateEvening = config.copy(startSecondOfDay = 86_400.0 - 600)
+        val game = CityGame(straightRoad(), lateEvening, GameRules(termDays = 3))
+        game.run(minutes = 15)
+
+        val round = assertNotNull(game.state().lastBudgetRound)
+        assertEquals(game.rules.weeklyAllowance / 7, round.allowance)
+        assertEquals(
+            (
+                game.rules.initialStaff * game.rules.staffWeeklySalary +
+                    game.rules.initialWardens * game.rules.wardenWeeklySalary
+            ) /
+                7,
+            round.salaries,
+        )
     }
 }

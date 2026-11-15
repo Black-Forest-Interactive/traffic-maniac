@@ -24,7 +24,7 @@ jobs:
           java-version: 25
       - uses: gradle/actions/setup-gradle@v6
       - name: Karte importieren
-        run: scripts/import-city.sh pforzheim
+        run: ./gradlew importCity -Pcity=pforzheim
       - uses: actions/upload-artifact@v7
         with:
           name: map
@@ -47,11 +47,28 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Installer bauen
         shell: bash
+        env:
+          # Adresse des Statistik-Servers (Repository-Variable STATS_URL); leer = das Spiel sendet nichts
+          STATS_URL: ${{ vars.STATS_URL }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          ./gradlew :desktop-app:packageMsi -PappVersion="$VERSION"
+          STATS=""
+          if [ -n "$STATS_URL" ]; then STATS="-PstatsUrl=$STATS_URL"; fi
+          ./gradlew :desktop-app:packageMsi :desktop-app:createDistributable -PappVersion="$VERSION" $STATS
           mkdir -p dist
           cp desktop-app/build/compose/binaries/main/msi/*.msi "dist/traffic-maniac-$VERSION-windows.msi"
+      # Zum Entpacken statt Installieren (z. B. ohne MSI-Rechte oder wenn SmartScreen das MSI blockiert):
+      # derselbe Programmordner wie im Installer, samt Java-Laufzeit und Karte
+      - name: ZIP packen und testen
+        shell: pwsh
+        run: |
+          $version = "$env:GITHUB_REF_NAME".TrimStart("v")
+          $zip = "dist/traffic-maniac-$version-windows.zip"
+          Compress-Archive -Path desktop-app/build/compose/binaries/main/app/traffic-maniac -DestinationPath $zip
+          Expand-Archive $zip -DestinationPath zip-test
+          $run = Start-Process zip-test/traffic-maniac/traffic-maniac.exe -ArgumentList "--smoke-test" -Wait -PassThru -RedirectStandardOutput zip.out -RedirectStandardError zip.err
+          Get-Content zip.out, zip.err -ErrorAction SilentlyContinue
+          if ($run.ExitCode -ne 0) { throw "Smoke-Test aus dem ZIP fehlgeschlagen (Exit $($run.ExitCode))" }
       # Das MSI so prüfen, wie ein Spieler es bekommt: installieren und ohne Fenster starten.
       # Fehlt die Karte oder startet das Spiel nicht, wird nichts veröffentlicht.
       - name: Installer testen (Smoke-Test)

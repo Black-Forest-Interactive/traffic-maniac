@@ -7,6 +7,7 @@ import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.DamageResponse
 import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.game.GameCommand
+import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.PrContract
 import de.bfi.trafficmaniac.game.RepairMethod
@@ -14,12 +15,17 @@ import de.bfi.trafficmaniac.game.Strictness
 import de.bfi.trafficmaniac.game.ZoneMood
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.sim.DayReport
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.io.File
 import java.util.concurrent.Executors
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 private const val DEFAULT_DAYS = 7
+
+/** Spielregeln des Laufs: `balancing/game-rules.json` plus Überschreibungen von der Kommandozeile. */
+private lateinit var rules: GameRules
 private const val SECONDS_PER_HOUR = 3_600
 private const val HOURS_PER_DAY = 24
 private const val HEADLESS_TICKS_PER_SECOND = 5
@@ -35,16 +41,25 @@ private const val OFFICE_HOURS = 8
  * Kopflos-Runner für das Balancing: spielt mehrere Strategien parallel ohne Oberfläche durch und gibt
  * je Spieltag Kasse, Bußgelder, Zorn, Abwahlindex und Reputation aus.
  *
- * Aufruf: `./gradlew :desktop-app:headless --args="[Tage] [Strategie,Strategie,...]"`
- * Strategien: nichts, abkassieren, abkassieren-pr, massvoll-pr, schild-blitzer, reparieren, parken-weg, parken-teuer
+ * Aufruf: `./gradlew :desktop-app:headless --args="[Tage] [Strategie,Strategie,...] [regel=wert ...]"`
+ * Argumente `regel=wert` überschreiben Spielregeln aus `balancing/game-rules.json` (zum Ausprobieren).
+ * Strategien: nichts, einsteiger, abkassieren, abkassieren-pr, massvoll-pr, schild-blitzer, reparieren, parken-weg,
+ * parken-teuer, pr-feiern. Für die ersten [CASH_LOG_DAYS] Tage steht unter jeder Tageszeile die Kasse je Spielstunde.
  */
 fun main(args: Array<String>) {
     val city = CityPacks.discover().first { it.id == "pforzheim" }.map
-    val days = args.getOrNull(0)?.toInt() ?: DEFAULT_DAYS
-    val names = args.getOrNull(1)?.split(',') ?: Strategy.entries.map { it.id }
+    val positional = args.filter { "=" !in it }
+    val days = positional.getOrNull(0)?.toInt() ?: DEFAULT_DAYS
+    val names = positional.getOrNull(1)?.split(',') ?: Strategy.entries.map { it.id }
     val strategies = names.map { name -> Strategy.entries.first { it.id == name } }
     // Fehlende Balancing-Dateien einmal vorab anlegen – nicht gleichzeitig aus mehreren Threads
-    Balancing.gameRules()
+    val overrides =
+        args.filter { "=" in it }.associate { arg ->
+            val value = arg.substringAfter('=')
+            arg.substringBefore('=') to (value.toLongOrNull()?.let(::JsonPrimitive) ?: JsonPrimitive(value.toDouble()))
+        }
+    rules = Balancing.override(GameRules.serializer(), Balancing.gameRules(), JsonObject(overrides))
+    if (overrides.isNotEmpty()) println("Abweichende Spielregeln: $overrides")
     Balancing.simulationConfig()
     val pool = Executors.newFixedThreadPool(strategies.size)
     val results = strategies.map { strategy -> pool.submit<String> { play(city, strategy, days) } }
@@ -57,6 +72,10 @@ private enum class Strategy(
     val description: String,
 ) {
     NOTHING("nichts", "Nichts tun"),
+    BEGINNER(
+        "einsteiger",
+        "Tempo 30 + Blitzer auf zentralen Hauptstraßen, sobald das Geld reicht – wie ein neuer Spieler",
+    ),
     RIP_OFF("abkassieren", "Stündlich alles Geld in Tempo 20 + Blitzer auf zentralen Hauptstraßen, keine PR"),
     RIP_OFF_PR("abkassieren-pr", "Wie abkassieren, dazu Premium-PR und Totschlagargumente"),
     MODERATE_PR("massvoll-pr", "Premium-PR, Totschlagargumente, neue Blitzer nur solange unter 25 % unzufrieden sind"),
@@ -73,7 +92,7 @@ private fun play(
     days: Int,
 ): String {
     val config = Balancing.simulationConfig().copy(ticksPerSecond = HEADLESS_TICKS_PER_SECOND)
-    val game = CityGame(city, config, Balancing.gameRules())
+    val game = CityGame(city, config, rules)
     val log = StringBuilder("== ${strategy.id}: ${strategy.description}\n")
     val targets = ArrayDeque(centralMainRoads(city))
     if (strategy == Strategy.RIP_OFF_PR || strategy == Strategy.MODERATE_PR) {
@@ -117,18 +136,31 @@ private fun playDay(
     log: StringBuilder,
 ): Boolean {
     val ticksPerHour = SECONDS_PER_HOUR * game.simulation.config.ticksPerSecond
+    val cash = ArrayList<String>()
     for (hour in 0 until HOURS_PER_DAY) {
         playHour(game, strategy, targets, saving = day > days - SAVING_DAYS)
         repeat(ticksPerHour) { game.step() }
+        if (day <= CASH_LOG_DAYS) {
+            val state = game.state()
+            val unhappy = (state.unhappyShare * PERCENT).roundToInt()
+            cash +=
+                "${game.simulation.gameTime.hour}h ${thousands(
+                    state.balance,
+                )} ($unhappy%/${state.recallIndex.roundToInt()})"
+        }
         if (game.isGameOver) {
             val unhappy = (game.state().unhappyShare * PERCENT).roundToInt()
-            log.append("  $day | abgewählt um $hour Uhr, $unhappy % unzufrieden\n")
+            log.append("  $day | abgewählt um ${game.simulation.gameTime.hour} Uhr, $unhappy % unzufrieden\n")
+            if (cash.isNotEmpty()) log.append("      Kasse Tsd. € (unzufrieden/Abwahl): ${cash.joinToString(" | ")}\n")
             log.append(moodLine(game.state()))
             return false
         }
     }
+    if (cash.isNotEmpty()) log.append("      Kasse Tsd. € (unzufrieden/Abwahl): ${cash.joinToString(" | ")}\n")
     return true
 }
+
+private fun thousands(euros: Long): String = (euros / EUROS_PER_THOUSAND).toString()
 
 /** Stimmung im Flächenmittel je Bedürfnis – zeigt, woran die Bürger leiden (oder eben nicht). */
 private fun moodLine(state: GameState): String {
@@ -200,6 +232,7 @@ private fun playHour(
     val investing = !saving && (strategy != Strategy.MODERATE_PR || calm)
     val camerasEverywhere = strategy in setOf(Strategy.RIP_OFF, Strategy.RIP_OFF_PR, Strategy.MODERATE_PR)
     if (camerasEverywhere && investing) investInCameras(game, targets)
+    if (strategy == Strategy.BEGINNER && !saving) investInCameras(game, targets, kmh = BEGINNER_KMH)
     if (strategy != Strategy.NOTHING) staffFineOffice(game)
     if (strategy == Strategy.SIGN_CAMERA) signAndCamera(game)
     if (strategy == Strategy.REPAIR) repairEverything(game)
@@ -260,6 +293,10 @@ private fun expensiveParking(game: CityGame) {
 }
 
 private const val EXPENSIVE_FEE = 3.0
+private const val RIP_OFF_KMH = 20
+private const val BEGINNER_KMH = 30
+private const val CASH_LOG_DAYS = 2
+private const val EUROS_PER_THOUSAND = 1_000L
 private const val CEREMONY_HOUR = 11
 private const val EXPENSIVE_WARDENS = 4
 private const val SIGN_KMH = 10
@@ -277,12 +314,13 @@ private fun staffFineOffice(game: CityGame) {
 private fun investInCameras(
     game: CityGame,
     targets: ArrayDeque<Int>,
+    kmh: Int = RIP_OFF_KMH,
 ) {
     val price = game.rules.cameraCost + game.rules.speedLimitSignCost
     var budget = game.state().balance
     while (targets.isNotEmpty() && budget >= price) {
         val segment = targets.removeFirst()
-        game.submit(GameCommand.SetSpeedLimit(segment, kmh = 20))
+        game.submit(GameCommand.SetSpeedLimit(segment, kmh = kmh))
         game.submit(GameCommand.PlaceCamera(segment))
         budget -= price
     }

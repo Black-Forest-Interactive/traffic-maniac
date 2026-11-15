@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.city.CityMap
+import de.bfi.trafficmaniac.game.CameraBalance
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameMessage
 import de.bfi.trafficmaniac.game.GameRules
@@ -59,6 +60,9 @@ import kotlin.time.TimeSource
 
 private val BackgroundColor = TmColors.Ink
 private val HUD_REFRESH = 250.milliseconds
+
+/** Unter dem Kartenumschalter. */
+private const val WARMUP_TOP = 64
 private const val PICK_RADIUS_PIXELS = 14f
 private const val MIN_PICK_RADIUS_METERS = 6f
 private const val MILLIS_PER_SECOND = 1_000.0
@@ -267,6 +271,9 @@ private fun MapArea(
             hud.step?.let { s ->
                 TutorialPanel(s, game, { hud.step = it }, Modifier.align(Alignment.BottomStart).padding(bottom = 14.dp))
             }
+            frame.warmup?.let {
+                WarmupBanner(it, Modifier.align(Alignment.TopCenter).padding(top = WARMUP_TOP.dp))
+            }
             DeveloperOverlays(frame, hud, network, input)
             val dock =
                 ToolDockState(
@@ -421,6 +428,8 @@ internal fun EndOfDayOverlays(
                 },
                 onContinueDay,
                 firstDay = frame.game.firstDay,
+                cameraSummary = CameraBalance.summary(frame.game.cameras),
+                reference = frame.game.firstDayReport,
             )
         }
     }

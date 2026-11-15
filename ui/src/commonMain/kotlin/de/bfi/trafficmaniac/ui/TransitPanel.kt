@@ -70,7 +70,7 @@ fun TransitPanel(
                 BasicText(
                     tr(
                         "Für diese Stadt sind keine Buslinien bekannt – " +
-                            "die Karte neu importieren (scripts/import-city.sh).",
+                            "die Karte stammt aus einer Version ohne Busse und muss neu geladen werden.",
                     ),
                     style = TmType.small,
                 )

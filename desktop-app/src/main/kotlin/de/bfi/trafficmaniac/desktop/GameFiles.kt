@@ -11,6 +11,15 @@ object GameFiles {
     private val installed: File? =
         System.getProperty("compose.application.resources.dir")?.let(::File)?.takeIf { it.isDirectory }
 
-    /** Der Ordner [name], z. B. `cities`. */
-    fun dir(name: String): File = if (File(name).isDirectory || installed == null) File(name) else File(installed, name)
+    /**
+     * Der Ordner [name], z. B. `cities`. Startet die Entwicklungsumgebung im Modulordner `desktop-app/`, gilt der
+     * Ordner eine Ebene höher – sonst entstünde dort eine zweite `balancing/` mit Standardwerten.
+     */
+    fun dir(name: String): File =
+        when {
+            File(name).isDirectory -> File(name)
+            File("..", name).isDirectory && File("..", "cities").isDirectory -> File("..", name)
+            installed != null -> File(installed, name)
+            else -> File(name)
+        }
 }

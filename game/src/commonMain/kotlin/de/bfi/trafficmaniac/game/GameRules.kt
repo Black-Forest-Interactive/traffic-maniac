@@ -44,7 +44,7 @@ data class GameRules(
     val bikeStreetCost: Long = 5_000,
     /** Wählbare Tempolimits; 7 km/h steht für Schrittgeschwindigkeit. */
     val speedLimitOptions: List<Int> = DEFAULT_SPEED_LIMITS,
-    /** Fester Haushalt, der jede Woche (Sonntag um Mitternacht) überwiesen wird. */
+    /** Fester Haushalt je Woche; jede Nacht um Mitternacht wird ein Siebtel überwiesen. */
     val weeklyAllowance: Long = 60_000,
     /** Kampagne "Totschlagargumente" pro Woche. */
     val argumentsWeeklyCost: Long = 8_000,

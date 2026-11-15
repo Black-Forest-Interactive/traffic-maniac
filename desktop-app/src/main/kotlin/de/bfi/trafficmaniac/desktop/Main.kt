@@ -35,6 +35,7 @@ import de.bfi.trafficmaniac.ui.NoSound
 import de.bfi.trafficmaniac.ui.SaveSlots
 import de.bfi.trafficmaniac.ui.ScaledUi
 import de.bfi.trafficmaniac.ui.SoundBoard
+import de.bfi.trafficmaniac.ui.StatisticsControls
 import de.bfi.trafficmaniac.ui.Tool
 import de.bfi.trafficmaniac.ui.TrafficManiacApp
 import de.bfi.trafficmaniac.ui.map.NoSprites
@@ -118,6 +119,7 @@ private class Library(
     val scenarios: List<Scenario>,
     val userData: UserData,
     val saves: SaveGames,
+    val statistics: Statistics = Statistics(),
 )
 
 /**
@@ -153,9 +155,9 @@ private fun MissingCityScreen(onLoaded: () -> Unit) {
             else -> {
                 tr(
                     "Keine Stadt mit Karte gefunden (Ordner {absolutePath}).\n\n" +
-                        "Karte erzeugen mit: scripts/import-city.sh {missing}",
+                        "Karte erzeugen mit: ./gradlew importCity -Pcity={missing}",
                     "absolutePath" to GameFiles.dir(CityPacks.DIRECTORY).absolutePath,
-                    "missing" to missing.joinToString(" "),
+                    "missing" to missing.joinToString(","),
                 )
             }
         }
@@ -197,6 +199,14 @@ private fun Game(
         sound.music = settings.music
         userData.save(settings)
     }
+    // Statistik-Postausgang beim Start leeren – nie während des Spiels
+    LaunchedEffect(settings.statistics) {
+        if (settings.statistics == true) withContext(Dispatchers.IO) { library.statistics.sendPending() }
+    }
+    val endSession: () -> Unit = {
+        if (settings.statistics == true) session?.report(library.statistics)
+        session = null
+    }
     val start: (Scenario) -> Unit = { scenario ->
         loading = tr("{title}: {name} wird vorbereitet …", "title" to tr(scenario.title), "name" to pack.name)
         scope.launch {
@@ -226,7 +236,9 @@ private fun Game(
             Menu(library, pack, { pack = it }, settings, { settings = it }, highscores, start, load, loading, onQuit)
         } else {
             val shown = if (settings.sprites) sprites else NoSprites
-            Playing(current, sound, shown, library.saves, settings.uiScale, { session = null }) {
+            Playing(current, sound, shown, library.saves, settings.uiScale, endSession, {
+                if (settings.statistics == true) current.report(library.statistics)
+            }) {
                 highscores = highscores.add(it)
                 userData.save(highscores)
             }
@@ -280,6 +292,12 @@ private fun Menu(
                     nickname = pack.texts.nickname,
                 ),
             cityMap = pack.map,
+            statistics =
+                StatisticsControls(
+                    lastPacket = library.statistics::lastPacket,
+                    onNewInstallation = { library.statistics.newInstallation() },
+                    onWithdraw = library.statistics::clear,
+                ),
         )
     }
 }
@@ -317,11 +335,17 @@ private fun Playing(
     saves: SaveGames,
     uiScale: Int,
     onMenu: () -> Unit,
+    onFinished: () -> Unit,
     onHighscore: (HighscoreEntry) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     LaunchedEffect(current) { current.runner.run() }
-    LaunchedEffect(current) { current.result()?.let(onHighscore) }
+    LaunchedEffect(current) {
+        val entry = current.result()
+        // Amtszeit vorbei oder abgewählt: Statistik jetzt, nicht erst beim Zurück ins Menü
+        onFinished()
+        entry?.let(onHighscore)
+    }
     ScaledUi(uiScale) {
         TrafficManiacApp(
             city = current.pack.map,

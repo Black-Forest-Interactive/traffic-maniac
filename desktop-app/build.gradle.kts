@@ -21,6 +21,8 @@ compose.desktop {
         mainClass = "de.bfi.trafficmaniac.desktop.MainKt"
         // Das installierte Spiel kennt seine Release-Version und lädt fehlende Karten von genau diesem Release (MapDownload)
         providers.gradleProperty("appVersion").orNull?.let { jvmArgs += "-Dtrafficmaniac.version=$it" }
+        // Adresse des Statistik-Servers (Paket F); ohne sie bleibt alles im Postausgang auf dem Rechner
+        providers.gradleProperty("statsUrl").orNull?.let { jvmArgs += "-Dtrafficmaniac.statsUrl=$it" }
 
         nativeDistributions {
             packageName = "traffic-maniac"
@@ -63,10 +65,12 @@ val gameResources =
 
 tasks.matching { it.name == "prepareAppResources" }.configureEach {
     dependsOn(gameResources)
-    // Ohne Karte wäre der Installer nutzlos (map.city ist nicht eingecheckt, siehe scripts/import-city.sh)
+    // Ohne Karte wäre der Installer nutzlos (map.city ist nicht eingecheckt, siehe ./gradlew importCity)
     val maps = project.rootProject.fileTree("cities") { include("*/map.city") }
     doFirst {
-        check(!maps.isEmpty) { "Keine Stadtkarte in cities/*/map.city – erst scripts/import-city.sh <id> ausführen" }
+        check(
+            !maps.isEmpty,
+        ) { "Keine Stadtkarte in cities/*/map.city – erst ./gradlew importCity -Pcity=<id> ausführen" }
     }
 }
 

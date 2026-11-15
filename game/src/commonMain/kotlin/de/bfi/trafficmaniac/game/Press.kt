@@ -26,6 +26,7 @@ internal fun GameRules.prEffect(unhappyShare: Double): Double =
     ((prNoEffectShare - unhappyShare) / (prNoEffectShare - prLimitShare).coerceAtLeast(MIN_SPAN)).coerceIn(0.0, 1.0)
 
 private const val MIN_SPAN = 1e-6
+internal const val DAYS_PER_WEEK = 7
 
 /**
  * Die Presse als eigenes Spielsystem:
@@ -96,10 +97,18 @@ internal class Press(
     /** Haushaltsrunde: PR-Kosten der Woche samt Aufschlag; danach beginnt die Woche von vorn. */
     fun weeklyPrCost(pr: PrContract): Long {
         val cost = (pr.weeklyCost * (1 + gapSurcharge())).toLong()
+        startNewWeek()
+        return cost
+    }
+
+    /** Tägliche Abrechnung: ein Siebtel der Wochenkosten samt dem bisherigen Aufschlag der Woche. */
+    fun dailyPrCost(pr: PrContract): Long = (pr.weeklyCost * (1 + gapSurcharge()) / DAYS_PER_WEEK).toLong()
+
+    /** Neue Woche: Aufschlag und Spatenstich-Zähler beginnen von vorn. */
+    fun startNewWeek() {
         unhappySum = 0.0
         hours = 0
         ceremoniesThisWeek = 0
-        return cost
     }
 
     /** Spatenstich oder Eröffnung. Liefert das gewonnene Image (0, wenn nichts passiert ist). */

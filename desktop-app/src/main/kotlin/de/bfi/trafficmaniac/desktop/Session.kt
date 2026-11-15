@@ -7,9 +7,13 @@ import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.HighscoreEntry
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
+import de.bfi.trafficmaniac.game.TelemetryContext
+import de.bfi.trafficmaniac.game.TelemetryPerformance
 import de.bfi.trafficmaniac.game.highscore
+import de.bfi.trafficmaniac.i18n.I18n
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.HudInput
+import de.bfi.trafficmaniac.ui.map.MapDrawTime
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -25,6 +29,39 @@ internal class Session(
 ) {
     /** Tasten an die Spieloberfläche: Werkzeuge (Q, W, E …) und Entwickler-Anzeige (F3). */
     val input = HudInput()
+
+    private val started = System.nanoTime()
+    private var reported = false
+
+    /**
+     * Legt das Statistikpaket dieser Partie ab (Paket F) – einmal je Partie, am Ende der Amtszeit, nach der Abwahl
+     * oder beim Abbruch ins Menü. Nur mit Zustimmung.
+     */
+    fun report(statistics: Statistics) {
+        if (reported) return
+        reported = true
+        val frame = runner.frames.value
+        val telemetry =
+            game.telemetry(
+                TelemetryContext(
+                    installation = statistics.installation,
+                    appVersion = System.getProperty("trafficmaniac.version") ?: "dev",
+                    platform = "desktop-" + System.getProperty("os.name").substringBefore(' ').lowercase(),
+                    deviceClass = deviceClass(),
+                    language = I18n.language.code,
+                    city = pack.id,
+                    scenario = scenario.id,
+                    difficulty = difficulty.name.lowercase(),
+                    realMinutes = ((System.nanoTime() - started) / NANOS_PER_MINUTE).toInt(),
+                    speeds = runner.speedSeconds(),
+                    performance =
+                        frame?.let {
+                            TelemetryPerformance(it.stepMillis, MapDrawTime.millis, MapDrawTime.framesPerSecond)
+                        },
+                ),
+            )
+        statistics.store(telemetry)
+    }
 
     /**
      * Wartet auf das Ende der Partie. Liefert den Eintrag für die Bestenliste, wenn die Amtszeit regulär endet –
@@ -68,6 +105,14 @@ internal class Session(
 
     companion object {
         private const val SECONDS_PER_MINUTE = 60
+        private const val NANOS_PER_MINUTE = 60_000_000_000L
+        private const val BYTES_PER_GB = 1L shl 30
+
+        /** Grobe Geräteklasse: Kerne und größter Java-Speicher – genug, um langsame Geräte zu erkennen. */
+        private fun deviceClass(): String {
+            val runtime = Runtime.getRuntime()
+            return "${runtime.availableProcessors()} cores, ${runtime.maxMemory() / BYTES_PER_GB} GB heap"
+        }
 
         /** Setzt einen Spielstand fort; das Spiel steht zunächst, bis der Spieler weiterlaufen lässt. */
         fun resume(
@@ -101,8 +146,8 @@ internal class Session(
             val game = CityGame(pack.map, config, rules)
             val warmupTicks =
                 (scenario.warmupMinutes + options.warmupMinutes) * SECONDS_PER_MINUTE * config.ticksPerSecond
-            repeat(warmupTicks) { game.step() }
-            val runner = GameRunner(game)
+            // Der Vorlauf läuft im Runner, während das Spiel schon zu sehen ist
+            val runner = GameRunner(game, warmupTicks)
             runner.setSpeed(settings.startSpeed)
             return Session(pack, scenario, settings.difficulty, game, runner)
         }

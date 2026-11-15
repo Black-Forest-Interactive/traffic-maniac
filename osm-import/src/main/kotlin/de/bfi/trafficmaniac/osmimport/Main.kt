@@ -30,6 +30,15 @@ fun main(args: Array<String>) {
             println(USAGE)
             exitProcess(1)
         }
+    importCity(input, output, config)
+}
+
+/** Liest den OSM-Auszug [input], schneidet die Stadt aus und schreibt sie nach [output]. */
+internal fun importCity(
+    input: File,
+    output: File,
+    config: ImportConfig,
+) {
     require(input.isFile) { "Input file not found: $input" }
 
     println("Lese ${input.name} für ${config.name} …")

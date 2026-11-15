@@ -27,6 +27,10 @@ class DayReport(
     val parkedLots: Int = 0,
     /** Bezahlte Parkgebühren in Euro. */
     val parkingFees: Double = 0.0,
+    /** Verkehrsbilanz: gefahrene Fahrzeugkilometer (alle Fahrzeuge, ganze Abschnitte). */
+    val vehicleKm: Double = 0.0,
+    /** Verkehrsbilanz: im Verkehr verbrachte Fahrzeugstunden. */
+    val vehicleHours: Double = 0.0,
 ) {
     val tripsStarted: Int get() = tripsStartedPerHour.sum()
 }
@@ -45,6 +49,17 @@ internal class DayStatistics {
     private var parkingSearches = ArrayList<Double>()
     private var illegal = 0
     private var potholes = 0
+    private var meters = 0.0
+    private var seconds = 0.0
+
+    /** Ein Fahrzeug hat einen Link von [lengthMeters] in [travelSeconds] ganz durchfahren. */
+    fun linkDriven(
+        lengthMeters: Float,
+        travelSeconds: Double,
+    ) {
+        meters += lengthMeters
+        seconds += travelSeconds
+    }
 
     fun parkingSearch(seconds: Double) {
         parkingSearches += seconds / SECONDS_PER_MINUTE
@@ -138,6 +153,8 @@ internal class DayStatistics {
             parkedCurb = curbParked,
             parkedLots = lotParked,
             parkingFees = fees,
+            vehicleKm = meters / METERS_PER_KM,
+            vehicleHours = seconds / SECONDS_PER_HOUR,
         )
 
     /** Schließt den Tag ab und setzt die Zähler für den nächsten zurück. */
@@ -165,6 +182,8 @@ internal class DayStatistics {
                 parkedCurb = curbParked,
                 parkedLots = lotParked,
                 parkingFees = fees,
+                vehicleKm = meters / METERS_PER_KM,
+                vehicleHours = seconds / SECONDS_PER_HOUR,
             )
         startedPerHour = IntArray(GameTime.HOURS_PER_DAY)
         completed = 0
@@ -182,10 +201,14 @@ internal class DayStatistics {
         curbParked = 0
         lotParked = 0
         fees = 0.0
+        meters = 0.0
+        seconds = 0.0
         return report
     }
 
     private companion object {
         const val SECONDS_PER_MINUTE = 60.0
+        const val SECONDS_PER_HOUR = 3_600.0
+        const val METERS_PER_KM = 1_000.0
     }
 }
