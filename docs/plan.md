@@ -579,6 +579,7 @@ Jede Version hat einen eigenen Plan mit Ziel, Umfang, Arbeitspaketen, Abnahmekri
 | 0.6     | Ereignisse & Presse      | Rad-Korsos, Demos, Stadtfeste, Pressemodell, Reputation, Achievements                    | [v0.6-ereignisse-presse.md](versions/v0.6-ereignisse-presse.md) |
 | 0.7     | Cartoon-Look & Sound     | Kartenstil, Sprites, Animationen, Effekte, UI-Theme, Sound                               | [v0.7-cartoon-look.md](versions/v0.7-cartoon-look.md) |
 | 0.8     | Lerneffekt, Abwechslung & Technik | Verkehrsbilanz im Spielziel, wiederkehrende Entscheidungen, Tablet-Performance, Installer/Import unter Windows, anonyme Statistiken | [v0.8-lernen-abwechslung-technik.md](versions/v0.8-lernen-abwechslung-technik.md) |
+| 0.9     | Beschäftigung, Tempo & Feedback | Tempo bis 64×, Aktionen direkt auf der Karte, Einblendungen und Töne (Errungenschaften), Aufträge und Verfahren nach Pforzheimer Vorbild | [v0.9-beschaeftigung-feedback.md](versions/v0.9-beschaeftigung-feedback.md) |
 | 1.0     | Release                  | Tutorial, Szenarien, Spielstände, Balancing, Packaging                                   | [v1.0-release.md](versions/v1.0-release.md) |
 | später  | Online & Web             | Micronaut-Backend, weitere Städte, Web-Variante, Multiplayer                             | [spaeter-online-web.md](versions/spaeter-online-web.md) |
 
