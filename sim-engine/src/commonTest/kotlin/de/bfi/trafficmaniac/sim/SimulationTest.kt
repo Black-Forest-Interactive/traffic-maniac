@@ -24,6 +24,20 @@ class SimulationTest {
     }
 
     @Test
+    fun segmentTrafficCountsEveryPassage() {
+        val simulation = Simulation(crossroads(), config)
+
+        simulation.run(seconds = 600)
+
+        val traffic = simulation.segmentTraffic
+        val passages = (0 until simulation.graph.segmentCount).sumOf { traffic.passages(it) }
+        // Jede angekommene Fahrt hat mindestens einen Abschnitt ganz durchfahren
+        assertTrue(passages >= simulation.snapshot().stats.completedTrips, "Durchfahrten: $passages")
+        val busiest = (0 until simulation.graph.segmentCount).maxBy { traffic.passages(it) }
+        assertTrue(traffic.meanSeconds(busiest) > 0.0)
+    }
+
+    @Test
     fun sameSeedGivesSameResult() {
         val a = Simulation(crossroads(), config).apply { run(seconds = 120) }.snapshot()
         val b = Simulation(crossroads(), config).apply { run(seconds = 120) }.snapshot()

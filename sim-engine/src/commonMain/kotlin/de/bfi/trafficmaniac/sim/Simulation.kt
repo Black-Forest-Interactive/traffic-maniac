@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.sim
 
 import de.bfi.trafficmaniac.city.CityMap
+import kotlin.jvm.Transient
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -95,6 +96,15 @@ class Simulation(
 
     /** Beendete Fahrten seit dem letzten Abholen (für die Zufriedenheit der Bürger). */
     val finishedTrips = TripLog()
+
+    /**
+     * Durchfahrten je Abschnitt. Nicht im Spielstand (sonst ließen sich ältere Stände nicht mehr laden) – nach dem
+     * Laden beginnt die Zählung von vorn.
+     */
+    @Transient
+    private var trafficCounter: SegmentTraffic? = null
+    val segmentTraffic: SegmentTraffic
+        get() = trafficCounter ?: SegmentTraffic(graph.segmentCount).also { trafficCounter = it }
     private val reports = ArrayList<DayReport>()
 
     /** Filter für neue Fahrten, z. B. "kein Führerschein". Wird vom Spiel gesetzt. */
@@ -340,6 +350,7 @@ class Simulation(
             return false
         }
         router.observe(link, time - vehicle.linkEnterTime)
+        segmentTraffic.passed(graph.linkSegment[link], time - vehicle.linkEnterTime)
         speedControl.stopLine(vehicle, link, signals.redSeconds(link, time))
         infrastructure.vehiclePassed(link, vehicle)
         vehicle.routeIndex++

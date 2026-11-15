@@ -32,14 +32,30 @@ private const val LONG_RUN_MINUTES = 6 * 60
  * veröffentlichtes Bild des `GameRunner` kostet: Simulations-Schnappschuss und Spielstand.
  * Mit `spielstart` (`--args="0 0 spielstart"`) misst er je Szenario, wie lange der Start dauert: Spiel anlegen und
  * Vorlauf.
+ * Mit `tempo30:<Straße>` (Leerzeichen als `_`, z. B. `--args="0 300 tempo30:Zerrennerstraße"`) spielt er denselben
+ * Morgen zweimal – ohne und mit Tempo 30 auf allen Abschnitten der Straße – und vergleicht Durchfahrten,
+ * Ausweichverkehr, Fahrzeiten, Lärm und Abgase (Prüfauftrag B2 aus v0.8).
  */
 
 fun main(args: Array<String>) {
     val city = benchmarkCity(args)
     when {
-        "bildkosten" in args -> measureFrameCost(city, args.getOrNull(1)?.toIntOrNull() ?: DEFAULT_MINUTES)
-        "spielstart" in args -> measureGameStart()
-        else -> measureSimulation(city, args)
+        "bildkosten" in args -> {
+            measureFrameCost(city, args.getOrNull(1)?.toIntOrNull() ?: DEFAULT_MINUTES)
+        }
+
+        "spielstart" in args -> {
+            measureGameStart()
+        }
+
+        args.any { it.startsWith("tempo") && ":" in it } -> {
+            val (mode, street) = args.first { it.startsWith("tempo") && ":" in it }.split(':', limit = 2)
+            compareSpeedLimit(city, street.replace('_', ' '), mode.removePrefix("tempo").toInt(), args.minutes())
+        }
+
+        else -> {
+            measureSimulation(city, args)
+        }
     }
 }
 
@@ -197,4 +213,121 @@ private fun measureGameStart() {
             ),
         )
     }
+}
+
+private fun Array<String>.minutes(): Int = getOrNull(1)?.toIntOrNull() ?: DEFAULT_MINUTES
+
+/** Ergebnis eines Laufs für den Vergleich. */
+private class LimitRun(
+    val passages: IntArray,
+    val meanSeconds: DoubleArray,
+    val completedTrips: Int,
+    val meanTripMinutes: Double,
+    val noiseDb: Double,
+    val noxGrams: Double,
+    val totalNox: Double,
+    val fuelLiters: Double,
+)
+
+private const val ENVIRONMENT_SAMPLE_MINUTES = 5
+private const val TOP_DETOURS = 8
+
+/** Spielt [minutes] ab 5 Uhr zweimal mit gleichem Zufall – ohne und mit Tempo [kmh] auf [street]. */
+private fun compareSpeedLimit(
+    city: CityMap,
+    street: String,
+    kmh: Int,
+    minutes: Int,
+) {
+    val segments =
+        city.roads.segments
+            .filter { !it.passive && it.name == street }
+            .map { it.id }
+    require(segments.isNotEmpty()) { "Keine simulierte Straße namens '$street'" }
+    val pool =
+        java.util.concurrent.Executors
+            .newFixedThreadPool(2)
+    val runs = listOf(null, kmh).map { limit -> pool.submit<LimitRun> { limitRun(city, segments, limit, minutes) } }
+    val (before, after) = runs.map { it.get() }
+    pool.shutdown()
+    val names = city.roads.segments.associate { it.id to (it.name ?: "(ohne Namen) #${it.id}") }
+
+    fun streetPassages(run: LimitRun) = segments.sumOf { run.passages[it] }
+
+    fun streetSeconds(run: LimitRun) = segments.sumOf { run.meanSeconds[it] }
+    val original = segments.map { city.roads.segments[it].maxSpeedKmh }.groupingBy { it }.eachCount()
+    println(
+        "$street: ${segments.size} Abschnitte, Tempo $kmh statt $original (km/h → Abschnitte), " +
+            "$minutes min ab 5 Uhr",
+    )
+    println("                          ohne      mit")
+    println("Durchfahrten Straße  %8d %8d".format(streetPassages(before), streetPassages(after)))
+    println("Fahrzeit Straße (s)  %8.0f %8.0f".format(streetSeconds(before), streetSeconds(after)))
+    println("Fahrten angekommen   %8d %8d".format(before.completedTrips, after.completedTrips))
+    println("Ø Fahrzeit (min)     %8.2f %8.2f".format(before.meanTripMinutes, after.meanTripMinutes))
+    println("Lärm an der Straße   %8.1f %8.1f dB (Mittel der Stichproben)".format(before.noiseDb, after.noiseDb))
+    println("NOx an der Straße    %8.2f %8.2f g/Zelle".format(before.noxGrams, after.noxGrams))
+    println("NOx ganze Stadt      %8.0f %8.0f g".format(before.totalNox, after.totalNox))
+    println("Kraftstoff Stadt     %8.0f %8.0f l".format(before.fuelLiters, after.fuelLiters))
+    val gains =
+        names.keys
+            .filter { it !in segments }
+            .groupBy { names.getValue(it) }
+            .mapValues { (_, ids) -> ids.sumOf { after.passages[it] - before.passages[it] } }
+            .entries
+            .sortedByDescending { it.value }
+    println("Ausweichverkehr (mehr Durchfahrten, Summe der Abschnitte):")
+    gains.take(TOP_DETOURS).forEach { println("  %+6d  %s".format(it.value, it.key)) }
+    println("Entlastet:")
+    gains.takeLast(TOP_DETOURS / 2).reversed().forEach { println("  %+6d  %s".format(it.value, it.key)) }
+}
+
+private fun limitRun(
+    city: CityMap,
+    segments: List<Int>,
+    kmh: Int?,
+    minutes: Int,
+): LimitRun {
+    val game = CityGame(city, Balancing.simulationConfig(), Balancing.gameRules())
+    if (kmh != null) {
+        segments.forEach {
+            game.submit(
+                de.bfi.trafficmaniac.game.GameCommand
+                    .SetSpeedLimit(it, kmh),
+            )
+        }
+    }
+    val picker =
+        segments.map { id ->
+            city.roads.segments[id].geometry.let {
+                it.x(it.pointCount / 2) to
+                    it.y(it.pointCount / 2)
+            }
+        }
+    var noiseEnergy = 0.0
+    var nox = 0.0
+    var samples = 0
+    val ticksPerSample = ENVIRONMENT_SAMPLE_MINUTES * SECONDS_PER_MINUTE * game.simulation.config.ticksPerSecond
+    repeat(minutes / ENVIRONMENT_SAMPLE_MINUTES) {
+        repeat(ticksPerSample) { game.step() }
+        val environment = game.simulation.environment.snapshot
+        for ((x, y) in picker) {
+            noiseEnergy += environment.value(Pollutant.NOISE, x, y)
+            nox += environment.value(Pollutant.NOX, x, y)
+        }
+        samples += picker.size
+    }
+    val traffic = game.simulation.segmentTraffic
+    val snapshot = game.simulation.snapshot()
+    val environment = snapshot.environment
+    return LimitRun(
+        passages = traffic.passagesSnapshot(),
+        meanSeconds = DoubleArray(city.roads.segments.size) { traffic.meanSeconds(it) },
+        completedTrips = snapshot.stats.completedTrips,
+        meanTripMinutes = snapshot.stats.meanTripMinutes,
+        noiseDb = EnvironmentSnapshot.energyToDb((noiseEnergy / samples).toFloat()).toDouble(),
+        noxGrams = nox / samples,
+        totalNox = environment.totals[Pollutant.NOX] ?: 0.0,
+        fuelLiters = environment.totalFuelLiters,
+    )
 }
