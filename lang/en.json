@@ -411,6 +411,8 @@
   "Tagesabschluss: {germanName}, Tag {firstDay}": "End of day: {germanName}, day {firstDay}",
   "Fahrten je Stunde": "Trips per hour",
   "Weiter zum nächsten Tag (Enter)": "On to the next day (Enter)",
+  "Verkehrsbilanz: {km} Fahrzeug-km · {hours} Fahrzeugstunden": "Traffic balance: {km} vehicle-km · {hours} vehicle hours",
+  "({change} % Fahrzeugstunden gegenüber Tag 1)": "({change} % vehicle hours compared to day 1)",
   "Fahrten gestartet: {tripsStarted} · angekommen: {tripsCompleted}": "Trips started: {tripsStarted} · arrived: {tripsCompleted}",
   "Ø Fahrzeit: {meanTripMinutes} min · aufgegeben: {stuckRemovals}": "Avg. travel time: {meanTripMinutes} min · gave up: {stuckRemovals}",
   "Spitze: {peakVehicles} Fahrzeuge gleichzeitig um {peakHour} Uhr": "Peak: {peakVehicles} vehicles at once at {peakHour}:00",

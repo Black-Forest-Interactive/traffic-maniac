@@ -25,15 +25,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.NewspaperEdition
 import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.formatNumber
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.sim.DayReport
 import de.bfi.trafficmaniac.sim.GameTime
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 private val Ink = ComicTheme.ink
 private val Bar = ComicTheme.red
 private val BarBackground = ComicTheme.track
 private const val CHART_GAP_FRACTION = 0.2f
 private const val AXIS_STEP_HOURS = 6
+private const val PERCENT = 100
 
 /** Tagesabschluss: Kennzahlen des Tags, die Nachfragekurve als Balkendiagramm und die Zeitung vom nächsten Morgen. */
 @Composable
@@ -46,6 +50,8 @@ fun DayReportOverlay(
     firstDay: Int = 0,
     /** Woher das Blitzer-Geld kommt („82 % aus Verstößen bis 10 km/h“), sobald es welches gibt. */
     cameraSummary: String? = null,
+    /** Erster Spieltag als Bezug für die Verkehrsbilanz. */
+    reference: DayReport? = null,
 ) {
     Box(modifier.fillMaxSize().background(ComicTheme.scrim), contentAlignment = Alignment.Center) {
         Column(
@@ -65,6 +71,7 @@ fun DayReportOverlay(
             )
             val text = TmType.text(15.sp, color = Ink)
             DayFigures(report, text)
+            BasicText(trafficBalance(report, reference), style = text)
             cameraSummary?.let { BasicText(it, style = text.copy(fontWeight = FontWeight.SemiBold)) }
             BasicText(
                 tr("Fahrten je Stunde"),
@@ -94,6 +101,26 @@ fun DayReportOverlay(
             )
         }
     }
+}
+
+/**
+ * Verkehrsbilanz (Lerneffekt B3): Wie viel Verkehr hat die Stadt heute erzeugt – Fahrzeugkilometer und
+ * Fahrzeugstunden, ab Tag 2 im Vergleich zum ersten Tag. Der beste Verkehr ist der, der nicht stattfindet.
+ */
+internal fun trafficBalance(
+    report: DayReport,
+    reference: DayReport?,
+): String {
+    val line =
+        tr(
+            "Verkehrsbilanz: {km} Fahrzeug-km · {hours} Fahrzeugstunden",
+            "km" to formatNumber(report.vehicleKm.roundToLong()),
+            "hours" to formatNumber(report.vehicleHours.roundToLong()),
+        )
+    if (reference == null || reference.day == report.day || reference.vehicleHours <= 0.0) return line
+    val change = ((report.vehicleHours / reference.vehicleHours - 1) * PERCENT).roundToInt()
+    return line + " " +
+        tr("({change} % Fahrzeugstunden gegenüber Tag 1)", "change" to (if (change > 0) "+$change" else "$change"))
 }
 
 /** Kennzahlen des Tags: Fahrten, Fahrzeit, Spitze. */

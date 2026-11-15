@@ -351,6 +351,7 @@ class Simulation(
         }
         router.observe(link, time - vehicle.linkEnterTime)
         segmentTraffic.passed(graph.linkSegment[link], time - vehicle.linkEnterTime)
+        dayStatistics.linkDriven(graph.linkLength[link], time - vehicle.linkEnterTime)
         speedControl.stopLine(vehicle, link, signals.redSeconds(link, time))
         infrastructure.vehiclePassed(link, vehicle)
         vehicle.routeIndex++

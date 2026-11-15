@@ -429,6 +429,7 @@ internal fun EndOfDayOverlays(
                 onContinueDay,
                 firstDay = frame.game.firstDay,
                 cameraSummary = CameraBalance.summary(frame.game.cameras),
+                reference = frame.game.firstDayReport,
             )
         }
     }

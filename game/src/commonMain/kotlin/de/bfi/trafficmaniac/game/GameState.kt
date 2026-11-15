@@ -1,5 +1,6 @@
 package de.bfi.trafficmaniac.game
 
+import de.bfi.trafficmaniac.sim.DayReport
 import de.bfi.trafficmaniac.sim.GameTime
 
 /** Art einer Meldung – bestimmt die Farbe in der Meldungsliste. */
@@ -99,6 +100,8 @@ data class GameState(
     val idleTrailers: Int = 0,
     /** Erster Spieltag (Tage seit dem Montag der ersten Woche) – Szenarien beginnen nicht immer montags. */
     val firstDay: Int = 0,
+    /** Bilanz des ersten Spieltags – Bezug für die Verkehrsbilanz im Tagesabschluss. */
+    val firstDayReport: DayReport? = null,
 ) {
     /** Tag der Amtszeit, ab 1 gezählt. */
     fun termDay(day: Int): Int = day - firstDay + 1

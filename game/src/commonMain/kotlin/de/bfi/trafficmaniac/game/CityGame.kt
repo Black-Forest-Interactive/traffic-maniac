@@ -169,6 +169,7 @@ class CityGame(
             press = press.state(unhappyShare, maintenance.state(simulation.time)),
             achievementList = achievements.state(),
             firstDay = firstDay,
+            firstDayReport = simulation.dayReports.firstOrNull(),
             city = rules.city,
             trailers = works.trailers,
             idleTrailers = works.idleTrailers,
