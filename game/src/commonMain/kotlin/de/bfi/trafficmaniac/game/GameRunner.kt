@@ -74,6 +74,12 @@ class GameRunner(
 
     private var lastSpeed = 1
 
+    /** Echte Sekunden je gewähltem Tempo (für die Statistik, Paket F). */
+    private val secondsPerSpeed = HashMap<Int, Double>()
+
+    /** Echte Sekunden je gewähltem Tempo, gerundet ("0" = Pause). */
+    fun speedSeconds(): Map<String, Int> = secondsPerSpeed.entries.associate { (speed, s) -> "$speed" to s.toInt() }
+
     /** Hält die Simulation zwischen zwei Schritten an, solange jemand das Spiel ansieht (z. B. zum Speichern). */
     private val lock = Mutex()
     private var acknowledgedReports = simulation.dayReports.size
@@ -123,6 +129,9 @@ class GameRunner(
                 val elapsed = now - lastLoop
                 lastLoop = now
                 val effective = effectiveSpeed()
+                val chosen = speedFlow.value
+                secondsPerSpeed[chosen] =
+                    (secondsPerSpeed[chosen] ?: 0.0) + elapsed.inWholeMicroseconds / MICROS_PER_SECOND
                 tickDebt += elapsed.inWholeMicroseconds / MICROS_PER_SECOND * ticksPerSecond * effective
                 // Zu weit zurückgefallen (z. B. Rechner ausgelastet): nicht endlos nachholen
                 tickDebt = tickDebt.coerceAtMost(MAX_STEPS_PER_LOOP.toDouble())

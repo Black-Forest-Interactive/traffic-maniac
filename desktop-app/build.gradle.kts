@@ -21,6 +21,8 @@ compose.desktop {
         mainClass = "de.bfi.trafficmaniac.desktop.MainKt"
         // Das installierte Spiel kennt seine Release-Version und lädt fehlende Karten von genau diesem Release (MapDownload)
         providers.gradleProperty("appVersion").orNull?.let { jvmArgs += "-Dtrafficmaniac.version=$it" }
+        // Adresse des Statistik-Servers (Paket F); ohne sie bleibt alles im Postausgang auf dem Rechner
+        providers.gradleProperty("statsUrl").orNull?.let { jvmArgs += "-Dtrafficmaniac.statsUrl=$it" }
 
         nativeDistributions {
             packageName = "traffic-maniac"

@@ -119,6 +119,7 @@ internal fun HighscoreScreen(
 internal fun SettingsScreen(
     settings: GameSettings,
     onSettings: (GameSettings) -> Unit,
+    statistics: StatisticsControls? = null,
 ) {
     MenuPage(tr("Einstellungen"), tr("So spielen Sie")) {
         SettingRow(tr("Sprache")) {
@@ -160,6 +161,10 @@ internal fun SettingsScreen(
             tr("Im Spiel: M schaltet den Ton, N die Musik – Einstellungen werden automatisch gespeichert."),
             style = TmType.small,
         )
+        statistics?.let {
+            Divider()
+            StatisticsSettings(settings, onSettings, it)
+        }
     }
 }
 

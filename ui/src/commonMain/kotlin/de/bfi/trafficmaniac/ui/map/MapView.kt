@@ -365,7 +365,10 @@ private fun rememberFrameTick(onFps: (Int) -> Unit): State<Long> =
                 value = now
                 frames++
                 if (now - windowStart >= NANOS_PER_SECOND) {
-                    if (windowStart > 0) onFps(frames)
+                    if (windowStart > 0) {
+                        onFps(frames)
+                        MapDrawTime.framesPerSecond = frames
+                    }
                     frames = 0
                     windowStart = now
                 }
@@ -476,6 +479,10 @@ private fun DrawScope.drawTraffic(
 object MapDrawTime {
     var millis = 0.0
         private set
+
+    /** Zuletzt gemessene Bildrate (für die Statistik). */
+    var framesPerSecond = 0
+        internal set
 
     internal fun record(micros: Long) {
         millis = millis * (1 - BLEND) + micros / MICROS_PER_MILLI * BLEND

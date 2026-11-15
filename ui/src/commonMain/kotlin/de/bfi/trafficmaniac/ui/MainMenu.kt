@@ -92,6 +92,8 @@ fun MainMenu(
     cities: CityChoice = CityChoice(),
     /** Karte der gewählten Stadt für die Vorschau beim Spielstand. */
     cityMap: CityMap? = null,
+    /** Anonyme Statistiken; `null`, wenn die Plattform keine sendet (dann gibt es weder Frage noch Einstellung). */
+    statistics: StatisticsControls? = null,
 ) {
     var tab by remember { mutableStateOf(MenuTab.PLAY) }
     TmTheme {
@@ -103,10 +105,13 @@ fun MainMenu(
                         MenuTab.PLAY -> PlayScreen(scenarios, highscores, settings, onSettings, onStart, cities)
                         MenuTab.LOAD -> LoadScreen(saves, cityMap)
                         MenuTab.HIGHSCORES -> HighscoreScreen(scenarios, highscores)
-                        MenuTab.SETTINGS -> SettingsScreen(settings, onSettings)
+                        MenuTab.SETTINGS -> SettingsScreen(settings, onSettings, statistics)
                         MenuTab.CREDITS -> CreditsScreen(attribution)
                     }
                 }
+            }
+            if (statistics != null && settings.statistics == null && loading == null) {
+                StatisticsConsent { onSettings(settings.copy(statistics = it)) }
             }
             loading?.let { Loading(it) }
         }

@@ -91,6 +91,45 @@ class CityGame(
     var revision = 0
         private set
 
+    private val telemetryLog = TelemetryLog()
+
+    /** Statistikpaket dieser Partie (Paket F); [context] liefert die Plattform. Gesendet wird nur mit Zustimmung. */
+    fun telemetry(context: TelemetryContext): GameTelemetry {
+        val state = state()
+        return GameTelemetry(
+            installation = context.installation,
+            appVersion = context.appVersion,
+            platform = context.platform,
+            deviceClass = context.deviceClass,
+            language = context.language,
+            city = context.city,
+            scenario = context.scenario,
+            difficulty = context.difficulty,
+            end =
+                when {
+                    isGameOver -> GameTelemetry.END_RECALLED
+                    isTermOver -> GameTelemetry.END_TERM
+                    else -> GameTelemetry.END_ABORTED
+                },
+            daysPlayed = simulation.dayReports.size,
+            realMinutes = context.realMinutes,
+            points = state.score.points,
+            earnings = state.score.earnings,
+            income =
+                mapOf(
+                    "fines" to treasury.fineIncome,
+                    "parking" to treasury.parkingIncome,
+                    "tickets" to treasury.ticketIncome,
+                    "allowance" to treasury.allowances,
+                ),
+            expenses = treasury.expenses,
+            days = telemetryLog.days.toList(),
+            tools = telemetryLog.tools.toMap(),
+            speeds = context.speeds,
+            performance = context.performance,
+        )
+    }
+
     fun submit(command: GameCommand) {
         commands.trySend(command)
     }
@@ -296,6 +335,7 @@ class CityGame(
         winter.dayEnded()
         budgetRound()
         if (report.weekday == Weekday.SUNDAY) press.startNewWeek()
+        telemetryLog.dayEnded(report.day, state(), report.vehicleKm, report.vehicleHours)
         if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
     }
 
@@ -338,6 +378,7 @@ class CityGame(
     }
 
     private fun execute(command: GameCommand) {
+        telemetryLog.used(command)
         when (command) {
             is GameCommand.SetSpeedLimit -> {
                 works.setSpeedLimit(command.segment, command.kmh, command.nightOnly)
