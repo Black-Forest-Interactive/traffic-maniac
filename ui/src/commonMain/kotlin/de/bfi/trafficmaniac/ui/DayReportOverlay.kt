@@ -44,6 +44,8 @@ fun DayReportOverlay(
     modifier: Modifier = Modifier,
     /** Erster Spieltag des Szenarios. */
     firstDay: Int = 0,
+    /** Woher das Blitzer-Geld kommt („82 % aus Verstößen bis 10 km/h“), sobald es welches gibt. */
+    cameraSummary: String? = null,
 ) {
     Box(modifier.fillMaxSize().background(ComicTheme.scrim), contentAlignment = Alignment.Center) {
         Column(
@@ -63,6 +65,7 @@ fun DayReportOverlay(
             )
             val text = TmType.text(15.sp, color = Ink)
             DayFigures(report, text)
+            cameraSummary?.let { BasicText(it, style = text.copy(fontWeight = FontWeight.SemiBold)) }
             BasicText(
                 tr("Fahrten je Stunde"),
                 style = text.copy(fontWeight = FontWeight.Bold),

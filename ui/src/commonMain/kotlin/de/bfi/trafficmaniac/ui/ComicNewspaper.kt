@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.game.CameraBalance
 import de.bfi.trafficmaniac.game.NewspaperEdition
 import de.bfi.trafficmaniac.i18n.tr
 
@@ -88,6 +90,27 @@ fun ComicNewspaper(
                 }
             }
         }
+        PracticeBox(edition.day)
+    }
+}
+
+/** Kasten „Aus der Praxis“: ein echter Messwert zum Blitzen – die Zeitung als Lehrbuch wider Willen. */
+@Composable
+private fun PracticeBox(day: Int) {
+    val ink = ComicTheme.ink
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp)
+            .border(1.5.dp, ink)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        BasicText(tr("AUS DER PRAXIS"), style = TextStyle(color = ink, fontSize = 11.sp, fontWeight = FontWeight.Black))
+        BasicText(
+            CameraBalance.practiceFact(day),
+            style = TextStyle(color = ink, fontSize = 12.sp, fontFamily = FontFamily.Serif),
+        )
     }
 }
 

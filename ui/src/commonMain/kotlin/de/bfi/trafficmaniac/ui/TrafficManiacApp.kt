@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.city.CityMap
+import de.bfi.trafficmaniac.game.CameraBalance
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameMessage
 import de.bfi.trafficmaniac.game.GameRules
@@ -427,6 +428,7 @@ internal fun EndOfDayOverlays(
                 },
                 onContinueDay,
                 firstDay = frame.game.firstDay,
+                cameraSummary = CameraBalance.summary(frame.game.cameras),
             )
         }
     }
