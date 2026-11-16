@@ -143,7 +143,14 @@ private fun PanelContent(
         }
 
         SidePanel.OFFICE -> {
-            OfficePanel(game.fineOffice, rules, game.bannedDrivers, onCommand, onClose = onClose)
+            OfficePanel(
+                game.fineOffice,
+                rules,
+                game.bannedDrivers,
+                onCommand,
+                onClose = onClose,
+                habits = HabitsState(game.warnerShare, game.marathonActive, game.campaignInDays),
+            )
         }
 
         SidePanel.MAINTENANCE -> {

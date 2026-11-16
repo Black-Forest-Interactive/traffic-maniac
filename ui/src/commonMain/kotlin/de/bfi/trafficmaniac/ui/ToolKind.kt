@@ -133,6 +133,14 @@ enum class ToolKind(
         translatable("Haltelinie und Tempo"),
         cost = { it.redLightSpeedCameraCost },
     ),
+    DUMMY(
+        Tool.CAMERA,
+        translatable("Blitzer-Attrappe"),
+        translatable("Attrappe"),
+        Icons.Camera,
+        translatable("Bremst wie echt, kassiert nichts"),
+        cost = { it.habits.dummyCost },
+    ),
     DISPLAY(
         Tool.CAMERA,
         translatable("Anzeigetafel"),

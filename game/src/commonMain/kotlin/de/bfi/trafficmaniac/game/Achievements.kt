@@ -23,6 +23,10 @@ enum class Achievement(
     ),
     FIRST_REPAIR(translatable("Geflickt"), translatable("Die erste Straße ist repariert"), { it.repairs >= 1 }),
     FIRST_DAY(translatable("Überlebt"), translatable("Den ersten Tag im Amt überstanden"), { it.daysEnded >= 1 }),
+    PHONE_RAID(translatable("Handy-Razzia"), translatable("Die erste Polizeiaktion gegen Blitzer-Warn-Apps"), {
+        it.campaigns >=
+            1
+    }),
     TOTAL_STANDSTILL(
         translatable("Totalstillstand"),
         translatable("Mindestens 300 Autos unterwegs, im Schnitt keine 3 km/h"),
@@ -145,6 +149,7 @@ internal data class AchievementFacts(
     val fineIncome: Long = 0,
     val repairs: Int = 0,
     val daysEnded: Int = 0,
+    val campaigns: Int = 0,
 )
 
 /** Was die Errungenschaften dem Spiel melden: freigeschaltet oder fast geschafft (noch [missing] bis zum Ziel). */

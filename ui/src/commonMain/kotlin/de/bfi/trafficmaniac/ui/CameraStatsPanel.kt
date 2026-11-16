@@ -171,6 +171,8 @@ private fun CameraRow(camera: CameraRecord) {
             camera.redLight -> tr("Rotlicht")
             camera.trailer -> tr("Anhänger")
             camera.mobile -> tr("Laser")
+            camera.dummy -> tr("Attrappe")
+            camera.familiarityPercent > 0 -> tr("bekannt {percent} %", "percent" to camera.familiarityPercent)
             else -> null
         }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

@@ -16,6 +16,7 @@ import de.bfi.trafficmaniac.game.UnidentifiedPolicy
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.formatDecimal
 import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.ui.components.OptionButton
 import de.bfi.trafficmaniac.ui.components.PanelScaffold
 import de.bfi.trafficmaniac.ui.components.PanelSection
 import de.bfi.trafficmaniac.ui.components.RadioCardList
@@ -37,9 +38,11 @@ fun OfficePanel(
     onCommand: (GameCommand) -> Unit,
     modifier: Modifier = Modifier,
     onClose: (() -> Unit)? = null,
+    habits: HabitsState? = null,
 ) {
     PanelScaffold(tr("Amt"), tr("Ordnungsamt & Bußgeldstelle"), modifier, onClose, floating = false) {
         PanelSection(divider = false) { CaseTiles(office) }
+        habits?.let { HabitsSection(it, rules, onCommand) }
         StaffSection(office, rules, onCommand)
         PanelSection(title = tr("Schärfe der Blitzer")) {
             SegmentedControl(
@@ -153,3 +156,49 @@ private fun age(hours: Double): String =
 private const val PERCENT = 100
 private const val HOURS_PER_DAY = 24
 private const val FIVE = 5
+
+/** Was das Ordnungsamt über Warn-Apps weiß. */
+class HabitsState(
+    val warnerShare: Double,
+    val marathonActive: Boolean,
+    val campaignInDays: Int,
+)
+
+/**
+ * Blitzer sprechen sich herum: Warner-Quote und die zwei Gegenmittel – Polizeiaktion „Blitzerwarner“ (Bußgeld, Quote
+ * sinkt, Presse spricht von Razzia) und Blitzermarathon (ein Tag brav, Lob, danach etwas weniger Warner).
+ */
+@Composable
+private fun HabitsSection(
+    habits: HabitsState,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+) {
+    PanelSection(title = tr("Blitzer-Warn-Apps")) {
+        BasicText(
+            tr(
+                "{percent} % der Fahrer warnt eine App vor bekannten festen Blitzern. Jeder feste Blitzer wird jeden Tag bekannter.",
+                "percent" to (habits.warnerShare * PERCENT).roundToInt(),
+            ),
+            style = TmType.small,
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OptionButton(
+                if (habits.campaignInDays > 0) {
+                    tr("Polizeiaktion (in {days} Tagen)", "days" to habits.campaignInDays)
+                } else {
+                    tr("Polizeiaktion „Blitzerwarner“")
+                },
+                { onCommand(GameCommand.WarnerCampaign) },
+                Modifier.weight(1f),
+                formatEuro(rules.habits.campaignCost),
+            )
+            OptionButton(
+                if (habits.marathonActive) tr("Blitzermarathon läuft") else tr("Blitzermarathon ankündigen"),
+                { onCommand(GameCommand.AnnounceMarathon) },
+                Modifier.weight(1f),
+                tr("kostenlos"),
+            )
+        }
+    }
+}

@@ -122,6 +122,8 @@ data class GameRules(
     val repairCostPotholes: Long = 25_000,
     /** Aufträge (v0.9 Paket 4). */
     val assignments: AssignmentRules = AssignmentRules(),
+    /** Gewöhnung an feste Blitzer und was dagegen hilft (v0.9 Paket 4). */
+    val habits: CameraHabits = CameraHabits(),
     /** Flicken mit Kaltasphalt: sofort, billig, aber nur knapp über der Schlagloch-Schwelle und doppelter Verschleiß. */
     val patchCost: Long = 1_500,
     val patchCondition: Double = 0.65,
@@ -229,4 +231,32 @@ data class AssignmentRules(
     val hoursSpeeder: Double = 24.0,
     val speederCheckHours: Int = 2,
     val missedReputationLoss: Double = 0.3,
+)
+
+/**
+ * Feste Blitzer sprechen sich herum: Sie werden jeden Tag um [familiarityPerDay] bekannter; wer eine Warn-App hat
+ * (Anteil [warnerShareStart], wächst um [warnerGrowthPerDay]), bremst davor – höchstens [maxEffect] der Ortsfremden.
+ * Gegenmittel: Polizeiaktion „Blitzerwarner“, Attrappe, angekündigter Blitzermarathon.
+ */
+@Serializable
+data class CameraHabits(
+    val familiarityPerDay: Double = 0.15,
+    val maxEffect: Double = 0.6,
+    val warnerShareStart: Double = 0.3,
+    val warnerGrowthPerDay: Double = 0.01,
+    /** Polizeiaktion: Kosten, Anteil der Warner-Quote, der wegfällt, Treffer je Fahrt mit Warn-App, Bußgeld. */
+    val campaignCost: Long = 4_000,
+    val campaignReduction: Double = 0.4,
+    val campaignHitRate: Double = 0.002,
+    val warnerFine: Int = 75,
+    val campaignReputationLoss: Double = 1.0,
+    val campaignPauseDays: Int = 7,
+    /** Attrappe: Preis, Chance je Tag, dass sie auffliegt, und was das an Ruf kostet. */
+    val dummyCost: Long = 1_500,
+    val dummyDiscoveryChancePerDay: Double = 0.05,
+    val dummyDiscoveryReputationLoss: Double = 2.0,
+    /** Blitzermarathon: Ruf für die Ankündigung, Anteil der Warner-Quote, der danach wegfällt, Dauer. */
+    val marathonReputationGain: Double = 2.0,
+    val marathonWarnerReduction: Double = 0.1,
+    val marathonHours: Double = 24.0,
 )

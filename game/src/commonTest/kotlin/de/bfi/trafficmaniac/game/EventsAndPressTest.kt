@@ -237,6 +237,7 @@ class EventsAndPressTest {
                 fineIncome = 5_000,
                 repairs = 1,
                 daysEnded = 1,
+                campaigns = 1,
             )
         achievements.check(extreme, day = 3)
         assertTrue(achievements.titles.size >= 10)

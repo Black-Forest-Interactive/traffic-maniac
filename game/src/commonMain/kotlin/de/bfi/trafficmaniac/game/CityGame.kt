@@ -108,6 +108,18 @@ class CityGame(
             config.seed,
         )
     private val firstDay = simulation.gameTime.day
+
+    /** Gewöhnung an Blitzer: letzte Polizeiaktion (Spieltag), Ende des Blitzermarathons, Würfel für Attrappen. */
+    private var lastCampaignDay = Int.MIN_VALUE / 2
+    private var campaigns = 0
+    private var marathonUntil = -1.0
+    private val habitRandom = kotlin.random.Random(config.seed + HABIT_SEED)
+
+    init {
+        simulation.speedControl.warnerShare = rules.habits.warnerShareStart
+        simulation.speedControl.maxWarned = rules.habits.maxEffect
+    }
+
     private val bridges =
         city.roads.segments
             .filter { it.bridge && !it.passive }
@@ -232,6 +244,7 @@ class CityGame(
         val reportsBefore = simulation.dayReports.size
         simulation.step()
         collectFines()
+        if (marathonUntil > 0 && simulation.time >= marathonUntil) endMarathon()
         winter.update()
         surveillance.update()
         achievements.checkLive(
@@ -266,6 +279,13 @@ class CityGame(
             messages = messages.toList(),
             highlights = highlights.list(),
             assignments = assignments.state(simulation.time),
+            warnerShare = simulation.speedControl.warnerShare,
+            marathonActive = marathonUntil > 0,
+            campaignInDays =
+                (rules.habits.campaignPauseDays - (simulation.gameTime.day - lastCampaignDay))
+                    .coerceAtLeast(
+                        0,
+                    ),
             grantIncome = treasury.grantIncome,
             prContract = prContract,
             argumentsCampaign = argumentsCampaign,
@@ -380,7 +400,80 @@ class CityGame(
             fineIncome = treasury.fineIncome,
             repairs = maintenanceState.repaired,
             daysEnded = simulation.dayReports.size,
+            campaigns = campaigns,
         )
+    }
+
+    /** Polizeiaktion „Blitzerwarner“: Treffer bringen Bußgeld, die Warner-Quote sinkt, die Presse spricht von Razzia. */
+    private fun warnerCampaign() {
+        val habits = rules.habits
+        val day = simulation.gameTime.day
+        if (day - lastCampaignDay < habits.campaignPauseDays) {
+            return message(
+                tr(
+                    "Die Polizei hat diese Woche schon kontrolliert – frühestens wieder in {days} Tagen.",
+                    "days" to habits.campaignPauseDays - (day - lastCampaignDay),
+                ),
+            )
+        }
+        if (!treasury.pay(habits.campaignCost, tr("Polizeiaktion"))) return
+        lastCampaignDay = day
+        campaigns++
+        val control = simulation.speedControl
+        val trips = simulation.dayReports.lastOrNull()?.tripsStarted ?: DEFAULT_DAY_TRIPS
+        val hits = (trips * control.warnerShare * habits.campaignHitRate).toInt()
+        repeat(hits) { treasury.earnFine(habits.warnerFine) }
+        control.warnerShare *= 1 - habits.campaignReduction
+        politics.press(-habits.campaignReputationLoss)
+        val text =
+            tr(
+                "Polizeiaktion „Blitzerwarner“: {hits} Handys mit Warn-App, {fines} Bußgeld – nur noch {share} % fahren mit Warner",
+                "hits" to hits,
+                "fines" to formatEuro(hits.toLong() * habits.warnerFine),
+                "share" to (control.warnerShare * PERCENT).toInt(),
+            )
+        message(text, kind = MessageKind.ACTION)
+        highlights.add(HighlightKind.MEDIUM, tr("Handy-Razzia"), text)
+        achievements.check(hourlyFacts(), day)
+    }
+
+    /** Blitzermarathon ankündigen: einen Tag lang bremsen alle, die Zeitung lobt. */
+    private fun announceMarathon() {
+        if (marathonUntil > 0) return message(tr("Der Blitzermarathon läuft schon."))
+        marathonUntil = simulation.time + rules.habits.marathonHours * SECONDS_PER_HOUR
+        simulation.speedControl.marathon = true
+        politics.press(rules.habits.marathonReputationGain)
+        val text = tr("Blitzermarathon angekündigt: Heute fahren alle brav – die Zeitung ist begeistert.")
+        message(text, kind = MessageKind.ACTION)
+        highlights.add(HighlightKind.MEDIUM, tr("Blitzermarathon"), text)
+    }
+
+    private fun endMarathon() {
+        marathonUntil = -1.0
+        val control = simulation.speedControl
+        control.marathon = false
+        control.warnerShare *= 1 - rules.habits.marathonWarnerReduction
+        message(tr("Blitzermarathon vorbei – mancher verlässt sich jetzt lieber auf die Ankündigung als auf die App."))
+    }
+
+    /** Mitternacht: Blitzer werden bekannter, Warn-Apps verbreiten sich, Attrappen fliegen manchmal auf. */
+    private fun habitsDayPassed() {
+        val habits = rules.habits
+        val control = simulation.speedControl
+        control.dayPassed(habits.familiarityPerDay)
+        control.warnerShare = (control.warnerShare + habits.warnerGrowthPerDay).coerceAtMost(1.0)
+        for (camera in control.cameras.filter { it.dummy }) {
+            if (habitRandom.nextDouble() >= habits.dummyDiscoveryChancePerDay) continue
+            politics.press(-habits.dummyDiscoveryReputationLoss)
+            val text =
+                tr(
+                    "Presse: „Stadt blitzt mit Pappe“ – die Attrappe an der {street} ist aufgeflogen",
+                    "street" to works.streetName(camera.segment),
+                )
+            val place = MapPlace(camera.x, camera.y)
+            message(text, place, MessageKind.PROBLEM)
+            highlights.add(HighlightKind.WARNING, tr("Attrappe aufgeflogen"), text, place)
+        }
     }
 
     /** Ein fester Blitzer hat so viel eingenommen, wie er gekostet hat: einmal melden. */
@@ -453,6 +546,7 @@ class CityGame(
         winter.dayEnded()
         budgetRound()
         if (report.weekday == Weekday.SUNDAY) press.startNewWeek()
+        habitsDayPassed()
         telemetryLog.dayEnded(report.day, state(), report.vehicleKm, report.vehicleHours)
         if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
     }
@@ -527,7 +621,15 @@ class CityGame(
             }
 
             is GameCommand.PlaceCamera -> {
-                works.placeCamera(command.segment, command.mobile)
+                works.placeCamera(command.segment, command.mobile, command.dummy)
+            }
+
+            GameCommand.WarnerCampaign -> {
+                warnerCampaign()
+            }
+
+            GameCommand.AnnounceMarathon -> {
+                announceMarathon()
             }
 
             is GameCommand.PlaceTrailer -> {
@@ -685,6 +787,12 @@ class CityGame(
     }
 
     private companion object {
+        const val HABIT_SEED = 9_173L
+        const val PERCENT = 100
+
+        /** Vor dem ersten Tagesabschluss: so viele Fahrten nimmt die Polizeiaktion als Grundlage. */
+        const val DEFAULT_DAY_TRIPS = 40_000
+
         /** Ab diesem Abwahlindex werden Warnungen der Politik rot eingeblendet. */
         const val RECALL_WARNING = 50.0
 
