@@ -110,7 +110,7 @@ fun MapView(
         remember(
             city,
             sprites,
-        ) { TrafficEffects(FlashTracker(), MoneyPops(), FlowLayer(segmentPaths), AngerClouds(), sprites) }
+        ) { TrafficEffects(FlashTracker(), MoneyPops(), BuildPuffs(), FlowLayer(segmentPaths), AngerClouds(), sprites) }
     val textMeasurer = rememberTextMeasurer()
     val clickHandler by rememberUpdatedState(onMapClick)
     val frameTick = rememberFrameTick(onFps)
@@ -153,8 +153,12 @@ fun MapView(
                     val seconds = nanos / NANOS_PER_SECOND.toDouble()
                     effects.flashes.update(frame.game.cameras, seconds)
                     effects.pops.update(frame.game.cameras, frame.current.cameras, seconds)
+                    effects.puffs.update(frame.game, frame.current.cameras, picker, seconds)
                     drawTraffic(currentCamera, frame, picker, textMeasurer, viewport, seconds, effects)
-                    inWorld(currentCamera) { effects.pops.draw(this, textMeasurer, currentCamera.scale, seconds) }
+                    inWorld(currentCamera) {
+                        effects.puffs.draw(this, currentCamera.scale, seconds)
+                        effects.pops.draw(this, textMeasurer, currentCamera.scale, seconds)
+                    }
                     focus?.let { drawPing(currentCamera, it, (nanos - ping[0]) / NANOS_PER_SECOND.toDouble()) }
                     MapDrawTime.record(drawStart.elapsedNow().inWholeMicroseconds)
                 }
@@ -397,6 +401,7 @@ internal inline fun DrawScope.inWorld(
 internal class TrafficEffects(
     val flashes: FlashTracker,
     val pops: MoneyPops,
+    val puffs: BuildPuffs,
     val flow: FlowLayer,
     val clouds: AngerClouds,
     val sprites: SpriteSource,

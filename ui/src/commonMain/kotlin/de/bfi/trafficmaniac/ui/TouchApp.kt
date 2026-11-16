@@ -105,6 +105,7 @@ fun TouchGameApp(
                                 touch.feed,
                                 touch.views,
                                 hudFrame?.current?.incidents?.size ?: 0,
+                                hud.newAchievements(hudFrame?.game),
                             ),
                             railActions(hud, touch),
                         )
@@ -216,6 +217,7 @@ private fun BoxScope.TouchOverlays(
                 hud.panel = panel
             },
             Modifier.align(Alignment.TopStart).padding(8.dp),
+            mapOf(SidePanel.ACHIEVEMENTS to hud.newAchievements(frame.game)),
         )
     }
 }

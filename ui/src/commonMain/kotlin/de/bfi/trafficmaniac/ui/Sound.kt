@@ -25,7 +25,15 @@ enum class SoundEffect {
 
     /** Warnung (zu wenig Geld, Rücktrittsforderung): tiefer Doppelton. */
     WARNING,
+
+    /** Etwas steht (Blitzer, Schild, Ampel): dumpfes „Plopp“. */
+    BUILD,
 }
+
+/** Wie viel der Spieler aufgestellt hat – steigt die Zahl, wurde etwas gebaut (für Ton und Staubwolke). */
+internal fun placedCount(game: GameState): Int =
+    game.cameras.size + game.speedLimits.size + game.nightLimits.size + game.signalNodes.size +
+        game.priorityRoads.size + game.bikeCrossings.size + game.bikeStreets.size
 
 /**
  * Dauerhafte Geräuschkulisse, jeweils 0..1: Verkehrsrauschen ([traffic]), Hupkonzert im Stau ([honking]) und
@@ -69,6 +77,7 @@ class SoundDirector(
     private var income = -1L
     private var lastCashSeconds = Double.NEGATIVE_INFINITY
     private var lastHighlight = -1
+    private var placed = -1
 
     fun update(
         frame: TrafficFrame,
@@ -85,6 +94,9 @@ class SoundDirector(
             lastCashSeconds = seconds
         }
         income = earned
+        val nowPlaced = placedCount(game)
+        if (placed in 0 until nowPlaced) board.play(SoundEffect.BUILD)
+        placed = nowPlaced
         playHighlights(game)
         board.ambience(ambienceOf(frame, zoom))
     }

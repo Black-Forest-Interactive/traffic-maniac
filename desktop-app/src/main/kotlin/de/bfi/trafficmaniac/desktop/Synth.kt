@@ -102,6 +102,12 @@ class Synth(
                     voice(Wave.SQUARE, WARNING_HIGH_HZ, 0.0, WARNING_SECONDS, WARNING_VOLUME, WARNING_DECAY)
                     voice(Wave.SQUARE, WARNING_LOW_HZ, WARNING_STEP, WARNING_SECONDS, WARNING_VOLUME, WARNING_DECAY)
                 }
+
+                SoundEffect.BUILD -> {
+                    // Dumpfer Schlag mit Staub: Sinus fällt schnell in die Tiefe, darüber kurzes Rauschen
+                    voice(Wave.SINE, PLOP_FROM_HZ, 0.0, PLOP_SECONDS, PLOP_VOLUME, PLOP_DECAY, PLOP_TO_HZ)
+                    voice(Wave.NOISE, 0.0, 0.0, PLOP_DUST_SECONDS, PLOP_DUST_VOLUME, PLOP_DECAY)
+                }
             }
         }
     }
@@ -286,6 +292,13 @@ class Synth(
         private const val WARNING_SECONDS = 0.16
         private const val WARNING_VOLUME = 0.05
         private const val WARNING_DECAY = 3.0
+        private const val PLOP_FROM_HZ = 220.0
+        private const val PLOP_TO_HZ = 70.0
+        private const val PLOP_SECONDS = 0.18
+        private const val PLOP_VOLUME = 0.25
+        private const val PLOP_DECAY = 12.0
+        private const val PLOP_DUST_SECONDS = 0.08
+        private const val PLOP_DUST_VOLUME = 0.06
         private const val CAMERA_CLICK_VOLUME = 0.3
         private const val PLING_FROM_HZ = 2_000.0
         private const val PLING_TO_HZ = 4_000.0
