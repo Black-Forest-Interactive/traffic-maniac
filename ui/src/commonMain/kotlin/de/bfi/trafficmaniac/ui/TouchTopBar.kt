@@ -127,7 +127,7 @@ private fun SpeedButtons(
 @Composable
 private fun RowScope.TouchKpis(frame: TrafficFrame) {
     val game = frame.game
-    Kpi(Icons.Wallet, MoneyIcon, formatEuro(game.balance))
+    Kpi(Icons.Wallet, MoneyIcon, null) { CountingEuro(game.balance, TmType.mono(14.sp, color = TmColors.OnDark)) }
     Kpi(Icons.Award, ReputationIcon, "${game.reputation.roundToInt()}")
     Kpi(Icons.Siren, AlarmIcon, "${game.anger.roundToInt()}")
     // Abwahlindex: ab 50 rot hinterlegt wie am Desktop
@@ -144,8 +144,9 @@ private fun RowScope.TouchKpis(frame: TrafficFrame) {
 private fun Kpi(
     icon: TmIcon,
     tint: Color,
-    value: String,
+    value: String?,
     background: Color = TmColors.Ink3,
+    content: @Composable () -> Unit = {},
 ) {
     Row(
         Modifier.height(BUTTON_SIZE.dp).background(background, ChipShape).padding(horizontal = 8.dp),
@@ -153,7 +154,8 @@ private fun Kpi(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(icon, null, tint = tint, size = 16.dp)
-        BasicText(value, style = TmType.mono(14.sp, color = TmColors.OnDark), maxLines = 1)
+        value?.let { BasicText(it, style = TmType.mono(14.sp, color = TmColors.OnDark), maxLines = 1) }
+        content()
     }
 }
 

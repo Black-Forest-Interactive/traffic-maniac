@@ -233,13 +233,22 @@ private fun SpeedSegments(
 private fun RowScope.KpiChips(frame: TrafficFrame) {
     val game = frame.game
     KpiChip(Icons.Wallet, MoneyIcon) {
-        KpiValue(tr("Kasse"), formatEuro(game.balance))
+        Column {
+            BasicText(tr("Kasse"), style = TmType.text(11.sp, color = TmColors.OnDarkMuted))
+            CountingEuro(game.balance, TmType.mono(15.sp, color = TmColors.OnDark))
+        }
         Box(Modifier.width(1.dp).height(28.dp).background(TmColors.LineDark))
         BasicText(tr("Bußgelder"), style = TmType.text(12.sp, color = TmColors.OnDarkMuted))
         BasicText(formatEuro(game.fineIncome), style = TmType.mono(12.sp, color = TmColors.OnDark))
     }
-    KpiChip(Icons.Award, ReputationIcon) { KpiValue(tr("Reputation"), "${game.reputation.roundToInt()}", "/100") }
-    KpiChip(Icons.Siren, AlarmIcon) { KpiValue(tr("Bürgerzorn"), "${game.anger.roundToInt()}") }
+    KpiChip(Icons.Award, ReputationIcon) {
+        KpiValue(tr("Reputation"), "${game.reputation.roundToInt()}", "/100")
+        DeltaArrow(game.reputation.roundToInt(), upIsGood = true, TmType.mono(11.sp))
+    }
+    KpiChip(Icons.Siren, AlarmIcon) {
+        KpiValue(tr("Bürgerzorn"), "${game.anger.roundToInt()}")
+        DeltaArrow(game.anger.roundToInt(), upIsGood = false, TmType.mono(11.sp))
+    }
     // Feste Breite: der Meter bleibt im Chip, statt die Kopfleiste zu füllen; ab 50 rot hinterlegt
     val danger = game.recallIndex > RECALL_DANGER
     KpiChip(

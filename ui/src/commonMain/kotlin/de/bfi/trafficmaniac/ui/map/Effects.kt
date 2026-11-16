@@ -5,7 +5,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.CameraRecord
+import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.sim.FLAG_JAMMED
 import de.bfi.trafficmaniac.sim.SimulationSnapshot
 import de.bfi.trafficmaniac.sim.SpeedCamera
@@ -239,3 +246,83 @@ private val BOLT =
         -0.02f to -0.42f,
         -0.2f to -0.42f,
     )
+
+/**
+ * Aufsteigende Beträge über Blitzern („+30 €“): Einnahmen je Blitzer werden höchstens einmal je [POP_EVERY_SECONDS]
+ * gebündelt (bei 64× sonst ein Zahlenregen), steigen auf und verblassen in [POP_SECONDS].
+ */
+internal class MoneyPops {
+    private class Pop(
+        val x: Float,
+        val y: Float,
+        val euros: Long,
+        val born: Double,
+    )
+
+    private val revenue = HashMap<Int, Long>()
+    private val pending = HashMap<Int, Long>()
+    private val lastPop = HashMap<Int, Double>()
+    private val pops = ArrayList<Pop>()
+
+    fun update(
+        records: List<CameraRecord>,
+        cameras: List<SpeedCamera>,
+        seconds: Double,
+    ) {
+        for (record in records) {
+            val before = revenue[record.cameraId]
+            if (before != null && record.totalRevenue > before) {
+                pending[record.cameraId] = (pending[record.cameraId] ?: 0L) + record.totalRevenue - before
+            }
+            revenue[record.cameraId] = record.totalRevenue
+        }
+        val byId = cameras.associateBy { it.id }
+        for ((id, euros) in pending.entries.toList()) {
+            if (seconds - (lastPop[id] ?: Double.NEGATIVE_INFINITY) < POP_EVERY_SECONDS) continue
+            val camera = byId[id] ?: continue
+            pops += Pop(camera.x, camera.y, euros, seconds)
+            lastPop[id] = seconds
+            pending.remove(id)
+        }
+        pops.removeAll { seconds - it.born > POP_SECONDS }
+    }
+
+    fun draw(
+        scope: DrawScope,
+        textMeasurer: TextMeasurer,
+        scale: Float,
+        seconds: Double,
+    ) = with(scope) {
+        for (pop in pops) {
+            val age = ((seconds - pop.born) / POP_SECONDS).toFloat().coerceIn(0f, 1f)
+            val label =
+                textMeasurer.measure(
+                    "+" + formatEuro(pop.euros),
+                    TextStyle(
+                        fontSize = POP_FONT_SIZE.sp,
+                        fontWeight = FontWeight.Black,
+                        color =
+                            MapStyle.moneyPop.copy(
+                                alpha =
+                                    1 - age,
+                            ),
+                    ),
+                )
+            // In Bildschirmpunkten: steigt um POP_RISE Pixel, Weltskalierung (y nach Norden) aufheben
+            withTransform({
+                translate(pop.x, pop.y + (POP_START + age * POP_RISE) / scale)
+                scale(1 / scale, -1 / scale, pivot = Offset.Zero)
+            }) {
+                drawText(label, topLeft = Offset(-label.size.width / 2f, -label.size.height / 2f))
+            }
+        }
+    }
+
+    private companion object {
+        const val POP_SECONDS = 1.6
+        const val POP_EVERY_SECONDS = 1.0
+        const val POP_FONT_SIZE = 13
+        const val POP_START = 18f
+        const val POP_RISE = 34f
+    }
+}
