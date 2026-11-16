@@ -213,7 +213,7 @@ class EventsAndPressTest {
 
     @Test
     fun atLeastTenAchievementsAreReachable() {
-        val achievements = Achievements {}
+        val achievements = Achievements(NoEvents)
         achievements.check(AchievementFacts(), day = 0)
         assertTrue(achievements.titles.isEmpty(), "Nichts geschenkt")
         val extreme =
@@ -234,9 +234,74 @@ class EventsAndPressTest {
                 demosToday = 3,
                 recordRatio = 2.5,
                 trucksStuck = 1,
+                fineIncome = 5_000,
+                repairs = 1,
+                daysEnded = 1,
             )
         achievements.check(extreme, day = 3)
         assertTrue(achievements.titles.size >= 10)
         assertEquals(Achievement.entries.size, achievements.state().count { it.unlocked && it.unlockedDay == 3 })
+    }
+
+    @Test
+    fun countableAchievementsShowProgressAndWarnOnceWhenAlmostThere() {
+        val almost = ArrayList<Pair<Achievement, Int>>()
+        val achievements =
+            Achievements(
+                object : AchievementEvents {
+                    override fun unlocked(achievement: Achievement) = Unit
+
+                    override fun almost(
+                        achievement: Achievement,
+                        missing: Int,
+                    ) {
+                        almost += achievement to missing
+                    }
+                },
+            )
+        achievements.check(AchievementFacts(cameras = 7), day = 0)
+        assertEquals(7, achievements.state().single { it.achievement == Achievement.CAMERA_CAPITAL }.progress)
+        assertTrue(almost.none { it.first == Achievement.CAMERA_CAPITAL }, "7 von 10 ist noch nicht fast")
+        achievements.check(AchievementFacts(cameras = 8), day = 0)
+        achievements.check(AchievementFacts(cameras = 9), day = 0)
+        assertEquals(listOf(Achievement.CAMERA_CAPITAL to 2), almost.filter { it.first == Achievement.CAMERA_CAPITAL })
+        // Eine Prüfung mit unvollständigen Fakten (z. B. live) setzt den Fortschritt nicht zurück
+        achievements.check(AchievementFacts(recordRatio = 1.0), day = 0)
+        assertEquals(9, achievements.state().single { it.achievement == Achievement.CAMERA_CAPITAL }.progress)
+    }
+
+    @Test
+    fun theFirstCameraIsCelebratedRightAway() {
+        val game = CityGame(mainStreet(), quiet)
+        game.submit(GameCommand.PlaceCamera(segment = 0))
+        game.step()
+        assertTrue("Es blitzt" in game.state().achievements)
+        val highlight = game.state().highlights.last()
+        assertEquals(HighlightKind.BIG, highlight.kind)
+        assertTrue(highlight.title.contains("Es blitzt"))
+    }
+
+    @Test
+    fun notEnoughMoneyIsAWarning() {
+        val game = CityGame(mainStreet(), quiet, GameRules(startBudget = 100))
+        game.submit(GameCommand.PlaceCamera(segment = 0))
+        game.step()
+        assertEquals(
+            HighlightKind.WARNING,
+            game
+                .state()
+                .highlights
+                .last()
+                .kind,
+        )
+    }
+
+    private object NoEvents : AchievementEvents {
+        override fun unlocked(achievement: Achievement) = Unit
+
+        override fun almost(
+            achievement: Achievement,
+            missing: Int,
+        ) = Unit
     }
 }

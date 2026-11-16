@@ -8,6 +8,8 @@ import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameSettings
+import de.bfi.trafficmaniac.game.Highlight
+import de.bfi.trafficmaniac.game.HighlightKind
 import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.NewspaperEdition
 import de.bfi.trafficmaniac.game.Scenario
@@ -78,6 +80,22 @@ class Screenshots {
         }
         touch(out, city, frame)
         dayReport(out, frame)
+        shoot(File(out, "toasts.png"), TOAST_SHOT_WIDTH, TOAST_SHOT_HEIGHT, settleMillis = TOAST_SETTLE_MILLIS) {
+            HighlightToasts(
+                listOf(
+                    Highlight(1, HighlightKind.BIG, "Errungenschaft: Es blitzt", "Der erste Blitzer steht"),
+                    Highlight(
+                        2,
+                        HighlightKind.MEDIUM,
+                        "Blitzer Goethestraße hat sich bezahlt gemacht",
+                        "45.120 € eingenommen – alles Weitere ist Gewinn",
+                    ),
+                    Highlight(3, HighlightKind.WARNING, "Zu wenig Geld für Blitzer (45.000 €)"),
+                ),
+                {},
+                showExisting = true,
+            )
+        }
         // Nah dran am Marktplatz: Haltestellen und Busse
         city.transitStops.firstOrNull { it.name == "Marktplatz" }?.let { stop ->
             shoot(File(out, "map-transit.png"), MAP_SHOT_WIDTH, MAP_SHOT_HEIGHT) {
@@ -162,6 +180,8 @@ class Screenshots {
         width: Int,
         height: Int,
         density: Float = 1f,
+        /** Animationen bis zu diesem Zeitpunkt laufen lassen (Millisekunden Szenenzeit), z. B. für Einblendungen. */
+        settleMillis: Long = 0,
         content: @Composable () -> Unit,
     ) {
         val scale = System.getenv("TM_UI_SCALE")?.toIntOrNull() ?: 0
@@ -172,6 +192,11 @@ class Screenshots {
             for (i in 1..FRAMES) {
                 Thread.sleep(FRAME_PAUSE_MILLIS)
                 image = scene.render(i * FRAME_NANOS)
+            }
+            if (settleMillis > 0) {
+                for (millis in FRAMES * FRAME_NANOS / NANOS_PER_MILLI..settleMillis step SETTLE_STEP_MILLIS) {
+                    image = scene.render(millis * NANOS_PER_MILLI)
+                }
             }
             file.writeBytes(image.encodeToData(EncodedImageFormat.PNG)!!.bytes)
             println("Screenshot: ${file.absolutePath}")
@@ -234,6 +259,11 @@ class Screenshots {
 
     private companion object {
         val SIZES = listOf(1440 to 900, 2000 to 1050)
+        const val TOAST_SHOT_WIDTH = 600
+        const val TOAST_SHOT_HEIGHT = 300
+        const val TOAST_SETTLE_MILLIS = 900L
+        const val SETTLE_STEP_MILLIS = 16L
+        const val NANOS_PER_MILLI = 1_000_000L
         const val FRAMES = 8
         const val FRAME_PAUSE_MILLIS = 150L
         const val FRAME_NANOS = 16_000_000L

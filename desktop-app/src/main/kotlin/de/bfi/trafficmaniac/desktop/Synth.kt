@@ -83,6 +83,25 @@ class Synth(
                 SoundEffect.CLICK -> {
                     voice(Wave.SQUARE, TICK_HZ, 0.0, TICK_SECONDS, TICK_VOLUME, TICK_DECAY)
                 }
+
+                SoundEffect.FANFARE -> {
+                    FANFARE_HZ.forEachIndexed { i, hz ->
+                        val last = i == FANFARE_HZ.lastIndex
+                        val seconds = if (last) FANFARE_LAST_SECONDS else FANFARE_NOTE_SECONDS
+                        voice(Wave.TRIANGLE, hz, i * FANFARE_STEP, seconds, FANFARE_VOLUME, FANFARE_DECAY)
+                        voice(Wave.PULSE, hz, i * FANFARE_STEP, seconds, FANFARE_VOLUME * FANFARE_BRASS, FANFARE_DECAY)
+                    }
+                }
+
+                SoundEffect.SUCCESS -> {
+                    voice(Wave.SINE, SUCCESS_LOW_HZ, 0.0, SUCCESS_SECONDS, SUCCESS_VOLUME, SUCCESS_DECAY)
+                    voice(Wave.SINE, SUCCESS_HIGH_HZ, SUCCESS_STEP, SUCCESS_SECONDS, SUCCESS_VOLUME, SUCCESS_DECAY)
+                }
+
+                SoundEffect.WARNING -> {
+                    voice(Wave.SQUARE, WARNING_HIGH_HZ, 0.0, WARNING_SECONDS, WARNING_VOLUME, WARNING_DECAY)
+                    voice(Wave.SQUARE, WARNING_LOW_HZ, WARNING_STEP, WARNING_SECONDS, WARNING_VOLUME, WARNING_DECAY)
+                }
             }
         }
     }
@@ -244,6 +263,29 @@ class Synth(
         private const val HONK_DETUNE = 1.06
         private const val HONK_VOLUME = 0.035
         private const val CLICK_SECONDS = 0.015
+
+        /** C–E–G–C: kurz, kurz, kurz, lang. */
+        private val FANFARE_HZ = listOf(523.25, 659.25, 783.99, 1_046.5)
+        private const val FANFARE_STEP = 0.11
+        private const val FANFARE_NOTE_SECONDS = 0.12
+        private const val FANFARE_LAST_SECONDS = 0.5
+        private const val FANFARE_VOLUME = 0.12
+        private const val FANFARE_DECAY = 2.5
+
+        /** Anteil der Rechteck-Stimme, die der Fanfare etwas Blech gibt. */
+        private const val FANFARE_BRASS = 0.33
+        private const val SUCCESS_LOW_HZ = 783.99
+        private const val SUCCESS_HIGH_HZ = 1_046.5
+        private const val SUCCESS_STEP = 0.09
+        private const val SUCCESS_SECONDS = 0.22
+        private const val SUCCESS_VOLUME = 0.1
+        private const val SUCCESS_DECAY = 6.0
+        private const val WARNING_HIGH_HZ = 392.0
+        private const val WARNING_LOW_HZ = 293.66
+        private const val WARNING_STEP = 0.16
+        private const val WARNING_SECONDS = 0.16
+        private const val WARNING_VOLUME = 0.05
+        private const val WARNING_DECAY = 3.0
         private const val CAMERA_CLICK_VOLUME = 0.3
         private const val PLING_FROM_HZ = 2_000.0
         private const val PLING_TO_HZ = 4_000.0

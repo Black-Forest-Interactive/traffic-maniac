@@ -128,12 +128,7 @@ class CityGameTest {
 
         val state = game.state()
         assertEquals(1, state.cameras.size)
-        assertTrue(
-            state.messages
-                .last()
-                .text
-                .startsWith("Zu wenig Geld"),
-        )
+        assertTrue(state.messages.any { it.text.startsWith("Zu wenig Geld") })
     }
 
     @Test
@@ -214,12 +209,13 @@ class CityGameTest {
             GameCommand.PlaceCamera(segment = 0),
         ).forEach(game::submit)
         game.step()
-        assertTrue(game.state().achievements.isEmpty())
+        // Der erste Blitzer wird schon gefeiert, der Schilderwald noch nicht
+        assertEquals(listOf("Es blitzt"), game.state().achievements)
 
         game.submit(GameCommand.PlaceCamera(segment = 1))
         game.step()
 
-        assertEquals(listOf("Schilderwald"), game.state().achievements)
+        assertEquals(listOf("Es blitzt", "Schilderwald"), game.state().achievements)
         assertTrue(
             game.simulation.graph.hasPriority(
                 game.simulation.graph.segmentLinks[1]

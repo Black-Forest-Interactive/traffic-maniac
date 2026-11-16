@@ -63,6 +63,9 @@ private val HUD_REFRESH = 250.milliseconds
 
 /** Unter dem Kartenumschalter. */
 private const val WARMUP_TOP = 64
+
+/** Einblendungen ebenfalls unter dem Kartenumschalter (der Vorlauf ist vorbei, wenn sie kommen). */
+private const val TOAST_TOP = 64
 private const val PICK_RADIUS_PIXELS = 14f
 private const val MIN_PICK_RADIUS_METERS = 6f
 private const val MILLIS_PER_SECOND = 1_000.0
@@ -101,6 +104,16 @@ internal class HudState(
 
     fun show(place: MapPlace) {
         focus = MapFocus(place.x, place.y)
+    }
+
+    /** Erfolge, die der Spieler beim letzten Öffnen des Fensters schon gesehen hat (−1 = noch kein Bild). */
+    private var seenAchievements by mutableStateOf(-1)
+
+    /** Neue Erfolge seit dem letzten Blick ins Fenster – für den Punkt in der Leiste. */
+    fun newAchievements(game: GameState?): Int {
+        val unlocked = game?.achievementList?.count { it.unlocked } ?: return 0
+        if (seenAchievements < 0 || panel == SidePanel.ACHIEVEMENTS) seenAchievements = unlocked
+        return unlocked - seenAchievements
     }
 
     /** Gruppe, deren Ausklappliste über dem Dock offen ist. */
@@ -220,7 +233,12 @@ fun TrafficManiacApp(
                     )
                 }
                 Row(Modifier.weight(1f)) {
-                    HudRail(hud.panel, hud::togglePanel, hudFrame?.current?.incidents?.size ?: 0)
+                    HudRail(
+                        hud.panel,
+                        hud::togglePanel,
+                        hudFrame?.current?.incidents?.size ?: 0,
+                        hud.newAchievements(hudFrame?.game),
+                    )
                     MapArea(
                         city,
                         traffic,
@@ -289,6 +307,11 @@ private fun MapArea(
             frame.warmup?.let {
                 WarmupBanner(it, Modifier.align(Alignment.TopCenter).padding(top = WARMUP_TOP.dp))
             }
+            HighlightToasts(
+                game.highlights,
+                hud::show,
+                Modifier.align(Alignment.TopCenter).padding(start = (FEED_WIDTH + FEED_GAP).dp, top = TOAST_TOP.dp),
+            )
             DeveloperOverlays(frame, hud, network, input)
             val dock =
                 ToolDockState(
@@ -445,6 +468,10 @@ internal fun EndOfDayOverlays(
                 firstDay = frame.game.firstDay,
                 cameraSummary = CameraBalance.summary(frame.game.cameras),
                 reference = frame.game.firstDayReport,
+                achievements =
+                    frame.game.achievementList
+                        .filter { it.unlockedDay == report.day }
+                        .map { it.achievement.title },
             )
         }
     }

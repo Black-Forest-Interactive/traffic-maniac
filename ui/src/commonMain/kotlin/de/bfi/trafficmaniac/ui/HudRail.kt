@@ -41,6 +41,8 @@ internal fun HudRail(
     panel: SidePanel,
     onPanel: (SidePanel) -> Unit,
     emergencies: Int,
+    /** Neue Erfolge seit dem letzten Blick ins Fenster. */
+    newAchievements: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -65,7 +67,12 @@ internal fun HudRail(
         )
         GroupLabel(tr("Berichte"))
         for (entry in REPORTS) {
-            val badge = if (entry.panel == SidePanel.EMERGENCIES) emergencies else 0
+            val badge =
+                when (entry.panel) {
+                    SidePanel.EMERGENCIES -> emergencies
+                    SidePanel.ACHIEVEMENTS -> newAchievements
+                    else -> 0
+                }
             RailButton(entry, panel == entry.panel, badge) { onPanel(entry.panel) }
         }
     }

@@ -170,6 +170,7 @@ private fun BoxScope.TouchOverlays(
     }
     if (touch.views) MapViewSwitcher(hud.toggles, Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
     frame.warmup?.let { WarmupBanner(it, Modifier.align(Alignment.BottomStart).padding(8.dp)) }
+    HighlightToasts(game.highlights, hud::show, Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
     if (touch.feed && hud.panel == SidePanel.NONE) {
         HudFeed(frame, hud::show, Modifier.align(Alignment.TopEnd).padding(8.dp))
     }

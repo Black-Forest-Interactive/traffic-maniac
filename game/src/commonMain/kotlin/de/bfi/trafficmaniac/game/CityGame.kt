@@ -24,7 +24,11 @@ class CityGame(
     val simulation = Simulation(city, config)
     private val commands = Channel<GameCommand>(Channel.UNLIMITED)
     private val messages = ArrayDeque<GameMessage>()
-    private val treasury = Treasury(rules.startBudget) { message(it, kind = MessageKind.PROBLEM) }
+    private val treasury =
+        Treasury(rules.startBudget) {
+            message(it, kind = MessageKind.PROBLEM)
+            highlights.add(HighlightKind.WARNING, it)
+        }
     private val works = PublicWorks(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
     private val timing = SignalTiming(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
     private val roadworks =
@@ -50,10 +54,37 @@ class CityGame(
         EventPlanner(city, simulation, rules) { text, place -> message(text, place, MessageKind.PROBLEM) }
     private val press = Press(rules, treasury) { message(it, kind = MessageKind.SUCCESS) }
     private val achievements =
-        Achievements {
-            alerts++
-            message(it, kind = MessageKind.SUCCESS)
-        }
+        Achievements(
+            object : AchievementEvents {
+                override fun unlocked(achievement: Achievement) {
+                    alerts++
+                    message(
+                        tr("Achievement freigeschaltet: {title}!", "title" to achievement.title),
+                        kind = MessageKind.SUCCESS,
+                    )
+                    highlights.add(
+                        HighlightKind.BIG,
+                        tr("Errungenschaft: {title}", "title" to achievement.title),
+                        achievement.description,
+                    )
+                }
+
+                override fun almost(
+                    achievement: Achievement,
+                    missing: Int,
+                ) {
+                    highlights.add(
+                        HighlightKind.MEDIUM,
+                        tr("Fast geschafft: {title}", "title" to achievement.title),
+                        tr(
+                            "Noch {missing} – {description}",
+                            "missing" to missing,
+                            "description" to achievement.description,
+                        ),
+                    )
+                }
+            },
+        )
     private val firstDay = simulation.gameTime.day
     private val bridges =
         city.roads.segments
@@ -102,6 +133,17 @@ class CityGame(
     @Transient
     var alerts = 0
         private set
+
+    @Transient
+    private var highlightLog: HighlightLog? = null
+
+    /** Was die Oberfläche einblenden soll (nicht im Spielstand). */
+    private val highlights: HighlightLog
+        get() = highlightLog ?: HighlightLog().also { highlightLog = it }
+
+    /** Blitzer, die ihre Kosten schon eingespielt haben (für die Meldung, nicht im Spielstand). */
+    @Transient
+    private var paidOff: HashSet<Int>? = null
 
     /** Für Tests: ein Ereignis melden, ohne eines herbeizuspielen. */
     internal fun raiseAlert() {
@@ -159,10 +201,10 @@ class CityGame(
             execute(command)
             executed = true
         }
-        // Der Schilderwald entsteht durch Werkzeuge – er wird sofort gefeiert, nicht erst zur vollen Stunde
-        if (executed) revision++
-        if (executed && PublicWorks.SIGN_FOREST in works.achievements) {
-            achievements.check(AchievementFacts(signForest = true), simulation.gameTime.day)
+        // Was der Spieler baut (erster Blitzer, Schilderwald …), wird sofort gefeiert, nicht erst zur vollen Stunde
+        if (executed) {
+            revision++
+            achievements.check(hourlyFacts(), simulation.gameTime.day)
         }
         val reportsBefore = simulation.dayReports.size
         simulation.step()
@@ -172,6 +214,7 @@ class CityGame(
         achievements.checkLive(
             simulation.incidentsToday[IncidentKind.TRUCK_STUCK] ?: 0,
             recordRatioToday,
+            treasury.fineIncome,
             simulation.gameTime.day,
         )
         simulation.finishedTrips.drain().forEach(citizens::tripFinished)
@@ -198,6 +241,7 @@ class CityGame(
             ploughs = winter.ploughs,
             cameras = works.cameraCounters.values.map { it.toRecord() },
             messages = messages.toList(),
+            highlights = highlights.list(),
             prContract = prContract,
             argumentsCampaign = argumentsCampaign,
             unhappyShare = unhappyShare,
@@ -270,7 +314,11 @@ class CityGame(
         unhappyShare = citizens.unhappyShare(moods)
         val incomeThisHour = treasury.fineIncome - fineIncomeAtHourStart
         fineIncomeAtHourStart = treasury.fineIncome
-        politics.hourPassed(unhappyShare, prContract, argumentsCampaign, incomeThisHour).forEach(::message)
+        politics.hourPassed(unhappyShare, prContract, argumentsCampaign, incomeThisHour).forEach {
+            message(it)
+            if (politics.recallIndex >= RECALL_WARNING) highlights.add(HighlightKind.WARNING, it)
+        }
+        announcePaidOffCameras()
         press.hourPassed(unhappyShare)
         events.hourPassed(politics.anger, drivers.bannedCount, moods)
         achievements.check(hourlyFacts(), simulation.gameTime.day)
@@ -294,7 +342,25 @@ class CityGame(
             revocations = drivers.revocations,
             lawsuits = maintenanceState.lawsuits,
             reputation = politics.reputation,
+            fineIncome = treasury.fineIncome,
+            repairs = maintenanceState.repaired,
+            daysEnded = simulation.dayReports.size,
         )
+    }
+
+    /** Ein fester Blitzer hat so viel eingenommen, wie er gekostet hat: einmal melden. */
+    private fun announcePaidOffCameras() {
+        val announced = paidOff ?: HashSet<Int>().also { paidOff = it }
+        for (camera in works.cameraCounters.values.map { it.toRecord() }) {
+            if (camera.display || camera.mobile || camera.policeCheck || camera.cameraId in announced) continue
+            if (camera.totalRevenue < rules.cameraCost) continue
+            announced += camera.cameraId
+            highlights.add(
+                HighlightKind.MEDIUM,
+                tr("Blitzer {street} hat sich bezahlt gemacht", "street" to camera.streetName),
+                tr("{revenue} eingenommen – alles Weitere ist Gewinn", "revenue" to formatEuro(camera.totalRevenue)),
+            )
+        }
     }
 
     /** Mitternacht: Zeitung drucken, Lasertrupps bezahlen, Haushaltsrunde. */
@@ -580,6 +646,9 @@ class CityGame(
     }
 
     private companion object {
+        /** Ab diesem Abwahlindex werden Warnungen der Politik rot eingeblendet. */
+        const val RECALL_WARNING = 50.0
+
         /** So viele Meldungen hält das Spiel vor; die Oberfläche zeigt davon die neuesten (gebündelt). */
         const val MAX_MESSAGES = 30
         const val SECONDS_PER_HOUR = 3_600.0

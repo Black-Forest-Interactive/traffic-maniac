@@ -100,6 +100,8 @@ data class GameState(
     val idleTrailers: Int = 0,
     /** Erster Spieltag (Tage seit dem Montag der ersten Woche) – Szenarien beginnen nicht immer montags. */
     val firstDay: Int = 0,
+    /** Was die Oberfläche einblenden soll, mit fortlaufender Nummer (die neuesten zuletzt). */
+    val highlights: List<Highlight> = emptyList(),
     /** Bilanz des ersten Spieltags – Bezug für die Verkehrsbilanz im Tagesabschluss. */
     val firstDayReport: DayReport? = null,
 ) {
