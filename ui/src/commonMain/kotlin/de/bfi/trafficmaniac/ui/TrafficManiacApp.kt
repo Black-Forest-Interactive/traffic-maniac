@@ -64,8 +64,14 @@ private val HUD_REFRESH = 250.milliseconds
 /** Unter dem Kartenumschalter. */
 private const val WARMUP_TOP = 64
 
-/** Einblendungen ebenfalls unter dem Kartenumschalter (der Vorlauf ist vorbei, wenn sie kommen). */
-private const val TOAST_TOP = 64
+/** Symbole sind größer als der Fangradius für Straßen – etwas großzügiger treffen. */
+private const val INSPECT_RADIUS_FACTOR = 1.5f
+
+/** Eine Meldung zeigt auf eine Straße; das Ziel liegt höchstens so weit davon entfernt. */
+private const val MESSAGE_INSPECT_METERS = 150f
+
+/** Einblendungen unter Kartenumschalter und Zähler-Chips. */
+private const val TOAST_TOP = 104
 private const val PICK_RADIUS_PIXELS = 14f
 private const val MIN_PICK_RADIUS_METERS = 6f
 private const val MILLIS_PER_SECOND = 1_000.0
@@ -104,6 +110,28 @@ internal class HudState(
 
     fun show(place: MapPlace) {
         focus = MapFocus(place.x, place.y)
+        inspectRequest = place
+    }
+
+    /** Aktionskarte zu einem angeklickten Schaden oder Vorfall. */
+    var inspected by mutableStateOf<Inspected?>(null)
+
+    /** Meldung angeklickt: dort nachsehen, was es gibt (die Karte sucht das Ziel). */
+    var inspectRequest by mutableStateOf<MapPlace?>(null)
+
+    /** Zähler-Chips: wo die Reihe beim nächsten Klick weitergeht. */
+    private var nextTarget = 0
+
+    /** Zum nächsten Schaden ([damage]) bzw. Vorfall springen und die Aktionskarte öffnen. */
+    fun showNext(
+        targets: List<InspectTarget>,
+        damage: Boolean,
+    ) {
+        val matching = targets.filter { (it.target is Inspected.Damage) == damage }.distinctBy { it.target }
+        if (matching.isEmpty()) return
+        val target = matching[nextTarget++ % matching.size]
+        focus = MapFocus(target.x, target.y)
+        inspected = target.target
     }
 
     /** Erfolge, die der Spieler beim letzten Öffnen des Fensters schon gesehen hat (−1 = noch kein Bild). */
@@ -287,10 +315,18 @@ private fun MapArea(
     Box(modifier.fillMaxSize()) {
         MapLayer(city, traffic, hud, picker, rules, sprites, network)
         // Mittig über dem Teil der Karte rechts neben Verkehrslage und Meldungen – sonst überlappen sie
-        Box(
+        Column(
             Modifier.fillMaxWidth().padding(start = (FEED_WIDTH + FEED_GAP).dp, top = 14.dp),
-            contentAlignment = Alignment.TopCenter,
-        ) { MapViewSwitcher(hud.toggles) }
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            MapViewSwitcher(hud.toggles)
+            hudFrame?.let { frame ->
+                InspectChips(frame, { damage ->
+                    hud.showNext(inspectTargets(frame.game, frame.current.incidents, picker, city), damage)
+                })
+            }
+        }
         ZoomControls({ hud.zoom = MapZoom(it) }, Modifier.align(Alignment.CenterEnd).padding(end = 14.dp))
         hudFrame?.let { frame ->
             HudFeed(frame, hud::show, Modifier.align(Alignment.TopStart).padding(14.dp))
@@ -313,6 +349,16 @@ private fun MapArea(
                 Modifier.align(Alignment.TopCenter).padding(start = (FEED_WIDTH + FEED_GAP).dp, top = TOAST_TOP.dp),
             )
             DeveloperOverlays(frame, hud, network, input)
+            hud.inspected?.let { inspected ->
+                InspectCard(
+                    frame,
+                    inspected,
+                    rules,
+                    command,
+                    { hud.inspected = null },
+                    Modifier.align(Alignment.BottomEnd).padding(end = 14.dp, bottom = 24.dp),
+                )
+            }
             val dock =
                 ToolDockState(
                     hud.selection,
@@ -342,6 +388,14 @@ internal fun MapLayer(
     pickRadiusPixels: Float = PICK_RADIUS_PIXELS,
 ) {
     val route = remember(city) { StreetRoute(city) }
+    // Meldung angeklickt: am Ort nachsehen, ob dort ein Schaden oder Vorfall ist
+    LaunchedEffect(hud.inspectRequest) {
+        val place = hud.inspectRequest ?: return@LaunchedEffect
+        val frame = traffic?.value ?: return@LaunchedEffect
+        val targets = inspectTargets(frame.game, frame.current.incidents, picker, city)
+        hud.inspected = inspectAt(targets, place.x, place.y, MESSAGE_INSPECT_METERS) ?: hud.inspected
+        hud.inspectRequest = null
+    }
     Unscaled {
         MapView(
             focus = hud.focus,
@@ -356,8 +410,13 @@ internal fun MapLayer(
             onZoom = { hud.zoomLevel[0] = it },
             onMapClick = { x, y, metersPerPixel ->
                 val radius = max(MIN_PICK_RADIUS_METERS, pickRadiusPixels * metersPerPixel)
+                val frame = traffic?.value
                 if (network != null) {
                     hud.networkPick = network.pick(x, y, radius)
+                } else if (hud.selection.kind == ToolKind.LOOK && frame != null) {
+                    // Ansehen: Schaden oder Vorfall unter dem Klick öffnen, daneben schließt die Karte
+                    val targets = inspectTargets(frame.game, frame.current.incidents, picker, city)
+                    hud.inspected = inspectAt(targets, x, y, radius * INSPECT_RADIUS_FACTOR)
                 } else {
                     hud.plan.click(
                         hud.selection,

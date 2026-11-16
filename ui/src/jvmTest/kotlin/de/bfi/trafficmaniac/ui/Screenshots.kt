@@ -6,7 +6,10 @@ import androidx.compose.ui.unit.Density
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.game.CityGame
+import de.bfi.trafficmaniac.game.DamageReport
+import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.game.GameCommand
+import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.Highlight
 import de.bfi.trafficmaniac.game.HighlightKind
@@ -14,6 +17,7 @@ import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.NewspaperEdition
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.game.TrafficFrame
+import de.bfi.trafficmaniac.sim.DamageKind
 import de.bfi.trafficmaniac.sim.DayReport
 import de.bfi.trafficmaniac.sim.GameTime
 import de.bfi.trafficmaniac.sim.Weekday
@@ -80,6 +84,7 @@ class Screenshots {
         }
         touch(out, city, frame)
         dayReport(out, frame)
+        inspectCard(out, frame)
         shoot(File(out, "toasts.png"), TOAST_SHOT_WIDTH, TOAST_SHOT_HEIGHT, settleMillis = TOAST_SETTLE_MILLIS) {
             HighlightToasts(
                 listOf(
@@ -140,6 +145,32 @@ class Screenshots {
                     input = input,
                 )
             }
+        }
+    }
+
+    /** Aktionskarte zu einem angeklickten Schlagloch (Schaden von Hand eingetragen). */
+    private fun inspectCard(
+        out: File,
+        frame: TrafficFrame,
+    ) {
+        val report =
+            DamageReport(
+                id = 1,
+                kind = DamageKind.POTHOLES,
+                segment = 0,
+                node = -1,
+                place = "Goethestraße",
+                reportedAt = frame.current.gameTime,
+                hoursLeft = 31.0,
+                status = DamageStatus.OPEN,
+                conditionPercent = 52,
+                repairCost = 25_000,
+            )
+        val game = frame.game.copy(maintenance = frame.game.maintenance.copy(reports = listOf(report)))
+        val withDamage =
+            TrafficFrame(frame.current, frame.current, TimeSource.Monotonic.markNow(), 1.seconds, 0.0, 1, 1, null, game)
+        shoot(File(out, "inspect-card.png"), INSPECT_SHOT_WIDTH, INSPECT_SHOT_HEIGHT) {
+            InspectCard(withDamage, Inspected.Damage(1), GameRules(), {}, {})
         }
     }
 
@@ -260,6 +291,8 @@ class Screenshots {
     private companion object {
         val SIZES = listOf(1440 to 900, 2000 to 1050)
         const val TOAST_SHOT_WIDTH = 600
+        const val INSPECT_SHOT_WIDTH = 480
+        const val INSPECT_SHOT_HEIGHT = 300
         const val TOAST_SHOT_HEIGHT = 300
         const val TOAST_SETTLE_MILLIS = 900L
         const val SETTLE_STEP_MILLIS = 16L

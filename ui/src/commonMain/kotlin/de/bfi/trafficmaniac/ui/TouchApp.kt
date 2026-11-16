@@ -110,7 +110,7 @@ fun TouchGameApp(
                         )
                         Box(Modifier.weight(1f).fillMaxSize()) {
                             MapLayer(city, traffic, hud, picker, rules, sprites, null, touchPickRadius())
-                            hudFrame?.let { TouchOverlays(it, hud, touch, rules, command, sprites) }
+                            hudFrame?.let { TouchOverlays(it, hud, touch, rules, command, sprites, picker, city) }
                         }
                         // Fenster rechts neben der Karte (nicht darüber): die Karte bleibt ganz sichtbar
                         hudFrame?.takeIf { hud.panel != SidePanel.NONE }?.let { frame ->
@@ -156,6 +156,8 @@ private fun BoxScope.TouchOverlays(
     rules: GameRules,
     command: (GameCommand) -> Unit,
     sprites: SpriteSource,
+    picker: MapPicker,
+    city: CityMap,
 ) {
     val game = frame.game
     val income = game.fineIncome + game.parkingOffice.feeIncome + game.parkingOffice.ticketIncome
@@ -170,7 +172,17 @@ private fun BoxScope.TouchOverlays(
     }
     if (touch.views) MapViewSwitcher(hud.toggles, Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
     frame.warmup?.let { WarmupBanner(it, Modifier.align(Alignment.BottomStart).padding(8.dp)) }
-    HighlightToasts(game.highlights, hud::show, Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
+    InspectChips(
+        frame,
+        { damage -> hud.showNext(inspectTargets(game, frame.current.incidents, picker, city), damage) },
+        Modifier.align(Alignment.TopCenter).padding(top = if (touch.views) CHIPS_BELOW_VIEWS.dp else 8.dp),
+    )
+    HighlightToasts(game.highlights, hud::show, Modifier.align(Alignment.TopCenter).padding(top = TOAST_TOP.dp))
+    hud.inspected?.let { inspected ->
+        InspectCard(frame, inspected, rules, command, {
+            hud.inspected = null
+        }, Modifier.align(Alignment.TopStart).padding(8.dp))
+    }
     if (touch.feed && hud.panel == SidePanel.NONE) {
         HudFeed(frame, hud::show, Modifier.align(Alignment.TopEnd).padding(8.dp))
     }
@@ -209,5 +221,7 @@ private fun BoxScope.TouchOverlays(
 }
 
 private const val TOUCH_PICK_RADIUS = 18
+private const val CHIPS_BELOW_VIEWS = 56
+private const val TOAST_TOP = 48
 private const val MONEY_RAIN_SIZE = 240
 private const val TUTORIAL_WIDTH = 340
