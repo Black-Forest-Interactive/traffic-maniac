@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
+import de.bfi.trafficmaniac.game.Assignment
 import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.sim.InfrastructureSnapshot
@@ -64,6 +65,22 @@ internal fun DrawScope.drawWorksAndDetours(
     }
     for (segment in infrastructure.collapsedSegments) {
         drawPath(paths[segment], MapStyle.collapsed, style = Stroke(width * COLLAPSE_WIDTH_FACTOR))
+    }
+}
+
+/** Offene Aufträge: eine Sprechblase über dem Ort (ohne Grafik ein gelber Punkt mit Rand). */
+internal fun DrawScope.drawAssignments(
+    assignments: List<Assignment>,
+    scale: Float,
+    sprites: SpriteSource = NoSprites,
+) {
+    val size = max(DAMAGE_SIZE_METERS, DAMAGE_MIN_PIXELS / scale) * ASSIGNMENT_SIZE
+    for (assignment in assignments) {
+        val center = Offset(assignment.place.x, assignment.place.y - size * 2)
+        if (!drawSprite(sprites, "speech_boss", center, size * 2, size * 2, scale)) {
+            drawCircle(MapStyle.assignment, size, center)
+            drawCircle(MapStyle.assignmentRim, size, center, style = Stroke(size * ASSIGNMENT_RIM))
+        }
     }
 }
 
@@ -206,6 +223,8 @@ private const val DETOUR_ALPHA = 0.6f
 private const val COLLAPSE_WIDTH_FACTOR = 1.5f
 private const val DASH = 1.5f
 private const val DAMAGE_SIZE_METERS = 4f
+private const val ASSIGNMENT_SIZE = 1.6f
+private const val ASSIGNMENT_RIM = 0.25f
 private const val DAMAGE_MIN_PIXELS = 5f
 private const val CRATER_PERCENT = 35
 private const val CRATER_HOLES = 3

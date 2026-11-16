@@ -275,6 +275,14 @@ private fun RepairActions(
     respond: (DamageResponse) -> Unit,
 ) {
     val base = report.repairCost
+    if (report.canPatch) {
+        OptionButton(
+            tr("Flicken (Kaltasphalt, sofort)"),
+            { respond(DamageResponse.Patch) },
+            Modifier.fillMaxWidth(),
+            formatEuro(rules.patchCost),
+        )
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         OptionButton(
             tr("Ausschreibung"),

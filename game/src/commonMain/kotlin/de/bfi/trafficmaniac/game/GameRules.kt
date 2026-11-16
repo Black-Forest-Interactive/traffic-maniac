@@ -120,6 +120,12 @@ data class GameRules(
     val bridgeWeightLimitTons: Float = 7.5f,
     val bridgeClosureCost: Long = 2_000,
     val repairCostPotholes: Long = 25_000,
+    /** Aufträge (v0.9 Paket 4). */
+    val assignments: AssignmentRules = AssignmentRules(),
+    /** Flicken mit Kaltasphalt: sofort, billig, aber nur knapp über der Schlagloch-Schwelle und doppelter Verschleiß. */
+    val patchCost: Long = 1_500,
+    val patchCondition: Double = 0.65,
+    val patchWearFactor: Double = 2.0,
     val repairCostCrater: Long = 45_000,
     val repairCostSignal: Long = 15_000,
     val repairCostBridge: Long = 180_000,
@@ -205,3 +211,22 @@ data class GameRules(
         val DEFAULT_PARKING_FEES = listOf(0.0, 1.0, 1.5, 2.0, 3.0, 5.0)
     }
 }
+
+/** Aufträge: so viele je Spielstunde (6–20 Uhr), am ersten Tag mal [firstDayFactor], höchstens [maxOpen] offen. */
+@Serializable
+data class AssignmentRules(
+    val perHour: Double = 1.5,
+    val firstDayFactor: Double = 2.0,
+    val maxOpen: Int = 4,
+    val rewardTempo30: Long = 2_000,
+    val hoursTempo30: Double = 6.0,
+    val rewardAccident: Long = 4_000,
+    val hoursAccident: Double = 12.0,
+    val rewardPothole: Long = 1_500,
+    val hoursPothole: Double = 8.0,
+    val potholeReputation: Double = 0.5,
+    val rewardSpeeder: Long = 1_000,
+    val hoursSpeeder: Double = 24.0,
+    val speederCheckHours: Int = 2,
+    val missedReputationLoss: Double = 0.3,
+)

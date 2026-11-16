@@ -185,4 +185,9 @@ sealed interface GameCommand {
     data class FireWardens(
         val count: Int,
     ) : GameCommand
+
+    /** Auftrag ablehnen: kein Ärger, aber dieselbe Art kommt einen Tag lang nicht wieder. */
+    data class DeclineAssignment(
+        val id: Int,
+    ) : GameCommand
 }

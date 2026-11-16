@@ -85,6 +85,28 @@ class CityGame(
                 }
             },
         )
+    private val assignments =
+        Assignments(
+            city,
+            rules,
+            object : AssignmentEffects {
+                override fun reward(euros: Long) = treasury.earnGrant(euros)
+
+                override fun reputation(change: Double) = politics.press(change)
+
+                override fun announce(
+                    text: String,
+                    place: MapPlace?,
+                    kind: HighlightKind,
+                    title: String,
+                ) {
+                    val messageKind = if (kind == HighlightKind.BIG) MessageKind.SUCCESS else MessageKind.PROBLEM
+                    message(text, place, messageKind)
+                    highlights.add(kind, title, text, place)
+                }
+            },
+            config.seed,
+        )
     private val firstDay = simulation.gameTime.day
     private val bridges =
         city.roads.segments
@@ -180,6 +202,7 @@ class CityGame(
                     "parking" to treasury.parkingIncome,
                     "tickets" to treasury.ticketIncome,
                     "allowance" to treasury.allowances,
+                    "grants" to treasury.grantIncome,
                 ),
             expenses = treasury.expenses,
             days = telemetryLog.days.toList(),
@@ -242,6 +265,8 @@ class CityGame(
             cameras = works.cameraCounters.values.map { it.toRecord() },
             messages = messages.toList(),
             highlights = highlights.list(),
+            assignments = assignments.state(simulation.time),
+            grantIncome = treasury.grantIncome,
             prContract = prContract,
             argumentsCampaign = argumentsCampaign,
             unhappyShare = unhappyShare,
@@ -321,6 +346,16 @@ class CityGame(
         announcePaidOffCameras()
         press.hourPassed(unhappyShare)
         events.hourPassed(politics.anger, drivers.bannedCount, moods)
+        val snapshot = simulation.snapshot()
+        assignments.hourPassed(
+            AssignmentWorld(
+                state(),
+                snapshot.incidents,
+                simulation.time,
+                simulation.gameTime,
+                simulation.gameTime.day == firstDay,
+            ),
+        )
         achievements.check(hourlyFacts(), simulation.gameTime.day)
         if (isGameOver) message(tr("Der Gemeinderat hat Ihnen das Vertrauen entzogen. Sie sind abgewählt!"))
     }
@@ -463,6 +498,10 @@ class CityGame(
     private fun execute(command: GameCommand) {
         telemetryLog.used(command)
         when (command) {
+            is GameCommand.DeclineAssignment -> {
+                assignments.decline(command.id, simulation.time)
+            }
+
             is GameCommand.SetSpeedLimit -> {
                 works.setSpeedLimit(command.segment, command.kmh, command.nightOnly)
             }

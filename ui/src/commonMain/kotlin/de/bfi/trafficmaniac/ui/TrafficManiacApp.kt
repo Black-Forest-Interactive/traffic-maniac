@@ -64,6 +64,9 @@ private val HUD_REFRESH = 250.milliseconds
 /** Unter dem Kartenumschalter. */
 private const val WARMUP_TOP = 64
 
+/** „Tempo 30 gewünscht“: das Tempolimit-Werkzeug gleich auf 30 stellen. */
+private const val ASSIGNMENT_LIMIT = 30
+
 /** Symbole sind größer als der Fangradius für Straßen – etwas großzügiger treffen. */
 private const val INSPECT_RADIUS_FACTOR = 1.5f
 
@@ -112,6 +115,27 @@ internal class HudState(
         focus = MapFocus(place.x, place.y)
         inspectRequest = place
     }
+
+    /** Auftragskarten: „Hin“ fliegt zum Ort und wählt das passende Werkzeug, „Ablehnen“ schickt den Befehl. */
+    fun assignmentActions(command: (GameCommand) -> Unit) =
+        AssignmentActions(
+            onGo = { assignment ->
+                show(assignment.place)
+                assignment.kind.tool()?.let { kind ->
+                    val next = selection.with(kind)
+                    pick(
+                        if (kind ==
+                            ToolKind.SPEED_LIMIT
+                        ) {
+                            next.copy(speedLimit = ASSIGNMENT_LIMIT, nightOnly = false)
+                        } else {
+                            next
+                        },
+                    )
+                }
+            },
+            onDecline = { command(GameCommand.DeclineAssignment(it.id)) },
+        )
 
     /** Aktionskarte zu einem angeklickten Schaden oder Vorfall. */
     var inspected by mutableStateOf<Inspected?>(null)
@@ -329,7 +353,7 @@ private fun MapArea(
         }
         ZoomControls({ hud.zoom = MapZoom(it) }, Modifier.align(Alignment.CenterEnd).padding(end = 14.dp))
         hudFrame?.let { frame ->
-            HudFeed(frame, hud::show, Modifier.align(Alignment.TopStart).padding(14.dp))
+            HudFeed(frame, hud::show, Modifier.align(Alignment.TopStart).padding(14.dp), hud.assignmentActions(command))
             val game = frame.game
             val income = game.fineIncome + game.parkingOffice.feeIncome + game.parkingOffice.ticketIncome
             MoneyRain(

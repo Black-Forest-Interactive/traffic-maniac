@@ -3,6 +3,7 @@ package de.bfi.trafficmaniac.desktop
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.city.RoadClass
+import de.bfi.trafficmaniac.game.AssignmentKind
 import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.DamageResponse
 import de.bfi.trafficmaniac.game.DamageStatus
@@ -72,6 +73,10 @@ private enum class Strategy(
     val description: String,
 ) {
     NOTHING("nichts", "Nichts tun"),
+    ASSIGNMENTS(
+        "auftraege",
+        "Wie einsteiger, dazu jeden Auftrag erledigen (Tempo 30, Tafel, Flicken, Kontrolle)",
+    ),
     BEGINNER(
         "einsteiger",
         "Tempo 30 + Blitzer auf zentralen Hauptstraßen, sobald das Geld reicht – wie ein neuer Spieler",
@@ -112,6 +117,11 @@ private fun play(
         val state = game.state()
         val report = game.simulation.dayReports.last()
         log.append(dayLine(day, state, report))
+        if (state.grantIncome >
+            0
+        ) {
+            log.append("      Zuschüsse aus Aufträgen bisher: ${formatEuro(state.grantIncome)}\n")
+        }
         log.append(moodLine(state))
         state.latestEdition?.let { edition ->
             log.append("      Zeitung: ${edition.headlines.joinToString(" / ")}\n")
@@ -232,12 +242,44 @@ private fun playHour(
     val investing = !saving && (strategy != Strategy.MODERATE_PR || calm)
     val camerasEverywhere = strategy in setOf(Strategy.RIP_OFF, Strategy.RIP_OFF_PR, Strategy.MODERATE_PR)
     if (camerasEverywhere && investing) investInCameras(game, targets)
-    if (strategy == Strategy.BEGINNER && !saving) investInCameras(game, targets, kmh = BEGINNER_KMH)
+    val beginner = strategy == Strategy.BEGINNER || strategy == Strategy.ASSIGNMENTS
+    if (beginner && !saving) investInCameras(game, targets, kmh = BEGINNER_KMH)
+    if (strategy == Strategy.ASSIGNMENTS) doAssignments(game)
     if (strategy != Strategy.NOTHING) staffFineOffice(game)
     if (strategy == Strategy.SIGN_CAMERA) signAndCamera(game)
     if (strategy == Strategy.REPAIR) repairEverything(game)
     if (strategy == Strategy.CEREMONY && game.simulation.gameTime.hour == CEREMONY_HOUR) {
         game.submit(GameCommand.HoldCeremony)
+    }
+}
+
+/** Jeden offenen Auftrag mit dem billigsten passenden Werkzeug erledigen. */
+private fun doAssignments(game: CityGame) {
+    for (assignment in game.state().assignments) {
+        val segment = assignment.segments.first()
+        when (assignment.kind) {
+            AssignmentKind.TEMPO_30 -> {
+                assignment.segments.forEach {
+                    game.submit(
+                        GameCommand.SetSpeedLimit(it, BEGINNER_KMH),
+                    )
+                }
+            }
+
+            AssignmentKind.ACCIDENT_SPOT -> {
+                game.submit(GameCommand.PlaceDisplay(segment))
+            }
+
+            AssignmentKind.POTHOLE -> {
+                game.submit(
+                    GameCommand.RespondToDamage(assignment.reportId, DamageResponse.Patch),
+                )
+            }
+
+            AssignmentKind.SPEEDER -> {
+                game.submit(GameCommand.PlacePoliceCheck(segment))
+            }
+        }
     }
 }
 

@@ -51,6 +51,9 @@ sealed interface DamageResponse {
     data object Close : DamageResponse
 
     data object Ignore : DamageResponse
+
+    /** Nur Schlaglöcher: sofort mit Kaltasphalt flicken – billig, hält aber nicht lange. */
+    data object Patch : DamageResponse
 }
 
 enum class DamageStatus(
@@ -96,6 +99,9 @@ data class DamageReport(
     /** Kosten einer normalen Ausschreibung (Turbo: × [GameRules.turboCostFactor]). */
     val repairCost: Long = 0,
 ) {
+    /** Kaltasphalt hilft nur bei Schlaglöchern, nicht bei Kratern, Brücken oder Ampeln. */
+    val canPatch: Boolean get() = kind == DamageKind.POTHOLES && segments.isNotEmpty()
+
     /** Einsturzgefährdeten Brücken hilft kein Schild mehr. */
     val canSign: Boolean get() = kind != DamageKind.BRIDGE_UNSAFE && kind != DamageKind.BRIDGE_COLLAPSE
 
@@ -331,6 +337,10 @@ internal class Maintenance(
                 close(case)
             }
 
+            DamageResponse.Patch -> {
+                patch(case)
+            }
+
             DamageResponse.Ignore -> {
                 case.status = DamageStatus.IGNORED
                 messenger.say(
@@ -339,6 +349,19 @@ internal class Maintenance(
                 )
             }
         }
+    }
+
+    private fun patch(case: DamageCase) {
+        if (case.kind != DamageKind.POTHOLES || case.segments.isEmpty()) {
+            return messenger.say(tr("Mit Kaltasphalt ist hier nichts mehr zu machen."))
+        }
+        if (!treasury.pay(rules.patchCost, tr("Kaltasphalt"))) return
+        for (segment in case.segments) {
+            simulation.infrastructure.repairSegment(segment, rules.patchCondition, rules.patchWearFactor)
+        }
+        cases.remove(case)
+        construction.countRepair()
+        messenger.say(tr("Geflickt: {place} – hält ein paar Tage", "place" to case.place), places.locate(case))
     }
 
     private fun sign(

@@ -438,6 +438,7 @@ private fun DrawScope.drawTraffic(
     drawSnow(effects.flow.paths, traffic.current.weather, camera.scale)
     drawIncidents(traffic.current.incidents, camera.scale, effects.sprites)
     drawDamage(traffic.game.maintenance.reports, picker, camera.scale, effects.sprites)
+    drawAssignments(traffic.game.assignments, camera.scale, effects.sprites)
     drawInfrastructureIcons(traffic.current.infrastructure, picker, camera.scale, effects.sprites)
     drawExcavators(
         traffic.current.infrastructure.worksSegments

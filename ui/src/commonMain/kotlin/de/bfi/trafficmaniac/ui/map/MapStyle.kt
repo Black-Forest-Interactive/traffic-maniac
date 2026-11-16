@@ -64,6 +64,8 @@ object MapStyle {
     val works = Color(0xFFFF7B00)
     val collapsed = Color(0xFF14141F)
     val pothole = Color(0xFF5C4033)
+    val assignment = Color(0xFFFFC300)
+    val assignmentRim = Color(0xFF15202B)
     val planning = Color(0xFF8D99AE)
     val parking = Color(0xFF1E6FD9)
     val stuckTruck = Color(0xFF5C6B7A)

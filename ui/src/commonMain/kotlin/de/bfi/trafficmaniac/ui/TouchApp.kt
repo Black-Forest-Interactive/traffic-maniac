@@ -184,7 +184,7 @@ private fun BoxScope.TouchOverlays(
         }, Modifier.align(Alignment.TopStart).padding(8.dp))
     }
     if (touch.feed && hud.panel == SidePanel.NONE) {
-        HudFeed(frame, hud::show, Modifier.align(Alignment.TopEnd).padding(8.dp))
+        HudFeed(frame, hud::show, Modifier.align(Alignment.TopEnd).padding(8.dp), hud.assignmentActions(command))
     }
     val dock =
         ToolDockState(
