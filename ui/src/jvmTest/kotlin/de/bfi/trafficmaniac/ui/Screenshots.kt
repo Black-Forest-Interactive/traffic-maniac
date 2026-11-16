@@ -70,6 +70,8 @@ class Screenshots {
                         onSpeed = {},
                         onSave = {},
                         onMenu = {},
+                        onFastForward = {},
+                        onResumeSpeed = {},
                     )
                 }
             }
@@ -115,7 +117,7 @@ class Screenshots {
                     MutableStateFlow(frame),
                     de.bfi.trafficmaniac.game
                         .GameRules(),
-                    TouchCallbacks({}, {}, {}, onMenu = {}),
+                    TouchCallbacks({}, {}, {}, onMenu = {}, onFastForward = {}, onResumeSpeed = {}),
                     tutorial = name == "tutorial",
                     input = input,
                 )

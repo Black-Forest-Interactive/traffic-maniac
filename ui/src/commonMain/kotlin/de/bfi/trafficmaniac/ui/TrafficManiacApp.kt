@@ -185,6 +185,10 @@ fun TrafficManiacApp(
     tutorial: Boolean = false,
     /** Zeitraffer wählen (0 = Pause); `null` blendet die Tempo-Knöpfe aus. */
     onSpeed: ((Int) -> Unit)? = null,
+    /** Nach der Auto-Bremse mit dem alten Tempo weiter. */
+    onResumeSpeed: (() -> Unit)? = null,
+    /** Vorspulen bis zum nächsten Ereignis. */
+    onFastForward: (() -> Unit)? = null,
     /** Tasten aus dem Fenster: Werkzeuge und Entwickler-Anzeige. */
     input: HudInput = remember { HudInput() },
 ) {
@@ -203,7 +207,18 @@ fun TrafficManiacApp(
     TmTheme {
         Box(Modifier.fillMaxSize().background(TmColors.Ground)) {
             Column(Modifier.fillMaxSize()) {
-                hudFrame?.let { HudTopBar(it, TopBarActions(onSpeed, onSave, onMenu)) }
+                hudFrame?.let {
+                    HudTopBar(
+                        it,
+                        TopBarActions(
+                            onSpeed,
+                            onSave,
+                            onMenu,
+                            onResume = onResumeSpeed,
+                            onFastForward = onFastForward,
+                        ),
+                    )
+                }
                 Row(Modifier.weight(1f)) {
                     HudRail(hud.panel, hud::togglePanel, hudFrame?.current?.incidents?.size ?: 0)
                     MapArea(

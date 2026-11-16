@@ -16,6 +16,9 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
+/** So viel langsamer als gewählt darf das erreichte Tempo sein, ehe die Anzeige es meldet. */
+private const val LAG_TOLERANCE = 0.15
+
 /**
  * Zwei aufeinanderfolgende Simulationszustände. Die Oberfläche interpoliert zwischen [previous] und [current],
  * damit Fahrzeuge auch bei 10 Ticks pro Sekunde flüssig fahren.
@@ -36,7 +39,16 @@ class TrafficFrame(
     val game: GameState,
     /** Fortschritt des Vorlaufs (0..1), solange er läuft; sonst `null`. */
     val warmup: Float? = null,
+    /** Tatsächlich erreichter Zeitraffer (gemessen, geglättet) – kleiner als [effectiveSpeed], wenn das Gerät nicht nachkommt. */
+    val actualSpeed: Double = effectiveSpeed.toDouble(),
+    /** Die Auto-Bremse hat von diesem Tempo auf [GameRunner.BRAKE_TO] gebremst; `null`, wenn nicht. */
+    val brakedFrom: Int? = null,
+    /** „Vorspulen bis zum nächsten Ereignis“ läuft. */
+    val fastForward: Boolean = false,
 ) {
+    /** Das Gerät schafft das gewählte Tempo nicht (mehr als 15 % langsamer). */
+    val lagging: Boolean get() = effectiveSpeed > 0 && actualSpeed < effectiveSpeed * (1 - LAG_TOLERANCE)
+
     /** Anteil des Wegs von [previous] nach [current] für den aktuellen Bildschirm-Frame (0..1). */
     fun interpolation(): Float =
         if (effectiveSpeed ==
@@ -52,8 +64,10 @@ class TrafficFrame(
  * Lässt das Spiel in Echtzeit (oder im Zeitraffer) auf einem Hintergrund-Thread laufen
  * und veröffentlicht laufend [TrafficFrame]s.
  *
- * - Nachts (22–5 Uhr) läuft die Zeit automatisch [NIGHT_BOOST]-mal schneller.
+ * - Nachts (22–5 Uhr) läuft die Zeit automatisch [NIGHT_BOOST]-mal schneller, höchstens [NIGHT_MAX]-fach.
  * - Um Mitternacht hält die Simulation an, bis der Spieler den Tagesabschluss bestätigt.
+ * - Auto-Bremse: Passiert etwas, das der Spieler sehen sollte ([CityGame.alerts]), fällt ein Tempo ab [BRAKE_FROM] auf
+ *   [BRAKE_TO]; [resumeSpeed] stellt das alte wieder her. [fastForward] spult bis zum nächsten solchen Ereignis vor.
  */
 class GameRunner(
     private val game: CityGame,
@@ -74,6 +88,15 @@ class GameRunner(
 
     private var lastSpeed = 1
 
+    /** Auto-Bremse an (Einstellung des Spielers). Vorspulen hält immer am nächsten Ereignis. */
+    var autoBrake = true
+
+    @kotlin.concurrent.Volatile
+    private var brakedFrom: Int? = null
+
+    @kotlin.concurrent.Volatile
+    private var fastForwardFrom: Int? = null
+
     /** Echte Sekunden je gewähltem Tempo (für die Statistik, Paket F). */
     private val secondsPerSpeed = HashMap<Int, Double>()
 
@@ -87,10 +110,47 @@ class GameRunner(
     fun setSpeed(value: Int) {
         speedFlow.value = value.coerceIn(0, MAX_SPEED)
         if (value > 0) lastSpeed = value
+        brakedFrom = null
+        fastForwardFrom = null
     }
 
     fun togglePause() {
-        speedFlow.value = if (speedFlow.value == 0) lastSpeed else 0
+        setSpeed(if (speedFlow.value == 0) lastSpeed else 0)
+    }
+
+    /** Eine Stufe schneller oder (mit [step] < 0) langsamer; aus der Pause heraus mit der kleinsten Stufe. */
+    fun stepSpeed(step: Int) {
+        val index = SPEEDS.indexOf(speedFlow.value)
+        val next = if (index < 0) 0 else (index + step).coerceIn(0, SPEEDS.lastIndex)
+        setSpeed(SPEEDS[next])
+    }
+
+    /** Nach der Auto-Bremse: mit dem Tempo von vorher weiter. */
+    fun resumeSpeed() {
+        brakedFrom?.let(::setSpeed)
+    }
+
+    /** Mit höchstem Tempo bis zum nächsten Ereignis, danach wieder das Tempo von jetzt. */
+    fun fastForward() {
+        val current = speedFlow.value.takeIf { it > 0 } ?: lastSpeed
+        setSpeed(MAX_SPEED)
+        fastForwardFrom = current
+    }
+
+    /** Ein Ereignis ist passiert: Vorspulen beenden bzw. automatisch bremsen. */
+    private fun alert() {
+        val chosen = speedFlow.value
+        val forwardFrom = fastForwardFrom
+        when {
+            forwardFrom != null -> {
+                setSpeed(forwardFrom)
+            }
+
+            autoBrake && chosen >= BRAKE_FROM -> {
+                speedFlow.value = BRAKE_TO
+                brakedFrom = chosen
+            }
+        }
     }
 
     /** Führt [block] aus, während die Simulation steht – zwischen zwei Schritten, nie mittendrin. */
@@ -124,6 +184,8 @@ class GameRunner(
             var stateBuilt = lastLoop
             var stateRevision = game.revision
             var warmupLeft = warmupTicks
+            var seenAlerts = game.alerts
+            var actualSpeed = 0.0
             while (isActive) {
                 val now = TimeSource.Monotonic.markNow()
                 val elapsed = now - lastLoop
@@ -155,6 +217,15 @@ class GameRunner(
                     }
                 }
                 if (pendingReport != null) tickDebt = 0.0
+                // Ereignisse erst nach dem Vorlauf beachten
+                if (warmupLeft == 0 && game.alerts != seenAlerts) alert()
+                seenAlerts = game.alerts
+                // Erreichtes Tempo: Spielsekunden je echter Sekunde, geglättet
+                val seconds = elapsed.inWholeMicroseconds / MICROS_PER_SECOND
+                if (seconds > 0 && warmupLeft == 0) {
+                    val measured = steps.toDouble() / ticksPerSecond / seconds
+                    actualSpeed = actualSpeed * (1 - SPEED_BLEND) + measured * SPEED_BLEND
+                }
                 if (steps > 0) {
                     val perStep = stepStart.elapsedNow().inWholeMicroseconds / MICROS_PER_MILLI / steps
                     stepMillis = stepMillis * (1 - STEP_TIME_BLEND) + perStep * STEP_TIME_BLEND
@@ -191,6 +262,9 @@ class GameRunner(
                             pendingReport = pendingReport,
                             game = state,
                             warmup = if (warmupLeft > 0) 1f - warmupLeft.toFloat() / warmupTicks else null,
+                            actualSpeed = if (effective == 0) 0.0 else actualSpeed,
+                            brakedFrom = brakedFrom,
+                            fastForward = fastForwardFrom != null,
                         )
                     previous = current
                     pendingSteps = 0
@@ -204,14 +278,25 @@ class GameRunner(
         val chosen = speedFlow.value
         return when {
             chosen == 0 || pendingReport != null || game.isFinished -> 0
-            simulation.gameTime.isNight -> chosen * NIGHT_BOOST
+            simulation.gameTime.isNight -> minOf(chosen * NIGHT_BOOST, NIGHT_MAX)
             else -> chosen
         }
     }
 
     companion object {
-        const val MAX_SPEED = 8
+        /** Die wählbaren Stufen (Desktop); das Handy bietet nur bis [TOUCH_MAX_SPEED]. */
+        val SPEEDS = listOf(1, 2, 4, 8, 16, 32, 64)
+        const val MAX_SPEED = 64
+        const val TOUCH_MAX_SPEED = 16
         const val NIGHT_BOOST = 8
+        const val NIGHT_MAX = 256
+
+        /** Auto-Bremse: ab diesem Tempo … */
+        const val BRAKE_FROM = 16
+
+        /** … auf dieses. */
+        const val BRAKE_TO = 4
+        private const val SPEED_BLEND = 0.02
         private val LOOP_PERIOD = 8.milliseconds
 
         /** Höchstens so oft ein neues Bild (≈ 60 Bilder je Sekunde). */

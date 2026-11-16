@@ -48,6 +48,10 @@ class TouchCallbacks(
     val onMenu: (() -> Unit)? = null,
     /** Spiel speichern; `null` = kein Speichern. */
     val onSave: (() -> Unit)? = null,
+    /** Nach der Auto-Bremse mit dem alten Tempo weiter. */
+    val onResumeSpeed: (() -> Unit)? = null,
+    /** Vorspulen bis zum nächsten Ereignis. */
+    val onFastForward: (() -> Unit)? = null,
 )
 
 /**
@@ -83,9 +87,14 @@ fun TouchGameApp(
                     hudFrame?.let {
                         TouchTopBar(
                             it,
-                            TopBarActions(callbacks.onSpeed, callbacks.onSave, callbacks.onMenu) {
-                                touch.debug = !touch.debug
-                            },
+                            TopBarActions(
+                                callbacks.onSpeed,
+                                callbacks.onSave,
+                                callbacks.onMenu,
+                                onDebug = { touch.debug = !touch.debug },
+                                onResume = callbacks.onResumeSpeed,
+                                onFastForward = callbacks.onFastForward,
+                            ),
                         )
                     }
                     Row(Modifier.weight(1f)) {

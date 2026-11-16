@@ -149,6 +149,7 @@ internal class Session(
             // Der Vorlauf läuft im Runner, während das Spiel schon zu sehen ist
             val runner = GameRunner(game, warmupTicks)
             runner.setSpeed(settings.startSpeed)
+            runner.autoBrake = settings.autoBrake
             return Session(pack, scenario, settings.difficulty, game, runner)
         }
     }

@@ -49,7 +49,11 @@ class CityGame(
     private val events =
         EventPlanner(city, simulation, rules) { text, place -> message(text, place, MessageKind.PROBLEM) }
     private val press = Press(rules, treasury) { message(it, kind = MessageKind.SUCCESS) }
-    private val achievements = Achievements { message(it, kind = MessageKind.SUCCESS) }
+    private val achievements =
+        Achievements {
+            alerts++
+            message(it, kind = MessageKind.SUCCESS)
+        }
     private val firstDay = simulation.gameTime.day
     private val bridges =
         city.roads.segments
@@ -90,6 +94,19 @@ class CityGame(
     @Transient
     var revision = 0
         private set
+
+    /**
+     * Zählt Ereignisse, bei denen der Spieler hinschauen sollte: Schäden, Unfälle, Demos und Veranstaltungen mit Ort,
+     * Errungenschaften. Der [GameRunner] bremst daran den Zeitraffer. Wird nicht gespeichert.
+     */
+    @Transient
+    var alerts = 0
+        private set
+
+    /** Für Tests: ein Ereignis melden, ohne eines herbeizuspielen. */
+    internal fun raiseAlert() {
+        alerts++
+    }
 
     private val telemetryLog = TelemetryLog()
 
@@ -558,6 +575,7 @@ class CityGame(
         kind: MessageKind = MessageKind.SYSTEM,
     ) {
         messages.addLast(GameMessage(simulation.gameTime, text, place, kind))
+        if (kind == MessageKind.PROBLEM && place != null) alerts++
         while (messages.size > MAX_MESSAGES) messages.removeFirst()
     }
 

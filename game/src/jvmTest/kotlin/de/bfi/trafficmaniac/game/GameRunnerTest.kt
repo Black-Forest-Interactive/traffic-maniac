@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /** Läuft in echter Zeit: Grenzen großzügig, damit ein ausgelasteter Rechner den Test nicht kippt. */
@@ -80,6 +81,65 @@ class GameRunnerTest {
             delay(300)
             game.submit(GameCommand.SetSpeedLimit(segment = 0, kmh = 30))
             withTimeout(150) { runner.frames.filterNotNull().first { 0 in it.game.speedLimits } }
+            job.cancel()
+        }
+
+    @Test
+    fun nightBoostIsCapped() =
+        runBlocking {
+            val night = config.copy(startSecondOfDay = 23.0 * 3_600)
+            val runner = GameRunner(CityGame(road(), night))
+            runner.setSpeed(GameRunner.MAX_SPEED)
+            val job = launch { runner.run() }
+            val frame = withTimeout(2_000) { runner.frames.filterNotNull().first { it.effectiveSpeed > 0 } }
+            job.cancel()
+            assertEquals(GameRunner.NIGHT_MAX, frame.effectiveSpeed)
+        }
+
+    @Test
+    fun speedStepsWalkThroughTheList() {
+        val runner = GameRunner(CityGame(road(), config))
+        runner.setSpeed(8)
+        runner.stepSpeed(1)
+        assertEquals(16, runner.speed.value)
+        runner.setSpeed(GameRunner.MAX_SPEED)
+        runner.stepSpeed(1)
+        assertEquals(GameRunner.MAX_SPEED, runner.speed.value)
+        runner.setSpeed(1)
+        runner.stepSpeed(-1)
+        assertEquals(1, runner.speed.value)
+    }
+
+    @Test
+    fun anAchievementBrakesHighSpeedAndResumeRestoresIt() =
+        runBlocking {
+            val game = CityGame(road(), config)
+            val runner = GameRunner(game)
+            runner.setSpeed(32)
+            val job = launch { runner.run() }
+            runner.frames.filterNotNull().first()
+            game.raiseAlert()
+            val braked = withTimeout(2_000) { runner.frames.filterNotNull().first { it.brakedFrom != null } }
+            assertEquals(32, braked.brakedFrom)
+            assertEquals(GameRunner.BRAKE_TO, runner.speed.value)
+            runner.resumeSpeed()
+            assertEquals(32, runner.speed.value)
+            job.cancel()
+        }
+
+    @Test
+    fun fastForwardStopsAtTheNextEventAndReturnsToTheOldSpeed() =
+        runBlocking {
+            val game = CityGame(road(), config)
+            val runner = GameRunner(game)
+            runner.autoBrake = false
+            runner.setSpeed(2)
+            runner.fastForward()
+            assertEquals(GameRunner.MAX_SPEED, runner.speed.value)
+            val job = launch { runner.run() }
+            runner.frames.filterNotNull().first()
+            game.raiseAlert()
+            withTimeout(2_000) { runner.speed.first { it == 2 } }
             job.cancel()
         }
 }

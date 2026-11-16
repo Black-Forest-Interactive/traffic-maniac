@@ -22,6 +22,7 @@ import androidx.compose.ui.window.rememberWindowState
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.game.GameInfo
+import de.bfi.trafficmaniac.game.GameRunner
 import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.HighscoreEntry
 import de.bfi.trafficmaniac.game.Highscores
@@ -54,8 +55,11 @@ import kotlin.system.exitProcess
 private const val NOTICE_MILLIS = 2_500L
 private val SAVE_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
 
-/** Tasten 1–4 → Zeitraffer 1x, 2x, 4x, 8x. */
-private val speedKeys = mapOf(Key.One to 1, Key.Two to 2, Key.Three to 4, Key.Four to 8)
+/** Tasten 1–7 → Zeitraffer 1× bis 64×. */
+private val speedKeys =
+    listOf(Key.One, Key.Two, Key.Three, Key.Four, Key.Five, Key.Six, Key.Seven)
+        .zip(GameRunner.SPEEDS)
+        .toMap()
 
 /** Ziffern 1–9: bei offener Werkzeugliste die Art an dieser Stelle. */
 private val digitKeys =
@@ -359,9 +363,28 @@ private fun Playing(
             onSave = { scope.save(current, saves, "spiel-" + LocalDateTime.now().format(SAVE_ID_FORMAT)) },
             tutorial = current.scenario.tutorial,
             onSpeed = current.runner::setSpeed,
+            onResumeSpeed = current.runner::resumeSpeed,
+            onFastForward = current.runner::fastForward,
             input = current.input,
         )
     }
+}
+
+/** Tempo-Tasten: Leertaste, 1–7, +/−, V (vorspulen). `false`, wenn [key] keine davon ist. */
+private fun handleSpeedKey(
+    key: Key,
+    runner: GameRunner,
+): Boolean {
+    val speed = speedKeys[key]
+    when {
+        key == Key.Spacebar -> runner.togglePause()
+        speed != null -> runner.setSpeed(speed)
+        key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals -> runner.stepSpeed(1)
+        key == Key.Minus || key == Key.NumPadSubtract -> runner.stepSpeed(-1)
+        key == Key.V -> runner.fastForward()
+        else -> return false
+    }
+    return true
 }
 
 /** Lädt [info] im Hintergrund; `null`, wenn der Spielstand nicht (mehr) passt. */
@@ -429,9 +452,9 @@ private fun parseOptions(args: Array<String>): Options {
 }
 
 /**
- * Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–4 Tempo (bei offener Werkzeugliste: 1–9 wählt
- * die Art), M Ton, N Musik, F5 Schnellspeichern, F3 Entwickler-Anzeige, F4 Straßennetz-Modus, Esc/Q/W/E/A/B/X
- * Werkzeuggruppen.
+ * Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–7 Tempo 1×–64× (bei offener Werkzeugliste: 1–9
+ * wählt die Art), +/− eine Stufe schneller/langsamer, V vorspulen bis zum nächsten Ereignis, M Ton, N Musik,
+ * F5 Schnellspeichern, F3 Entwickler-Anzeige, F4 Straßennetz-Modus, Esc/Q/W/E/A/B/X Werkzeuggruppen.
  */
 private fun handleKey(
     event: KeyEvent,
@@ -441,13 +464,11 @@ private fun handleKey(
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val runner = session.runner
-    val speed = speedKeys[event.key]
     val digit = digitKeys[event.key]
     when {
-        event.key == Key.Spacebar -> runner.togglePause()
         event.key == Key.Enter -> runner.acknowledgeReport()
         digit != null && session.input.listOpen -> session.input.kindRequest = digit
-        speed != null -> runner.setSpeed(speed)
+        handleSpeedKey(event.key, runner) -> Unit
         event.key == Key.M -> sound.muted = !sound.muted
         event.key == Key.N -> sound.music = !sound.music
         event.key == Key.F5 -> onQuickSave()
