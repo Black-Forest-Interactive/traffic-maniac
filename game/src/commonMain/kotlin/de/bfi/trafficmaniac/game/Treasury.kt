@@ -22,6 +22,15 @@ internal class Treasury(
     var ticketIncome = 0L
         private set
 
+    /** Zuschüsse und Prämien für erledigte Aufträge. */
+    var grantIncome = 0L
+        private set
+
+    fun earnGrant(euros: Long) {
+        balance += euros
+        grantIncome += euros
+    }
+
     fun earnFine(euros: Int) {
         balance += euros
         fineIncome += euros

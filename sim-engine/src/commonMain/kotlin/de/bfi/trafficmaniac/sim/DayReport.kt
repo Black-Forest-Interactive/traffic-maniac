@@ -77,12 +77,13 @@ internal class DayStatistics {
     private var lotParked = 0
     private var fees = 0.0
 
-    fun parked(curb: Boolean) {
+    /** Geparkt, am Straßenrand ([curb]) oder auf einem Platz, und dafür [fee] Euro bezahlt. */
+    fun parked(
+        curb: Boolean,
+        fee: Double,
+    ) {
         if (curb) curbParked++ else lotParked++
-    }
-
-    fun parkingFee(euros: Double) {
-        fees += euros
+        if (fee > 0) fees += fee
     }
 
     fun incident(kind: IncidentKind) {

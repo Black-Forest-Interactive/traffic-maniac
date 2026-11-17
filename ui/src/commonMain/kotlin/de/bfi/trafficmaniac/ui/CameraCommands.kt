@@ -47,6 +47,7 @@ private fun placeCommand(
         ToolKind.DISPLAY -> GameCommand.PlaceDisplay(segment)
         ToolKind.POLICE_CHECK -> GameCommand.PlacePoliceCheck(segment)
         ToolKind.TRAILER -> GameCommand.PlaceTrailer(segment)
+        ToolKind.DUMMY -> GameCommand.PlaceCamera(segment, dummy = true)
         else -> GameCommand.PlaceCamera(segment)
     }
 

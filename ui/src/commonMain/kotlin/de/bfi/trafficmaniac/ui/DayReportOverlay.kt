@@ -52,6 +52,8 @@ fun DayReportOverlay(
     cameraSummary: String? = null,
     /** Erster Spieltag als Bezug für die Verkehrsbilanz. */
     reference: DayReport? = null,
+    /** Heute freigeschaltete Erfolge. */
+    achievements: List<String> = emptyList(),
 ) {
     Box(modifier.fillMaxSize().background(ComicTheme.scrim), contentAlignment = Alignment.Center) {
         Column(
@@ -72,6 +74,12 @@ fun DayReportOverlay(
             val text = TmType.text(15.sp, color = Ink)
             DayFigures(report, text)
             BasicText(trafficBalance(report, reference), style = text)
+            if (achievements.isNotEmpty()) {
+                BasicText(
+                    tr("Heute freigeschaltet: {titles}", "titles" to achievements.joinToString(", ")),
+                    style = text.copy(fontWeight = FontWeight.Bold, color = TmColors.SuccessText),
+                )
+            }
             cameraSummary?.let { BasicText(it, style = text.copy(fontWeight = FontWeight.SemiBold)) }
             BasicText(
                 tr("Fahrten je Stunde"),

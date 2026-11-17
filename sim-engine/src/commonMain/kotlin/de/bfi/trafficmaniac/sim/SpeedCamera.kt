@@ -23,7 +23,19 @@ class SpeedCamera(
     val link: Int = -1,
     /** Polizeikontrolle: hält an, misst Tempo und findet Mängel, Handy am Steuer und Überholer. */
     val policeCheck: Boolean = false,
+    /** Attrappe: leeres Gehäuse – wer es sieht, bremst, gemessen wird nichts. */
+    val dummy: Boolean = false,
 ) {
+    /**
+     * Wie bekannt der feste Blitzer ist (0..1): steigt jeden Spieltag. Mit Warn-App bremsen davor dann auch Ortsfremde
+     * ([SpeedControl.warnerShare]).
+     */
+    var familiarity: Double = 0.0
+        internal set
+
+    /** Fester, messender Blitzer – nur der spricht sich herum. */
+    val isFixed: Boolean get() = !mobile && measuresSpeed && !display && !policeCheck && !redLight
+
     /** Anzeigetafel: Fahrzeuge vorbei und davon zu schnell. */
     var passed: Int = 0
         internal set

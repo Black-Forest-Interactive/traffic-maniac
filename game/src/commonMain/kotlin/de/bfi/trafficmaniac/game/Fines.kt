@@ -98,6 +98,8 @@ enum class FineTier(
     }
 }
 
+private const val PERCENT = 100
+
 /** Statistik eines Blitzers: Anzahl und Einnahmen je Stufe sowie der "Rekord" für die Presse. */
 data class CameraRecord(
     val cameraId: Int,
@@ -117,6 +119,10 @@ data class CameraRecord(
     val display: Boolean = false,
     val passed: Int = 0,
     val speeding: Int = 0,
+    /** Wie bekannt ein fester Blitzer ist (0–100 %), siehe [de.bfi.trafficmaniac.sim.SpeedCamera.familiarity]. */
+    val familiarityPercent: Int = 0,
+    /** Attrappe (misst nichts). */
+    val dummy: Boolean = false,
     /** Polizeikontrolle und wie viele Minuten sie noch läuft. */
     val policeCheck: Boolean = false,
     val minutesLeft: Int? = null,
@@ -126,6 +132,9 @@ data class CameraRecord(
 
     val totalCount: Int get() = countPerTier.sum()
     val totalRevenue: Long get() = revenuePerTier.sum()
+
+    /** Gekaufter, fest stehender Blitzer – keine Tafel, kein Laser, keine Polizeikontrolle. */
+    val isFixedCamera: Boolean get() = !display && !mobile && !policeCheck
 }
 
 /** Veränderliche Zähler eines Blitzers; nach außen gibt es nur [CameraRecord]. */
@@ -180,5 +189,7 @@ internal class CameraCounter(
             speeding = camera?.speeding ?: 0,
             policeCheck = camera?.policeCheck == true,
             minutesLeft = minutesLeft,
+            familiarityPercent = ((camera?.familiarity ?: 0.0) * PERCENT).toInt(),
+            dummy = camera?.dummy == true,
         )
 }

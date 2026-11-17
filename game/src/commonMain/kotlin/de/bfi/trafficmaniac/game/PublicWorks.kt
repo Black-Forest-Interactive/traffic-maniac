@@ -23,6 +23,33 @@ internal class PublicWorks(
     var signalNodes: Set<Int> = signalNodesOf()
         private set
 
+    /** Blitzer, die ihre Kosten schon eingespielt haben (für die Meldung, nicht im Spielstand). */
+    @Transient
+    private var paidOff: HashSet<Int>? = null
+
+    /** Die Befehle des Tiefbauamts; alle anderen werden ignoriert. */
+    fun execute(command: GameCommand) {
+        when (command) {
+            is GameCommand.SetSpeedLimit -> setSpeedLimit(command.segment, command.kmh, command.nightOnly)
+            is GameCommand.BuildSignal -> buildSignal(command.node)
+            is GameCommand.RemoveSignal -> removeSignal(command.node)
+            is GameCommand.PlaceCamera -> placeCamera(command.segment, command.mobile, command.dummy)
+            is GameCommand.PlaceTrailer -> placeTrailer(command.segment)
+            is GameCommand.RemoveCamera -> removeCamera(command.cameraId)
+            is GameCommand.SetPriorityRoad -> setPriorityRoad(command.segment, command.priority)
+            is GameCommand.SetBikeCrossing -> setBikeCrossing(command.segment, command.crossing)
+            else -> Unit
+        }
+    }
+
+    /** Feste Blitzer, die seit dem letzten Aufruf so viel eingenommen haben, wie sie gekostet haben. */
+    fun newlyPaidOff(): List<CameraRecord> {
+        val announced = paidOff ?: HashSet<Int>().also { paidOff = it }
+        return cameraCounters.values
+            .map { it.toRecord() }
+            .filter { it.isFixedCamera && it.totalRevenue >= rules.cameraCost && announced.add(it.cameraId) }
+    }
+
     /**
      * Tempolimit für die ganze Strecke von Kreuzung zu Kreuzung, zu der [segment] gehört – ein Schild am Anfang,
      * eins am Ende, bezahlt wird einmal. `null` hebt es für die Strecke auf.
@@ -108,19 +135,25 @@ internal class PublicWorks(
     fun placeCamera(
         segment: Int,
         mobile: Boolean,
+        dummy: Boolean = false,
     ) {
         if (cameraCounters.values.any { it.segment == segment }) return message(tr("Hier blitzt es schon"))
-        val affordable = if (mobile) true else treasury.pay(rules.cameraCost, tr("Blitzer"))
+        val affordable =
+            when {
+                mobile -> true
+                dummy -> treasury.pay(rules.habits.dummyCost, tr("Attrappe"))
+                else -> treasury.pay(rules.cameraCost, tr("Blitzer"))
+            }
         if (affordable) {
-            val camera = simulation.speedControl.placeCamera(segment, mobile)
-            cameraCounters[camera.id] = CameraCounter(camera.id, segment, streetName(segment), mobile)
-            message(
-                tr(
-                    "{blitzer} scharf geschaltet: {segment}",
-                    "blitzer" to if (mobile) tr("Lasermessung") else tr("Blitzer"),
-                    "segment" to streetName(segment),
-                ),
-            )
+            val camera = simulation.speedControl.placeCamera(segment, mobile, dummy = dummy)
+            cameraCounters[camera.id] = CameraCounter(camera.id, segment, streetName(segment), mobile, camera = camera)
+            val what =
+                when {
+                    dummy -> tr("Attrappe")
+                    mobile -> tr("Lasermessung")
+                    else -> tr("Blitzer")
+                }
+            message(tr("{blitzer} scharf geschaltet: {segment}", "blitzer" to what, "segment" to streetName(segment)))
             checkSignForest(segment)
         }
     }
@@ -148,7 +181,7 @@ internal class PublicWorks(
         if (fromDepot) idleTrailers-- else trailers++
         val camera = simulation.speedControl.placeCamera(segment, mobile = true, trailer = true)
         cameraCounters[camera.id] =
-            CameraCounter(camera.id, segment, streetName(segment), mobile = true, trailer = true)
+            CameraCounter(camera.id, segment, streetName(segment), mobile = true, trailer = true, camera = camera)
         message(tr("Blitzeranhänger aufgestellt: {segment}", "segment" to streetName(segment)))
         checkSignForest(segment)
     }
@@ -258,7 +291,7 @@ internal class PublicWorks(
                 simulation.graph.nodeHasSignals[it]
             }.toSet()
 
-    private fun streetName(segment: Int): String = city.roads.segments[segment].name ?: tr("Straße ohne Namen")
+    internal fun streetName(segment: Int): String = city.roads.segments[segment].name ?: tr("Straße ohne Namen")
 
     companion object {
         const val SIGN_FOREST = "Schilderwald"

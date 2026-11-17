@@ -139,6 +139,8 @@ private fun Playing(
                 onContinueDay = { current.runner.acknowledgeReport() },
                 onSpeed = current.runner::setSpeed,
                 onMenu = onMenu,
+                onResumeSpeed = current.runner::resumeSpeed,
+                onFastForward = current.runner::fastForward,
             ),
         tutorial = current.scenario.tutorial,
         input = current.input,

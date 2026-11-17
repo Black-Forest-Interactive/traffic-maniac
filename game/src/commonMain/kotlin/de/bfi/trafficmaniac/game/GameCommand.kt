@@ -51,6 +51,8 @@ sealed interface GameCommand {
     data class PlaceCamera(
         val segment: Int,
         val mobile: Boolean = false,
+        /** Attrappe: bremst wie ein Blitzer, misst nichts. */
+        val dummy: Boolean = false,
     ) : GameCommand
 
     /** Rotlichtblitzer an der Haltelinie der Ampelzufahrt [link]; mit [withSpeed] misst er auch das Tempo. */
@@ -185,4 +187,15 @@ sealed interface GameCommand {
     data class FireWardens(
         val count: Int,
     ) : GameCommand
+
+    /** Auftrag ablehnen: kein Ärger, aber dieselbe Art kommt einen Tag lang nicht wieder. */
+    data class DeclineAssignment(
+        val id: Int,
+    ) : GameCommand
+
+    /** Polizeiaktion „Blitzerwarner“: Kontrollen auf Warn-Apps in der ganzen Stadt. */
+    data object WarnerCampaign : GameCommand
+
+    /** Blitzermarathon ankündigen: einen Tag lang bremsen alle – danach verlassen sich weniger auf Warn-Apps. */
+    data object AnnounceMarathon : GameCommand
 }

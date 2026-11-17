@@ -68,6 +68,7 @@ object Icons {
     val Minus = TmIcon("M5 12h14")
     val Play = TmIcon("M6 3 20 12 6 21Z")
     val Pause = TmIcon("M6 4h4v16H6z", "M14 4h4v16h-4z")
+    val FastForward = TmIcon("M3 5 11 12 3 19Z", "M12 5 20 12 12 19Z")
     val Menu = TmIcon("M4 12h16", "M4 6h16", "M4 18h16")
     val Save =
         TmIcon(

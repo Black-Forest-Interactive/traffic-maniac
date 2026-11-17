@@ -157,6 +157,9 @@ internal fun SettingsScreen(
                 Modifier.width(CONTROL_WIDTH.dp),
             )
         }
+        OnOff(tr("Ab 16× bei Ereignissen automatisch bremsen"), settings.autoBrake) {
+            onSettings(settings.copy(autoBrake = it))
+        }
         BasicText(
             tr("Im Spiel: M schaltet den Ton, N die Musik – Einstellungen werden automatisch gespeichert."),
             style = TmType.small,

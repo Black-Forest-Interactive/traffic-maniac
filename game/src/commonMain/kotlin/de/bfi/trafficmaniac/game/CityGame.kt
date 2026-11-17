@@ -24,7 +24,11 @@ class CityGame(
     val simulation = Simulation(city, config)
     private val commands = Channel<GameCommand>(Channel.UNLIMITED)
     private val messages = ArrayDeque<GameMessage>()
-    private val treasury = Treasury(rules.startBudget) { message(it, kind = MessageKind.PROBLEM) }
+    private val treasury =
+        Treasury(rules.startBudget) {
+            message(it, kind = MessageKind.PROBLEM)
+            highlights.add(HighlightKind.WARNING, it)
+        }
     private val works = PublicWorks(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
     private val timing = SignalTiming(city, simulation, rules, treasury) { message(it, kind = MessageKind.ACTION) }
     private val roadworks =
@@ -49,8 +53,92 @@ class CityGame(
     private val events =
         EventPlanner(city, simulation, rules) { text, place -> message(text, place, MessageKind.PROBLEM) }
     private val press = Press(rules, treasury) { message(it, kind = MessageKind.SUCCESS) }
-    private val achievements = Achievements { message(it, kind = MessageKind.SUCCESS) }
+    private val achievements =
+        Achievements(
+            object : AchievementEvents {
+                override fun unlocked(achievement: Achievement) {
+                    alerts++
+                    message(
+                        tr("Achievement freigeschaltet: {title}!", "title" to achievement.title),
+                        kind = MessageKind.SUCCESS,
+                    )
+                    highlights.add(
+                        HighlightKind.BIG,
+                        tr("Errungenschaft: {title}", "title" to achievement.title),
+                        achievement.description,
+                    )
+                }
+
+                override fun almost(
+                    achievement: Achievement,
+                    missing: Int,
+                ) {
+                    highlights.add(
+                        HighlightKind.MEDIUM,
+                        tr("Fast geschafft: {title}", "title" to achievement.title),
+                        tr(
+                            "Noch {missing} – {description}",
+                            "missing" to missing,
+                            "description" to achievement.description,
+                        ),
+                    )
+                }
+            },
+        )
+
+    /** Erledigte Aufträge bisher (für den Kopflos-Lauf). */
+    val assignmentsDone: Int get() = assignments.doneCount
+
+    private val assignments =
+        Assignments(
+            city,
+            rules,
+            object : AssignmentEffects {
+                override fun reward(euros: Long) = treasury.earnGrant(euros)
+
+                override fun reputation(change: Double) = politics.press(change)
+
+                override fun announce(
+                    text: String,
+                    place: MapPlace?,
+                    kind: HighlightKind,
+                    title: String,
+                ) {
+                    val messageKind = if (kind == HighlightKind.BIG) MessageKind.SUCCESS else MessageKind.PROBLEM
+                    message(text, place, messageKind)
+                    highlights.add(kind, title, text, place)
+                }
+            },
+            config.seed,
+        )
     private val firstDay = simulation.gameTime.day
+
+    private val habits =
+        Habituation(
+            simulation,
+            rules,
+            treasury,
+            politics,
+            works,
+            config.seed,
+            object : HabitEffects {
+                override fun message(
+                    text: String,
+                    place: MapPlace?,
+                    kind: MessageKind,
+                ) = this@CityGame.message(text, place, kind)
+
+                override fun highlight(
+                    kind: HighlightKind,
+                    title: String,
+                    text: String,
+                    place: MapPlace?,
+                ) = highlights.add(kind, title, text, place)
+
+                override fun checkAchievements() = achievements.check(hourlyFacts(), simulation.gameTime.day)
+            },
+        )
+
     private val bridges =
         city.roads.segments
             .filter { it.bridge && !it.passive }
@@ -60,7 +148,7 @@ class CityGame(
     private var moods: List<ZoneMood> = citizens.moods(argumentsCampaign = false)
     private var unhappyShare = 0.0
     private var fineIncomeAtHourStart = 0L
-    private var currentHour = hourIndex()
+    private var currentHour = hourIndex
     private var lastBudgetRound: BudgetRound? = null
     private var finesToday = 0L
     private var recordToday: Pair<Double, Int>? = null
@@ -90,6 +178,26 @@ class CityGame(
     @Transient
     var revision = 0
         private set
+
+    /**
+     * Zählt Ereignisse, bei denen der Spieler hinschauen sollte: Schäden, Unfälle, Demos und Veranstaltungen mit Ort,
+     * Errungenschaften. Der [GameRunner] bremst daran den Zeitraffer. Wird nicht gespeichert.
+     */
+    @Transient
+    var alerts = 0
+        private set
+
+    @Transient
+    private var highlightLog: HighlightLog? = null
+
+    /** Was die Oberfläche einblenden soll (nicht im Spielstand). */
+    private val highlights: HighlightLog
+        get() = highlightLog ?: HighlightLog().also { highlightLog = it }
+
+    /** Für Tests: ein Ereignis melden, ohne eines herbeizuspielen. */
+    internal fun raiseAlert() {
+        alerts++
+    }
 
     private val telemetryLog = TelemetryLog()
 
@@ -121,6 +229,7 @@ class CityGame(
                     "parking" to treasury.parkingIncome,
                     "tickets" to treasury.ticketIncome,
                     "allowance" to treasury.allowances,
+                    "grants" to treasury.grantIncome,
                 ),
             expenses = treasury.expenses,
             days = telemetryLog.days.toList(),
@@ -142,23 +251,25 @@ class CityGame(
             execute(command)
             executed = true
         }
-        // Der Schilderwald entsteht durch Werkzeuge – er wird sofort gefeiert, nicht erst zur vollen Stunde
-        if (executed) revision++
-        if (executed && PublicWorks.SIGN_FOREST in works.achievements) {
-            achievements.check(AchievementFacts(signForest = true), simulation.gameTime.day)
+        // Was der Spieler baut (erster Blitzer, Schilderwald …), wird sofort gefeiert, nicht erst zur vollen Stunde
+        if (executed) {
+            revision++
+            achievements.check(hourlyFacts(), simulation.gameTime.day)
         }
         val reportsBefore = simulation.dayReports.size
         simulation.step()
         collectFines()
+        habits.update()
         winter.update()
         surveillance.update()
         achievements.checkLive(
             simulation.incidentsToday[IncidentKind.TRUCK_STUCK] ?: 0,
             recordRatioToday,
+            treasury.fineIncome,
             simulation.gameTime.day,
         )
         simulation.finishedTrips.drain().forEach(citizens::tripFinished)
-        if (hourIndex() != currentHour) hourPassed()
+        if (hourIndex != currentHour) hourPassed()
         if (simulation.dayReports.size > reportsBefore) dayEnded()
     }
 
@@ -181,6 +292,12 @@ class CityGame(
             ploughs = winter.ploughs,
             cameras = works.cameraCounters.values.map { it.toRecord() },
             messages = messages.toList(),
+            highlights = highlights.list(),
+            assignments = assignments.state(simulation.time),
+            warnerShare = simulation.speedControl.warnerShare,
+            marathonActive = habits.marathonActive,
+            campaignInDays = habits.campaignInDays,
+            grantIncome = treasury.grantIncome,
             prContract = prContract,
             argumentsCampaign = argumentsCampaign,
             unhappyShare = unhappyShare,
@@ -193,7 +310,7 @@ class CityGame(
             daysPlayed = simulation.dayReports.size,
             termDays = rules.termDays,
             isTermOver = isTermOver,
-            score = score(),
+            score = score,
             latestEdition = latestEdition,
             fineOffice = office.state(simulation.time),
             bannedDrivers = drivers.bannedCount,
@@ -214,7 +331,7 @@ class CityGame(
             idleTrailers = works.idleTrailers,
         )
 
-    private fun hourIndex() = (simulation.time / SECONDS_PER_HOUR).toInt()
+    private val hourIndex: Int get() = (simulation.time / SECONDS_PER_HOUR).toInt()
 
     /** Neue Blitzerfotos gehen an die Bußgeldstelle; Geld gibt es erst mit dem Bescheid. */
     private fun collectFines() {
@@ -243,7 +360,7 @@ class CityGame(
     }
 
     private fun hourPassed() {
-        currentHour = hourIndex()
+        currentHour = hourIndex
         office.hourPassed(simulation.time, simulation.gameTime)
         maintenance.collect(simulation.time)
         maintenance.hourPassed(simulation.time)
@@ -253,9 +370,29 @@ class CityGame(
         unhappyShare = citizens.unhappyShare(moods)
         val incomeThisHour = treasury.fineIncome - fineIncomeAtHourStart
         fineIncomeAtHourStart = treasury.fineIncome
-        politics.hourPassed(unhappyShare, prContract, argumentsCampaign, incomeThisHour).forEach(::message)
+        politics.hourPassed(unhappyShare, prContract, argumentsCampaign, incomeThisHour).forEach {
+            message(it)
+            if (politics.recallIndex >= RECALL_WARNING) highlights.add(HighlightKind.WARNING, it)
+        }
+        for (camera in works.newlyPaidOff()) {
+            highlights.add(
+                HighlightKind.MEDIUM,
+                tr("Blitzer {street} hat sich bezahlt gemacht", "street" to camera.streetName),
+                tr("{revenue} eingenommen – alles Weitere ist Gewinn", "revenue" to formatEuro(camera.totalRevenue)),
+            )
+        }
         press.hourPassed(unhappyShare)
         events.hourPassed(politics.anger, drivers.bannedCount, moods)
+        val snapshot = simulation.snapshot()
+        assignments.hourPassed(
+            AssignmentWorld(
+                state(),
+                snapshot.incidents,
+                simulation.time,
+                simulation.gameTime,
+                simulation.gameTime.day == firstDay,
+            ),
+        )
         achievements.check(hourlyFacts(), simulation.gameTime.day)
         if (isGameOver) message(tr("Der Gemeinderat hat Ihnen das Vertrauen entzogen. Sie sind abgewählt!"))
     }
@@ -277,6 +414,10 @@ class CityGame(
             revocations = drivers.revocations,
             lawsuits = maintenanceState.lawsuits,
             reputation = politics.reputation,
+            fineIncome = treasury.fineIncome,
+            repairs = maintenanceState.repaired,
+            daysEnded = simulation.dayReports.size,
+            campaigns = habits.campaigns,
         )
     }
 
@@ -335,6 +476,7 @@ class CityGame(
         winter.dayEnded()
         budgetRound()
         if (report.weekday == Weekday.SUNDAY) press.startNewWeek()
+        habits.dayPassed()
         telemetryLog.dayEnded(report.day, state(), report.vehicleKm, report.vehicleHours)
         if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
     }
@@ -370,25 +512,29 @@ class CityGame(
         )
     }
 
-    private fun score(): Score {
-        val share = politics.reputation / MAX_REPUTATION
-        val factor = rules.minReputationFactor + (rules.maxReputationFactor - rules.minReputationFactor) * share
-        val earnings = treasury.balance - rules.startBudget - treasury.allowances
-        return Score(earnings, politics.reputation, factor)
-    }
+    private val score: Score
+        get() {
+            val share = politics.reputation / MAX_REPUTATION
+            val factor = rules.minReputationFactor + (rules.maxReputationFactor - rules.minReputationFactor) * share
+            val earnings = treasury.balance - rules.startBudget - treasury.allowances
+            return Score(earnings, politics.reputation, factor)
+        }
 
     private fun execute(command: GameCommand) {
         telemetryLog.used(command)
         when (command) {
-            is GameCommand.SetSpeedLimit -> {
-                works.setSpeedLimit(command.segment, command.kmh, command.nightOnly)
+            is GameCommand.DeclineAssignment -> {
+                assignments.decline(command.id, simulation.time)
             }
 
-            is GameCommand.BuildSignal -> {
-                works.buildSignal(command.node)
+            // Jede Stelle übernimmt nur ihre Befehle
+            is GameCommand.SetSpeedLimit, is GameCommand.BuildSignal, is GameCommand.RemoveSignal,
+            is GameCommand.PlaceCamera, is GameCommand.PlaceTrailer, is GameCommand.RemoveCamera,
+            is GameCommand.SetPriorityRoad, is GameCommand.SetBikeCrossing,
+            -> {
+                works.execute(command)
             }
 
-            // Ampelprogramme und eigene Baustellen – jede Stelle übernimmt nur ihre Befehle
             is GameCommand.SetSignalProgram, is GameCommand.SetGreenWave,
             is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure, is GameCommand.SetPloughs,
             is GameCommand.PlaceRedLightCamera, is GameCommand.PlaceDisplay, is GameCommand.PlacePoliceCheck,
@@ -400,28 +546,8 @@ class CityGame(
                 surveillance.execute(command)
             }
 
-            is GameCommand.RemoveSignal -> {
-                works.removeSignal(command.node)
-            }
-
-            is GameCommand.PlaceCamera -> {
-                works.placeCamera(command.segment, command.mobile)
-            }
-
-            is GameCommand.PlaceTrailer -> {
-                works.placeTrailer(command.segment)
-            }
-
-            is GameCommand.RemoveCamera -> {
-                works.removeCamera(command.cameraId)
-            }
-
-            is GameCommand.SetPriorityRoad -> {
-                works.setPriorityRoad(command.segment, command.priority)
-            }
-
-            is GameCommand.SetBikeCrossing -> {
-                works.setBikeCrossing(command.segment, command.crossing)
+            GameCommand.WarnerCampaign, GameCommand.AnnounceMarathon -> {
+                habits.execute(command)
             }
 
             is GameCommand.SetPrContract -> {
@@ -558,10 +684,14 @@ class CityGame(
         kind: MessageKind = MessageKind.SYSTEM,
     ) {
         messages.addLast(GameMessage(simulation.gameTime, text, place, kind))
+        if (kind == MessageKind.PROBLEM && place != null) alerts++
         while (messages.size > MAX_MESSAGES) messages.removeFirst()
     }
 
     private companion object {
+        /** Ab diesem Abwahlindex werden Warnungen der Politik rot eingeblendet. */
+        const val RECALL_WARNING = 50.0
+
         /** So viele Meldungen hält das Spiel vor; die Oberfläche zeigt davon die neuesten (gebündelt). */
         const val MAX_MESSAGES = 30
         const val SECONDS_PER_HOUR = 3_600.0

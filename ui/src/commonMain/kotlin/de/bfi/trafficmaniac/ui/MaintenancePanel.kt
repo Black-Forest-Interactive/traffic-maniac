@@ -186,12 +186,13 @@ private fun CollapsedDamage(
     }
 }
 
+/** Ein Schaden mit allen Möglichkeiten – im Bauamt und als Aktionskarte auf der Karte (dort ohne [onShow]). */
 @Composable
-private fun ExpandedDamage(
+internal fun ExpandedDamage(
     report: DamageReport,
     rules: GameRules,
     respond: (DamageResponse) -> Unit,
-    onShow: () -> Unit,
+    onShow: (() -> Unit)?,
 ) {
     Column(
         Modifier.fillMaxWidth().border(2.dp, TmColors.Ink, CardShape).padding(14.dp),
@@ -221,7 +222,7 @@ private fun ExpandedDamage(
             ) {
                 if (actionable) SecureActions(report, respond)
             }
-            TmButton(tr("Auf Karte zeigen"), onShow, kind = ButtonKind.TEXT)
+            onShow?.let { TmButton(tr("Auf Karte zeigen"), it, kind = ButtonKind.TEXT) }
         }
     }
 }
@@ -274,6 +275,14 @@ private fun RepairActions(
     respond: (DamageResponse) -> Unit,
 ) {
     val base = report.repairCost
+    if (report.canPatch) {
+        OptionButton(
+            tr("Flicken (Kaltasphalt, sofort)"),
+            { respond(DamageResponse.Patch) },
+            Modifier.fillMaxWidth(),
+            formatEuro(rules.patchCost),
+        )
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         OptionButton(
             tr("Ausschreibung"),

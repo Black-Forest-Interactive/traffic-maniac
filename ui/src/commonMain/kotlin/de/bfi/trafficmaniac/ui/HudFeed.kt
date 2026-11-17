@@ -59,9 +59,13 @@ internal fun HudFeed(
     frame: TrafficFrame,
     onShow: (MapPlace) -> Unit,
     modifier: Modifier = Modifier,
+    assignments: AssignmentActions? = null,
 ) {
     Column(modifier.width(FEED_WIDTH.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TrafficStatus(frame)
+        if (assignments != null && frame.game.assignments.isNotEmpty()) {
+            AssignmentCards(frame.game.assignments, assignments, Modifier.card().padding(12.dp))
+        }
         Messages(frame.game.messages, frame.game.maintenance.reports.size, onShow)
     }
 }

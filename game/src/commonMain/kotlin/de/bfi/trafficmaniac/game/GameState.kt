@@ -100,6 +100,18 @@ data class GameState(
     val idleTrailers: Int = 0,
     /** Erster Spieltag (Tage seit dem Montag der ersten Woche) – Szenarien beginnen nicht immer montags. */
     val firstDay: Int = 0,
+    /** Anteil der Fahrer mit Blitzer-Warn-App (0..1). */
+    val warnerShare: Double = 0.0,
+    /** Angekündigter Blitzermarathon läuft. */
+    val marathonActive: Boolean = false,
+    /** In so vielen Tagen ist die nächste Polizeiaktion „Blitzerwarner“ möglich (0 = jetzt). */
+    val campaignInDays: Int = 0,
+    /** Offene Aufträge. */
+    val assignments: List<Assignment> = emptyList(),
+    /** Zuschüsse und Prämien aus Aufträgen. */
+    val grantIncome: Long = 0,
+    /** Was die Oberfläche einblenden soll, mit fortlaufender Nummer (die neuesten zuletzt). */
+    val highlights: List<Highlight> = emptyList(),
     /** Bilanz des ersten Spieltags – Bezug für die Verkehrsbilanz im Tagesabschluss. */
     val firstDayReport: DayReport? = null,
 ) {

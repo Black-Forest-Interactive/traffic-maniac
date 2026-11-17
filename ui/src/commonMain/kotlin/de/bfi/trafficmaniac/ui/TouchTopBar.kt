@@ -59,6 +59,7 @@ internal fun TouchTopBar(
         actions.onMenu?.let { BarButton(Icons.Menu, tr("Menü"), onClick = it) }
         TouchClock(frame)
         actions.onSpeed?.let { SpeedButtons(frame.speed, it, actions.onDebug) }
+        SpeedStatus(frame, actions, compact = true)
         Spacer(Modifier.weight(1f))
         TouchKpis(frame)
         actions.onSave?.let { BarButton(Icons.Save, tr("Speichern"), onClick = it) }
@@ -85,7 +86,7 @@ private fun TouchClock(frame: TrafficFrame) {
     }
 }
 
-/** Pause/Weiter und daneben das Tempo; ein Tipp auf das Tempo nimmt die nächste Stufe (1× → 2× → 4× → 8× → 1×). */
+/** Pause/Weiter und daneben das Tempo; ein Tipp auf das Tempo nimmt die nächste Stufe (1× → 2× → … → 16× → 1×). */
 @Composable
 private fun SpeedButtons(
     speed: Int,
@@ -126,7 +127,7 @@ private fun SpeedButtons(
 @Composable
 private fun RowScope.TouchKpis(frame: TrafficFrame) {
     val game = frame.game
-    Kpi(Icons.Wallet, MoneyIcon, formatEuro(game.balance))
+    Kpi(Icons.Wallet, MoneyIcon, null) { CountingEuro(game.balance, TmType.mono(14.sp, color = TmColors.OnDark)) }
     Kpi(Icons.Award, ReputationIcon, "${game.reputation.roundToInt()}")
     Kpi(Icons.Siren, AlarmIcon, "${game.anger.roundToInt()}")
     // Abwahlindex: ab 50 rot hinterlegt wie am Desktop
@@ -143,8 +144,9 @@ private fun RowScope.TouchKpis(frame: TrafficFrame) {
 private fun Kpi(
     icon: TmIcon,
     tint: Color,
-    value: String,
+    value: String?,
     background: Color = TmColors.Ink3,
+    content: @Composable () -> Unit = {},
 ) {
     Row(
         Modifier.height(BUTTON_SIZE.dp).background(background, ChipShape).padding(horizontal = 8.dp),
@@ -152,7 +154,8 @@ private fun Kpi(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(icon, null, tint = tint, size = 16.dp)
-        BasicText(value, style = TmType.mono(14.sp, color = TmColors.OnDark), maxLines = 1)
+        value?.let { BasicText(it, style = TmType.mono(14.sp, color = TmColors.OnDark), maxLines = 1) }
+        content()
     }
 }
 
@@ -175,7 +178,9 @@ internal fun BarButton(
 }
 
 private val ButtonShape = RoundedCornerShape(8.dp)
-private val SPEEDS = listOf(1, 2, 4, GameRunner.MAX_SPEED)
+
+/** Auf dem Handy nur bis 16× – schneller schafft die Simulation dort nicht (Entscheidung O1 aus v0.9). */
+private val SPEEDS = GameRunner.SPEEDS.filter { it <= GameRunner.TOUCH_MAX_SPEED }
 internal const val TOP_BAR_HEIGHT = 48
 private const val BUTTON_SIZE = 40
 private const val LOGO_SIZE = 26

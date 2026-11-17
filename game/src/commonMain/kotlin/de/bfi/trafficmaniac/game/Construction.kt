@@ -22,6 +22,11 @@ internal class Construction(
     var repaired = 0
         private set
 
+    /** Außerhalb einer Baustelle repariert (geflickt). */
+    fun countRepair() {
+        repaired++
+    }
+
     /** Zuletzt fertig gewordene Reparatur – ein Anlass für eine feierliche Wiedereröffnung. */
     var lastRepaired: String? = null
 

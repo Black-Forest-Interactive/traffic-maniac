@@ -106,8 +106,7 @@ fun MapView(
     val picker = remember(city) { MapPicker(city) }
     val segmentPaths = remember(city) { SegmentPaths(city) }
     val environmentCache = remember(city) { EnvironmentCache() }
-    val effects =
-        remember(city, sprites) { TrafficEffects(FlashTracker(), FlowLayer(segmentPaths), AngerClouds(), sprites) }
+    val effects = remember(city, sprites) { TrafficEffects(FlowLayer(segmentPaths), sprites) }
     val textMeasurer = rememberTextMeasurer()
     val clickHandler by rememberUpdatedState(onMapClick)
     val frameTick = rememberFrameTick(onFps)
@@ -148,8 +147,9 @@ fun MapView(
                     drawOverlays(currentCamera, frame, segmentPaths, overlays)
                     val viewport = currentCamera.viewport(size.width, size.height)
                     val seconds = nanos / NANOS_PER_SECOND.toDouble()
-                    effects.flashes.update(frame.game.cameras, seconds)
+                    effects.update(frame, picker, seconds)
                     drawTraffic(currentCamera, frame, picker, textMeasurer, viewport, seconds, effects)
+                    inWorld(currentCamera) { effects.drawPops(this, textMeasurer, currentCamera.scale, seconds) }
                     focus?.let { drawPing(currentCamera, it, (nanos - ping[0]) / NANOS_PER_SECOND.toDouble()) }
                     MapDrawTime.record(drawStart.elapsedNow().inWholeMicroseconds)
                 }
@@ -390,11 +390,36 @@ internal inline fun DrawScope.inWorld(
 
 /** Zwischenspeicher der Effekte: Blitzer-Blitze, Staufarben und Wutwolken (je Snapshot berechnet). */
 internal class TrafficEffects(
-    val flashes: FlashTracker,
     val flow: FlowLayer,
-    val clouds: AngerClouds,
     val sprites: SpriteSource,
-)
+) {
+    val flashes = FlashTracker()
+    val pops = MoneyPops()
+    val puffs = BuildPuffs()
+    val clouds = AngerClouds()
+
+    /** Je Bild: neue Blitze, Einnahmen und Bauten erkennen. */
+    fun update(
+        frame: TrafficFrame,
+        picker: MapPicker,
+        seconds: Double,
+    ) {
+        flashes.update(frame.game.cameras, seconds)
+        pops.update(frame.game.cameras, frame.current.cameras, seconds)
+        puffs.update(frame.game, frame.current.cameras, picker, seconds)
+    }
+
+    /** Staubwolken und aufsteigende Beträge über allem anderen. */
+    fun drawPops(
+        scope: DrawScope,
+        textMeasurer: TextMeasurer,
+        scale: Float,
+        seconds: Double,
+    ) {
+        puffs.draw(scope, scale, seconds)
+        pops.draw(scope, textMeasurer, scale, seconds)
+    }
+}
 
 /** Was unter dem Verkehr eingeblendet wird: Umwelt-Ebene, Zufriedenheit, Straßenzustand. */
 private class Overlays(
@@ -438,6 +463,7 @@ private fun DrawScope.drawTraffic(
     drawSnow(effects.flow.paths, traffic.current.weather, camera.scale)
     drawIncidents(traffic.current.incidents, camera.scale, effects.sprites)
     drawDamage(traffic.game.maintenance.reports, picker, camera.scale, effects.sprites)
+    drawAssignments(traffic.game.assignments, camera.scale, effects.sprites)
     drawInfrastructureIcons(traffic.current.infrastructure, picker, camera.scale, effects.sprites)
     drawExcavators(
         traffic.current.infrastructure.worksSegments

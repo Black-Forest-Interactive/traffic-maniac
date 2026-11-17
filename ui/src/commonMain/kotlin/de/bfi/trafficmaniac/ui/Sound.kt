@@ -1,5 +1,7 @@
 package de.bfi.trafficmaniac.ui
 
+import de.bfi.trafficmaniac.game.GameState
+import de.bfi.trafficmaniac.game.HighlightKind
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.sim.FLAG_EMERGENCY
 import de.bfi.trafficmaniac.sim.FLAG_JAMMED
@@ -14,7 +16,24 @@ enum class SoundEffect {
 
     /** Knopfdruck in der Oberfläche. */
     CLICK,
+
+    /** Errungenschaft: kleine Fanfare. */
+    FANFARE,
+
+    /** Gute Nachricht (Blitzer bezahlt, fast geschafft): heller Zweiklang. */
+    SUCCESS,
+
+    /** Warnung (zu wenig Geld, Rücktrittsforderung): tiefer Doppelton. */
+    WARNING,
+
+    /** Etwas steht (Blitzer, Schild, Ampel): dumpfes „Plopp“. */
+    BUILD,
 }
+
+/** Wie viel der Spieler aufgestellt hat – steigt die Zahl, wurde etwas gebaut (für Ton und Staubwolke). */
+internal fun placedCount(game: GameState): Int =
+    game.cameras.size + game.speedLimits.size + game.nightLimits.size + game.signalNodes.size +
+        game.priorityRoads.size + game.bikeCrossings.size + game.bikeStreets.size
 
 /**
  * Dauerhafte Geräuschkulisse, jeweils 0..1: Verkehrsrauschen ([traffic]), Hupkonzert im Stau ([honking]) und
@@ -57,6 +76,8 @@ class SoundDirector(
     private var cameraCount = -1
     private var income = -1L
     private var lastCashSeconds = Double.NEGATIVE_INFINITY
+    private var lastHighlight = -1
+    private var placed = -1
 
     fun update(
         frame: TrafficFrame,
@@ -73,7 +94,29 @@ class SoundDirector(
             lastCashSeconds = seconds
         }
         income = earned
+        val nowPlaced = placedCount(game)
+        if (placed in 0 until nowPlaced) board.play(SoundEffect.BUILD)
+        placed = nowPlaced
+        playHighlights(game)
         board.ambience(ambienceOf(frame, zoom))
+    }
+
+    /** Neue Einblendungen: ein Ton je Schub, der wichtigste gewinnt (Fanfare vor Warnung vor guter Nachricht). */
+    private fun playHighlights(game: GameState) {
+        val newest = game.highlights.maxOfOrNull { it.id } ?: 0
+        val fresh = game.highlights.filter { it.id > lastHighlight }
+        // Beim ersten Bild (oder nach dem Laden) nichts nachholen
+        if (lastHighlight >= 0 && fresh.isNotEmpty()) {
+            val kinds = fresh.map { it.kind }.toSet()
+            val effect =
+                when {
+                    HighlightKind.BIG in kinds -> SoundEffect.FANFARE
+                    HighlightKind.WARNING in kinds -> SoundEffect.WARNING
+                    else -> SoundEffect.SUCCESS
+                }
+            board.play(effect)
+        }
+        lastHighlight = maxOf(lastHighlight, newest)
     }
 
     private fun ambienceOf(

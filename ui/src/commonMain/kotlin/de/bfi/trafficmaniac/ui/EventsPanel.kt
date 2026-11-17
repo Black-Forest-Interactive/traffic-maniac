@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.AchievementStatus
 import de.bfi.trafficmaniac.game.CalendarEntry
 import de.bfi.trafficmaniac.game.EventsState
+import de.bfi.trafficmaniac.i18n.formatNumber
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.components.Badge
 import de.bfi.trafficmaniac.ui.components.BadgeTone
@@ -210,6 +211,19 @@ private fun AchievementTile(
             style = TmType.text(13.sp, FontWeight.Bold, if (status.unlocked) TmColors.Ink else TmColors.Muted),
         )
         BasicText(status.achievement.description, style = TmType.caption)
+        val progress = status.progress
+        if (!status.unlocked && progress != null && status.achievement.target > 0) {
+            val target = status.achievement.target
+            Meter(progress.toFloat() / target, Modifier.fillMaxWidth(), height = 6.dp)
+            BasicText(
+                tr(
+                    "{progress} von {target}",
+                    "progress" to formatNumber(progress.toLong()),
+                    "target" to formatNumber(target.toLong()),
+                ),
+                style = TmType.mono(11.sp, bold = false, color = TmColors.Muted),
+            )
+        }
         status.unlockedDay?.let {
             BasicText(
                 tr("Tag {day}", "day" to it - firstDay + 1),

@@ -37,6 +37,7 @@ import de.bfi.trafficmaniac.ui.components.Icon
 import de.bfi.trafficmaniac.ui.components.Icons
 import de.bfi.trafficmaniac.ui.components.Meter
 import de.bfi.trafficmaniac.ui.components.MinTouch
+import de.bfi.trafficmaniac.ui.components.TmIcon
 import kotlin.math.roundToInt
 
 internal val ChipShape = RoundedCornerShape(10.dp)
@@ -57,6 +58,10 @@ internal class TopBarActions(
     val onMenu: (() -> Unit)?,
     /** Langes Tippen aufs Tempo (Handy): Entwickler-Anzeige ein/aus. */
     val onDebug: (() -> Unit)? = null,
+    /** Nach der Auto-Bremse mit dem alten Tempo weiter. */
+    val onResume: (() -> Unit)? = null,
+    /** Vorspulen bis zum nächsten Ereignis. */
+    val onFastForward: (() -> Unit)? = null,
 )
 
 /** Dunkle Kopfleiste: Tag und Uhrzeit, Zeitraffer, Kennzahlen (Kasse, Reputation, Zorn, Abwahl), Speichern, Menü. */
@@ -73,6 +78,7 @@ internal fun HudTopBar(
     ) {
         Clock(frame)
         actions.onSpeed?.let { SpeedSegments(frame.speed, it) }
+        SpeedStatus(frame, actions)
         Row(
             Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -118,7 +124,80 @@ internal fun Logo(size: Int = LOGO_HEIGHT) {
     }
 }
 
-/** Pause und Zeitraffer 1×/2×/4×/8× – das gewählte Tempo ist Ampelgelb. */
+/**
+ * Rechts neben dem Tempo: Vorspulen bis zum nächsten Ereignis, „weiter mit 32ד nach der Auto-Bremse und – wenn das
+ * Gerät nicht nachkommt – das tatsächlich erreichte Tempo.
+ */
+@Composable
+internal fun SpeedStatus(
+    frame: TrafficFrame,
+    actions: TopBarActions,
+    compact: Boolean = false,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        val braked = frame.brakedFrom
+        val resume = actions.onResume
+        val forward = actions.onFastForward
+        when {
+            braked != null && resume != null -> {
+                StatusChip(tr("Gebremst · weiter mit {speed}×", "speed" to braked), TmColors.Active, resume)
+            }
+
+            frame.fastForward -> {
+                StatusChip(tr("Spult vor …"), TmColors.OnDarkMuted, null)
+            }
+
+            forward != null && frame.speed > 0 && !compact -> {
+                ForwardButton(forward)
+            }
+        }
+        if (frame.lagging) {
+            BasicText(
+                tr("schafft {actual}×", "actual" to frame.actualSpeed.roundToInt().coerceAtLeast(1)),
+                style = TmType.mono(11.sp, bold = false, color = TmColors.Warn),
+            )
+        }
+    }
+}
+
+/** Vorspulen bis zum nächsten Ereignis – nur das Symbol, damit die Kopfleiste auch bei 1440 Pixeln passt. */
+@Composable
+private fun ForwardButton(onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(30.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(TmColors.Ink3)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.FastForward, tr("Vorspulen bis zum nächsten Ereignis (V)"), tint = TmColors.OnDark, size = 16.dp)
+    }
+}
+
+@Composable
+private fun StatusChip(
+    text: String,
+    color: Color,
+    onClick: (() -> Unit)?,
+    icon: TmIcon? = null,
+) {
+    Row(
+        Modifier
+            .height(30.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(TmColors.Ink3)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        icon?.let { Icon(it, null, tint = color, size = 14.dp) }
+        BasicText(text, style = TmType.text(12.sp, FontWeight.SemiBold, color))
+    }
+}
+
+/** Pause und Zeitraffer 1× bis 64× – das gewählte Tempo ist Ampelgelb. */
 @Composable
 private fun SpeedSegments(
     speed: Int,
@@ -128,12 +207,12 @@ private fun SpeedSegments(
         Modifier.background(TmColors.Ink3, ChipShape).padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        for (option in listOf(0) + SPEEDS) {
+        for (option in listOf(0) + GameRunner.SPEEDS) {
             val chosen = option == speed
             val color = if (chosen) TmColors.Ink else TmColors.OnDark
             Box(
                 Modifier
-                    .widthIn(min = 40.dp)
+                    .widthIn(min = 34.dp)
                     .height(38.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(if (chosen) TmColors.Active else Color.Transparent)
@@ -154,13 +233,22 @@ private fun SpeedSegments(
 private fun RowScope.KpiChips(frame: TrafficFrame) {
     val game = frame.game
     KpiChip(Icons.Wallet, MoneyIcon) {
-        KpiValue(tr("Kasse"), formatEuro(game.balance))
+        Column {
+            BasicText(tr("Kasse"), style = TmType.text(11.sp, color = TmColors.OnDarkMuted))
+            CountingEuro(game.balance, TmType.mono(15.sp, color = TmColors.OnDark))
+        }
         Box(Modifier.width(1.dp).height(28.dp).background(TmColors.LineDark))
         BasicText(tr("Bußgelder"), style = TmType.text(12.sp, color = TmColors.OnDarkMuted))
         BasicText(formatEuro(game.fineIncome), style = TmType.mono(12.sp, color = TmColors.OnDark))
     }
-    KpiChip(Icons.Award, ReputationIcon) { KpiValue(tr("Reputation"), "${game.reputation.roundToInt()}", "/100") }
-    KpiChip(Icons.Siren, AlarmIcon) { KpiValue(tr("Bürgerzorn"), "${game.anger.roundToInt()}") }
+    KpiChip(Icons.Award, ReputationIcon) {
+        KpiValue(tr("Reputation"), "${game.reputation.roundToInt()}", "/100")
+        DeltaArrow(game.reputation.roundToInt(), upIsGood = true, TmType.mono(11.sp))
+    }
+    KpiChip(Icons.Siren, AlarmIcon) {
+        KpiValue(tr("Bürgerzorn"), "${game.anger.roundToInt()}")
+        DeltaArrow(game.anger.roundToInt(), upIsGood = false, TmType.mono(11.sp))
+    }
     // Feste Breite: der Meter bleibt im Chip, statt die Kopfleiste zu füllen; ab 50 rot hinterlegt
     val danger = game.recallIndex > RECALL_DANGER
     KpiChip(
@@ -242,7 +330,6 @@ private fun DarkButton(
     }
 }
 
-private val SPEEDS = listOf(1, 2, 4, GameRunner.MAX_SPEED)
 private const val MAX_INDEX = 100.0
 private const val RECALL_CHIP_WIDTH = 180
 private const val DANGER_ALPHA = 0.55f

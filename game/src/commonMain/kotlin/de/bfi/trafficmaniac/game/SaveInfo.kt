@@ -24,7 +24,7 @@ data class SaveInfo(
 ) {
     companion object {
         /** Ändert sich, wenn alte Spielstände nicht mehr zum Spiel passen. */
-        const val VERSION = 2
+        const val VERSION = 3
         const val QUICK_SAVE = "schnell"
     }
 }

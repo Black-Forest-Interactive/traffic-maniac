@@ -61,6 +61,8 @@ internal class RailState(
     val feed: Boolean,
     val views: Boolean,
     val emergencies: Int,
+    /** Neue Erfolge seit dem letzten Blick ins Fenster: Zähler an „Berichte“ und im Menü. */
+    val newAchievements: Int = 0,
 )
 
 /** Was die Knöpfe der linken Leiste auslösen. */
@@ -92,7 +94,10 @@ internal fun TouchRail(
     ) {
         for (menu in RailMenu.entries) {
             val inside = menu.items.any { it.panel == state.panel }
-            TouchRailButton(menu.icon, tr(menu.labelText), state.menu == menu || inside) { actions.onMenu(menu) }
+            val badge = if (menu == RailMenu.REPORTS) state.newAchievements else 0
+            TouchRailButton(menu.icon, tr(menu.labelText), state.menu == menu || inside, badge) {
+                actions.onMenu(menu)
+            }
         }
         TouchRailButton(Icons.Siren, tr("Einsätze"), state.panel == SidePanel.EMERGENCIES, state.emergencies) {
             actions.onPanel(SidePanel.EMERGENCIES)
@@ -130,19 +135,24 @@ private fun TouchRailButton(
                 maxLines = 1,
             )
         }
-        if (badge > 0) {
-            BasicText(
-                "$badge",
-                style = TmType.text(10.sp, FontWeight.Bold, TmColors.Surface),
-                modifier =
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = (-4).dp, y = 2.dp)
-                        .background(TmColors.Danger, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 5.dp),
-            )
-        }
+        if (badge > 0) RailBadge(badge, Modifier.align(Alignment.TopEnd).offset(x = (-4).dp, y = 2.dp))
     }
+}
+
+/** Roter Zähler (Einsätze, neue Erfolge). */
+@Composable
+private fun RailBadge(
+    count: Int,
+    modifier: Modifier = Modifier,
+) {
+    BasicText(
+        "$count",
+        style = TmType.text(10.sp, FontWeight.Bold, TmColors.Surface),
+        modifier =
+            modifier
+                .background(TmColors.Danger, RoundedCornerShape(8.dp))
+                .padding(horizontal = 5.dp),
+    )
 }
 
 /** Aufgeklapptes Menü neben der Leiste: je Fenster eine Zeile mit Symbol und Namen; das offene ist hervorgehoben. */
@@ -152,6 +162,7 @@ internal fun RailMenuCard(
     panel: SidePanel,
     onPanel: (SidePanel) -> Unit,
     modifier: Modifier = Modifier,
+    badges: Map<SidePanel, Int> = emptyMap(),
 ) {
     val shape = RoundedCornerShape(12.dp)
     Column(
@@ -183,7 +194,12 @@ internal fun RailMenuCard(
             ) {
                 Icon(entry.icon, null, tint = TmColors.Ink, size = 20.dp)
                 // „Ordnungs-\namt“ steht in der Leiste zweizeilig, hier in einer Zeile
-                BasicText(tr(entry.labelText).replace("-\n", ""), style = TmType.text(14.sp, FontWeight.SemiBold))
+                BasicText(
+                    tr(entry.labelText).replace("-\n", ""),
+                    style = TmType.text(14.sp, FontWeight.SemiBold),
+                    modifier = Modifier.weight(1f),
+                )
+                badges[entry.panel]?.takeIf { it > 0 }?.let { RailBadge(it) }
             }
         }
     }

@@ -65,6 +65,8 @@ data class GameSettings(
     val language: String? = null,
     /** Größe von Menü und HUD in Prozent; 0 = automatisch nach Fensterbreite. */
     val uiScale: Int = 0,
+    /** Zeitraffer ab 16× bei Schäden, Ereignissen und Errungenschaften automatisch auf 4× bremsen. */
+    val autoBrake: Boolean = true,
     /** Anonyme Statistiken senden; `null` = noch nicht gefragt (dann wird nichts gesammelt). */
     val statistics: Boolean? = null,
 )

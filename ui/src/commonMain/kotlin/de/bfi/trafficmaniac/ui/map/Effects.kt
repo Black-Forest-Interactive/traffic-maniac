@@ -5,7 +5,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.CameraRecord
+import de.bfi.trafficmaniac.game.GameState
+import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.sim.FLAG_JAMMED
 import de.bfi.trafficmaniac.sim.SimulationSnapshot
 import de.bfi.trafficmaniac.sim.SpeedCamera
@@ -239,3 +247,176 @@ private val BOLT =
         -0.02f to -0.42f,
         -0.2f to -0.42f,
     )
+
+/**
+ * Aufsteigende Beträge über Blitzern („+30 €“): Einnahmen je Blitzer werden höchstens einmal je [POP_EVERY_SECONDS]
+ * gebündelt (bei 64× sonst ein Zahlenregen), steigen auf und verblassen in [POP_SECONDS].
+ */
+internal class MoneyPops {
+    private class Pop(
+        val x: Float,
+        val y: Float,
+        val euros: Long,
+        val born: Double,
+    )
+
+    private val revenue = HashMap<Int, Long>()
+    private val pending = HashMap<Int, Long>()
+    private val lastPop = HashMap<Int, Double>()
+    private val pops = ArrayList<Pop>()
+
+    fun update(
+        records: List<CameraRecord>,
+        cameras: List<SpeedCamera>,
+        seconds: Double,
+    ) {
+        for (record in records) {
+            val before = revenue[record.cameraId]
+            if (before != null && record.totalRevenue > before) {
+                pending[record.cameraId] = (pending[record.cameraId] ?: 0L) + record.totalRevenue - before
+            }
+            revenue[record.cameraId] = record.totalRevenue
+        }
+        val byId = cameras.associateBy { it.id }
+        for ((id, euros) in pending.entries.toList()) {
+            if (seconds - (lastPop[id] ?: Double.NEGATIVE_INFINITY) < POP_EVERY_SECONDS) continue
+            val camera = byId[id] ?: continue
+            pops += Pop(camera.x, camera.y, euros, seconds)
+            lastPop[id] = seconds
+            pending.remove(id)
+        }
+        pops.removeAll { seconds - it.born > POP_SECONDS }
+    }
+
+    fun draw(
+        scope: DrawScope,
+        textMeasurer: TextMeasurer,
+        scale: Float,
+        seconds: Double,
+    ) = with(scope) {
+        for (pop in pops) {
+            val age = ((seconds - pop.born) / POP_SECONDS).toFloat().coerceIn(0f, 1f)
+            val label =
+                textMeasurer.measure(
+                    "+" + formatEuro(pop.euros),
+                    TextStyle(
+                        fontSize = POP_FONT_SIZE.sp,
+                        fontWeight = FontWeight.Black,
+                        color =
+                            MapStyle.moneyPop.copy(
+                                alpha =
+                                    1 - age,
+                            ),
+                    ),
+                )
+            // In Bildschirmpunkten: steigt um POP_RISE Pixel, Weltskalierung (y nach Norden) aufheben
+            withTransform({
+                translate(pop.x, pop.y + (POP_START + age * POP_RISE) / scale)
+                scale(1 / scale, -1 / scale, pivot = Offset.Zero)
+            }) {
+                drawText(label, topLeft = Offset(-label.size.width / 2f, -label.size.height / 2f))
+            }
+        }
+    }
+
+    private companion object {
+        const val POP_SECONDS = 1.6
+        const val POP_EVERY_SECONDS = 1.0
+        const val POP_FONT_SIZE = 13
+        const val POP_START = 18f
+        const val POP_RISE = 34f
+    }
+}
+
+/**
+ * „Plopp“ beim Bauen: Wo seit dem letzten Bild ein Blitzer, ein Schild, eine Ampel oder eine Markierung dazugekommen
+ * ist, geht kurz eine Staubwolke auf (Ringe wachsen und verblassen in [PUFF_SECONDS]). Beim ersten Bild – und nach
+ * dem Laden – wird nur gemerkt, nicht gestaubt.
+ */
+internal class BuildPuffs {
+    private class Puff(
+        val x: Float,
+        val y: Float,
+        val born: Double,
+    )
+
+    private var known: Set<String>? = null
+    private var source: GameState? = null
+    private val puffs = ArrayList<Puff>()
+
+    fun update(
+        game: GameState,
+        cameras: List<SpeedCamera>,
+        picker: MapPicker,
+        seconds: Double,
+    ) {
+        puffs.removeAll { seconds - it.born > PUFF_SECONDS }
+        // Der Spielstand wechselt nur je Schritt, nicht je Bild
+        if (game === source) return
+        source = game
+        val now = HashMap<String, Pair<Float, Float>?>()
+        for (camera in cameras) now["c${camera.id}"] = camera.x to camera.y
+        val segments =
+            listOf(
+                "l" to game.speedLimits.keys,
+                "n" to game.nightLimits.keys,
+                "p" to game.priorityRoads,
+                "b" to game.bikeCrossings,
+                "s" to game.bikeStreets,
+            )
+        for ((prefix, ids) in segments) for (id in ids) now["$prefix$id"] = null
+        for (node in game.signalNodes) now["a$node"] = null
+        val before = known
+        if (before != null) {
+            for (key in now.keys - before) {
+                val at = now[key] ?: positionOf(key, picker) ?: continue
+                puffs += Puff(at.first, at.second, seconds)
+            }
+        }
+        known = now.keys
+    }
+
+    private fun positionOf(
+        key: String,
+        picker: MapPicker,
+    ): Pair<Float, Float>? {
+        val id = key.drop(1).toIntOrNull() ?: return null
+        return if (key[0] == 'a') {
+            picker.city.roads.nodes
+                .getOrNull(id)
+                ?.let { it.x to it.y }
+        } else {
+            picker.midpoint(id)
+        }
+    }
+
+    fun draw(
+        scope: DrawScope,
+        scale: Float,
+        seconds: Double,
+    ) = with(scope) {
+        val size = max(PUFF_METERS, PUFF_MIN_PIXELS / scale)
+        for (puff in puffs) {
+            val age = ((seconds - puff.born) / PUFF_SECONDS).toFloat().coerceIn(0f, 1f)
+            val alpha = (1 - age) * PUFF_ALPHA
+            val c = Offset(puff.x, puff.y)
+            for (k in 0 until PUFF_BLOBS) {
+                val angle = k * 2 * PI / PUFF_BLOBS
+                val reach = size * (PUFF_START + age * PUFF_GROWTH)
+                val at = c + Offset(cos(angle).toFloat() * reach, sin(angle).toFloat() * reach)
+                drawCircle(MapStyle.dust.copy(alpha = alpha), size * (PUFF_BLOB + age * PUFF_BLOB), at)
+            }
+        }
+    }
+
+    private companion object {
+        const val PUFF_SECONDS = 0.7
+        const val PUFF_METERS = 6f
+        const val PUFF_MIN_PIXELS = 10f
+        const val PUFF_ALPHA = 0.75f
+        const val PUFF_BLOBS = 7
+        const val PUFF_START = 0.4f
+        const val PUFF_GROWTH = 1.4f
+        const val PUFF_BLOB = 0.35f
+    }
+}

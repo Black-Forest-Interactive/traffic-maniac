@@ -43,6 +43,7 @@ class Session(
             // Der Vorlauf läuft im Runner, während das Spiel schon zu sehen ist (statt über eine Minute Ladebild)
             val runner = GameRunner(game, scenario.warmupMinutes * SECONDS_PER_MINUTE * config.ticksPerSecond)
             runner.setSpeed(settings.startSpeed)
+            runner.autoBrake = settings.autoBrake
             return Session(city, scenario, settings, game, runner)
         }
     }

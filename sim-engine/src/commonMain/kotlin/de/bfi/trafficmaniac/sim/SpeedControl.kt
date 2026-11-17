@@ -28,6 +28,22 @@ class SpeedControl internal constructor(
     /** Messtoleranz in km/h (einstellbar über die Schärfe des Ordnungsamts). */
     var toleranceKmh = DEFAULT_TOLERANCE_KMH
 
+    /** Anteil der Fahrer mit Blitzer-Warn-App (0..1). Vor bekannten festen Blitzern bremsen sie wie Ortskundige. */
+    var warnerShare = 0.0
+
+    /** Höchstens so viele Ortsfremde bremsen vor einem bekannten Blitzer – etwas Wirkung bleibt immer. */
+    var maxWarned = 1.0
+
+    /** Angekündigter Blitzermarathon: Alle bremsen vor jedem Blitzer, auch vor mobilen. */
+    var marathon = false
+
+    /** Ein Spieltag ist vergangen: Jeder feste Blitzer wird um [perDay] bekannter (höchstens 1). */
+    fun dayPassed(perDay: Double) {
+        for (camera in cameraList) {
+            if (camera.isFixed) camera.familiarity = (camera.familiarity + perDay).coerceAtMost(1.0)
+        }
+    }
+
     /** Alle aufgestellten Blitzer und Lasermessungen. */
     val cameras: List<SpeedCamera> get() = cameraList
 
@@ -36,11 +52,22 @@ class SpeedControl internal constructor(
         segment: Int,
         mobile: Boolean = false,
         trailer: Boolean = false,
+        dummy: Boolean = false,
     ): SpeedCamera {
         val links = graph.segmentLinks[segment]
         val point = FloatArray(LOCATE_SIZE)
         graph.locate(links.first(), graph.linkLength[links.first()] / 2, 0, point)
-        val camera = SpeedCamera(nextCameraId++, segment, point[LOCATE_X], point[LOCATE_Y], mobile || trailer, trailer)
+        val camera =
+            SpeedCamera(
+                nextCameraId++,
+                segment,
+                point[LOCATE_X],
+                point[LOCATE_Y],
+                mobile || trailer,
+                trailer,
+                measuresSpeed = !dummy,
+                dummy = dummy,
+            )
         cameraList += camera
         for (link in links) sites[link] += CameraSite(camera, graph.linkLength[link] / 2.0)
         return camera
@@ -155,14 +182,20 @@ class SpeedControl internal constructor(
             )
         vehicle.speedingKmh =
             when {
-                overlooked -> gap + random.nextDouble(0.0, MAX_BASE_EXCESS_KMH)
-                random.nextDouble() < probability -> excess(gap)
-                else -> 0.0
+                overlooked -> {
+                    gap + random.nextDouble(0.0, MAX_BASE_EXCESS_KMH)
+                }
+
+                // Überschreitung nach echten Messungen ([SpeedingProfile]); breite Straßen verleiten zu etwas mehr
+                random.nextDouble() < probability -> {
+                    SpeedingProfile.sample(random) + gap * random.nextDouble(0.0, MAX_GAP_SHARE)
+                }
+
+                else -> {
+                    0.0
+                }
             }
     }
-
-    /** Überschreitung nach echten Messungen ([SpeedingProfile]); breite Straßen verleiten zu etwas mehr. */
-    private fun excess(gap: Double) = SpeedingProfile.sample(random) + gap * random.nextDouble(0.0, MAX_GAP_SHARE)
 
     /**
      * Reizdichte beim Einfahren in [link] (von [previous] kommend): Ampel, Tempowechsel, Nachtlimit und
@@ -219,17 +252,34 @@ class SpeedControl internal constructor(
             accept: (SpeedCamera) -> Boolean,
         ) = sites[link].any { accept(it.camera) && it.position - vehicle.position in 0.0..zone }
         var cap = Double.MAX_VALUE
-        if (vehicle.knowsCameras &&
-            ahead(CAMERA_BRAKE_ZONE) { !it.mobile && it.measuresSpeed }
-        ) {
-            cap = limit * CAMERA_BRAKE_FACTOR
-        }
+        if (brakesForFixedCamera(vehicle, link)) cap = limit * CAMERA_BRAKE_FACTOR
+        if (marathon && ahead(CAMERA_BRAKE_ZONE) { it.measuresSpeed }) cap = min(cap, limit * CAMERA_BRAKE_FACTOR)
         if (graph.linkBikeStreet[link] && vehicle.overtakingLink != link) cap = min(cap, BIKE_PACE / KMH_PER_MS)
         if (ahead(CHECK_ZONE) { it.policeCheck }) cap = min(cap, CHECK_PACE / KMH_PER_MS)
         if (vehicle.speedingKmh > 0 && ahead(DISPLAY_ZONE) { it.display }) {
             cap = min(cap, limit + vehicle.speedingKmh * DISPLAY_EFFECT / KMH_PER_MS)
         }
         return cap
+    }
+
+    /**
+     * Steht kurz vor [vehicle] ein fester Blitzer (oder eine Attrappe), den es kennt? Ortskundige kennen alle; von den
+     * anderen warnt eine App, je bekannter der Blitzer – fest je Fahrzeug und Blitzer, höchstens [maxWarned].
+     */
+    private fun brakesForFixedCamera(
+        vehicle: Vehicle,
+        link: Int,
+    ): Boolean {
+        val camera =
+            sites[link]
+                .firstOrNull {
+                    val camera = it.camera
+                    !camera.mobile && (camera.measuresSpeed || camera.dummy) &&
+                        it.position - vehicle.position in 0.0..CAMERA_BRAKE_ZONE
+                }?.camera ?: return false
+        val share = min(camera.familiarity * warnerShare, maxWarned)
+        val hash = (vehicle.id.toLong() * HASH_A + camera.id.toLong() * HASH_B).mod(HASH_RANGE)
+        return vehicle.knowsCameras || (share > 0.0 && hash < share * HASH_RANGE)
     }
 
     /** Prüft, ob [vehicle] auf [link] bei der Fahrt von [oldPosition] aus einen Blitzer passiert hat. */
@@ -298,6 +348,10 @@ class SpeedControl internal constructor(
         }
 
     companion object {
+        private const val HASH_A = 2_654_435_761L
+        private const val HASH_B = 40_503L
+        private const val HASH_RANGE = 10_000L
+
         /** Messtoleranz innerorts. */
         const val DEFAULT_TOLERANCE_KMH = 3.0
 

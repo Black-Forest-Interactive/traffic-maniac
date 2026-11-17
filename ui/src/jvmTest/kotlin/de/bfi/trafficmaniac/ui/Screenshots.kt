@@ -6,12 +6,18 @@ import androidx.compose.ui.unit.Density
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.game.CityGame
+import de.bfi.trafficmaniac.game.DamageReport
+import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.game.GameCommand
+import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.GameSettings
+import de.bfi.trafficmaniac.game.Highlight
+import de.bfi.trafficmaniac.game.HighlightKind
 import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.NewspaperEdition
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.game.TrafficFrame
+import de.bfi.trafficmaniac.sim.DamageKind
 import de.bfi.trafficmaniac.sim.DayReport
 import de.bfi.trafficmaniac.sim.GameTime
 import de.bfi.trafficmaniac.sim.Weekday
@@ -70,12 +76,40 @@ class Screenshots {
                         onSpeed = {},
                         onSave = {},
                         onMenu = {},
+                        onFastForward = {},
+                        onResumeSpeed = {},
                     )
                 }
             }
         }
         touch(out, city, frame)
-        dayReport(out, frame)
+        dayReport(out)
+        inspectCard(out, frame)
+        toastsAndTransit(out, city, frame)
+    }
+
+    /** Einblendungen in allen drei Stufen und die Nahansicht am Marktplatz mit Haltestellen und Bussen. */
+    private fun toastsAndTransit(
+        out: File,
+        city: CityMap,
+        frame: TrafficFrame,
+    ) {
+        shoot(File(out, "toasts.png"), TOAST_SHOT_WIDTH, TOAST_SHOT_HEIGHT, settleMillis = TOAST_SETTLE_MILLIS) {
+            HighlightToasts(
+                listOf(
+                    Highlight(1, HighlightKind.BIG, "Errungenschaft: Es blitzt", "Der erste Blitzer steht"),
+                    Highlight(
+                        2,
+                        HighlightKind.MEDIUM,
+                        "Blitzer Goethestraße hat sich bezahlt gemacht",
+                        "45.120 € eingenommen – alles Weitere ist Gewinn",
+                    ),
+                    Highlight(3, HighlightKind.WARNING, "Zu wenig Geld für Blitzer (45.000 €)"),
+                ),
+                {},
+                showExisting = true,
+            )
+        }
         // Nah dran am Marktplatz: Haltestellen und Busse
         city.transitStops.firstOrNull { it.name == "Marktplatz" }?.let { stop ->
             shoot(File(out, "map-transit.png"), MAP_SHOT_WIDTH, MAP_SHOT_HEIGHT) {
@@ -115,7 +149,7 @@ class Screenshots {
                     MutableStateFlow(frame),
                     de.bfi.trafficmaniac.game
                         .GameRules(),
-                    TouchCallbacks({}, {}, {}, onMenu = {}),
+                    TouchCallbacks({}, {}, {}, onMenu = {}, onFastForward = {}, onResumeSpeed = {}),
                     tutorial = name == "tutorial",
                     input = input,
                 )
@@ -123,11 +157,34 @@ class Screenshots {
         }
     }
 
-    /** Tagesabschluss mit Zeitung, Kasten „Aus der Praxis“ und Blitzer-Bilanz. */
-    private fun dayReport(
+    /** Aktionskarte zu einem angeklickten Schlagloch (Schaden von Hand eingetragen). */
+    private fun inspectCard(
         out: File,
         frame: TrafficFrame,
     ) {
+        val report =
+            DamageReport(
+                id = 1,
+                kind = DamageKind.POTHOLES,
+                segment = 0,
+                node = -1,
+                place = "Goethestraße",
+                reportedAt = frame.current.gameTime,
+                hoursLeft = 31.0,
+                status = DamageStatus.OPEN,
+                conditionPercent = 52,
+                repairCost = 25_000,
+            )
+        val game = frame.game.copy(maintenance = frame.game.maintenance.copy(reports = listOf(report)))
+        val withDamage =
+            TrafficFrame(frame.current, frame.current, TimeSource.Monotonic.markNow(), 1.seconds, 0.0, 1, 1, null, game)
+        shoot(File(out, "inspect-card.png"), INSPECT_SHOT_WIDTH, INSPECT_SHOT_HEIGHT) {
+            InspectCard(withDamage, Inspected.Damage(1), GameRules(), {}, {})
+        }
+    }
+
+    /** Tagesabschluss mit Zeitung, Kasten „Aus der Praxis“ und Blitzer-Bilanz. */
+    private fun dayReport(out: File) {
         val report =
             DayReport(
                 day = 0,
@@ -160,6 +217,8 @@ class Screenshots {
         width: Int,
         height: Int,
         density: Float = 1f,
+        /** Animationen bis zu diesem Zeitpunkt laufen lassen (Millisekunden Szenenzeit), z. B. für Einblendungen. */
+        settleMillis: Long = 0,
         content: @Composable () -> Unit,
     ) {
         val scale = System.getenv("TM_UI_SCALE")?.toIntOrNull() ?: 0
@@ -170,6 +229,11 @@ class Screenshots {
             for (i in 1..FRAMES) {
                 Thread.sleep(FRAME_PAUSE_MILLIS)
                 image = scene.render(i * FRAME_NANOS)
+            }
+            if (settleMillis > 0) {
+                for (millis in FRAMES * FRAME_NANOS / NANOS_PER_MILLI..settleMillis step SETTLE_STEP_MILLIS) {
+                    image = scene.render(millis * NANOS_PER_MILLI)
+                }
             }
             file.writeBytes(image.encodeToData(EncodedImageFormat.PNG)!!.bytes)
             println("Screenshot: ${file.absolutePath}")
@@ -232,6 +296,13 @@ class Screenshots {
 
     private companion object {
         val SIZES = listOf(1440 to 900, 2000 to 1050)
+        const val TOAST_SHOT_WIDTH = 600
+        const val INSPECT_SHOT_WIDTH = 480
+        const val INSPECT_SHOT_HEIGHT = 300
+        const val TOAST_SHOT_HEIGHT = 300
+        const val TOAST_SETTLE_MILLIS = 900L
+        const val SETTLE_STEP_MILLIS = 16L
+        const val NANOS_PER_MILLI = 1_000_000L
         const val FRAMES = 8
         const val FRAME_PAUSE_MILLIS = 150L
         const val FRAME_NANOS = 16_000_000L
