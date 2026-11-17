@@ -3,6 +3,7 @@ package de.bfi.trafficmaniac.desktop
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.city.RoadClass
+import de.bfi.trafficmaniac.game.Assignment
 import de.bfi.trafficmaniac.game.AssignmentKind
 import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.DamageResponse
@@ -100,6 +101,7 @@ private fun play(
     val game = CityGame(city, config, rules)
     val log = StringBuilder("== ${strategy.id}: ${strategy.description}\n")
     val targets = ArrayDeque(centralMainRoads(city))
+    log.append("Blitzer-Ziele: ${targets.size} Abschnitte\n")
     if (strategy == Strategy.RIP_OFF_PR || strategy == Strategy.MODERATE_PR) {
         game.submit(GameCommand.SetPrContract(PrContract.PREMIUM))
         game.submit(GameCommand.SetArgumentsCampaign(true))
@@ -120,7 +122,13 @@ private fun play(
         if (state.grantIncome >
             0
         ) {
-            log.append("      Zuschüsse aus Aufträgen bisher: ${formatEuro(state.grantIncome)}\n")
+            log.append(
+                "      Aufträge bisher: Lohn ${formatEuro(state.grantIncome)}," +
+                    " Kosten ${formatEuro(assignmentSpending.get().values.sum())}" +
+                    assignmentSpending.get().entries.joinToString(prefix = " (", postfix = ")") { (kind, euros) ->
+                        "$kind ${formatEuro(euros)}"
+                    } + ", erledigt ${game.assignmentsDone}\n",
+            )
         }
         log.append(moodLine(state))
         state.latestEdition?.let { edition ->
@@ -147,8 +155,10 @@ private fun playDay(
 ): Boolean {
     val ticksPerHour = SECONDS_PER_HOUR * game.simulation.config.ticksPerSecond
     val cash = ArrayList<String>()
+    // Die letzten Tage wird gespart (neue Blitzer zahlen sich nicht mehr aus) – bei kurzen Läufen weniger
+    val savingDays = minOf(SAVING_DAYS, (days - 1) / 2)
     for (hour in 0 until HOURS_PER_DAY) {
-        playHour(game, strategy, targets, saving = day > days - SAVING_DAYS)
+        playHour(game, strategy, targets, saving = day > days - savingDays)
         repeat(ticksPerHour) { game.step() }
         if (day <= CASH_LOG_DAYS) {
             val state = game.state()
@@ -169,6 +179,9 @@ private fun playDay(
     if (cash.isNotEmpty()) log.append("      Kasse Tsd. € (unzufrieden/Abwahl): ${cash.joinToString(" | ")}\n")
     return true
 }
+
+/** Was die Strategie „auftraege“ für ihre Aufträge ausgegeben hat (je Lauf, gemessen an den Ausgaben). */
+private val assignmentSpending = ThreadLocal.withInitial { HashMap<String, Long>() }
 
 private fun thousands(euros: Long): String = (euros / EUROS_PER_THOUSAND).toString()
 
@@ -237,6 +250,8 @@ private fun playHour(
     targets: ArrayDeque<Int>,
     saving: Boolean,
 ) {
+    // Aufträge zuerst und je Art allein ausführen, damit ihre Kosten messbar sind
+    if (strategy == Strategy.ASSIGNMENTS) doAssignments(game)
     // Abkassieren: Jede Stunde werden die Einnahmen in die nächste Blitzer-Strecke gesteckt
     val calm = game.state().unhappyShare < MODERATE_LIMIT
     val investing = !saving && (strategy != Strategy.MODERATE_PR || calm)
@@ -244,7 +259,6 @@ private fun playHour(
     if (camerasEverywhere && investing) investInCameras(game, targets)
     val beginner = strategy == Strategy.BEGINNER || strategy == Strategy.ASSIGNMENTS
     if (beginner && !saving) investInCameras(game, targets, kmh = BEGINNER_KMH)
-    if (strategy == Strategy.ASSIGNMENTS) doAssignments(game)
     if (strategy != Strategy.NOTHING) staffFineOffice(game)
     if (strategy == Strategy.SIGN_CAMERA) signAndCamera(game)
     if (strategy == Strategy.REPAIR) repairEverything(game)
@@ -253,9 +267,10 @@ private fun playHour(
     }
 }
 
-/** Jeden offenen Auftrag mit dem billigsten passenden Werkzeug erledigen. */
+/** Jeden offenen Auftrag mit dem billigsten passenden Werkzeug erledigen; Kosten je Art mitschreiben. */
 private fun doAssignments(game: CityGame) {
     for (assignment in game.state().assignments) {
+        val before = game.state().expenses
         val segment = assignment.segments.first()
         when (assignment.kind) {
             AssignmentKind.TEMPO_30 -> {
@@ -280,6 +295,9 @@ private fun doAssignments(game: CityGame) {
                 game.submit(GameCommand.PlacePoliceCheck(segment))
             }
         }
+        game.step()
+        val spent = assignmentSpending.get()
+        spent.merge(assignment.kind.name, game.state().expenses - before, Long::plus)
     }
 }
 

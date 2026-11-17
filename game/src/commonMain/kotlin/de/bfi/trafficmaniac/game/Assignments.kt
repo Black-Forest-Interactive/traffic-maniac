@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.city.CityMap
+import de.bfi.trafficmaniac.city.StreetStretches
 import de.bfi.trafficmaniac.city.ZoneKind
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
@@ -89,6 +90,8 @@ internal class Assignments(
             .filter { !it.passive && it.name != null }
             .groupBy({ it.name!! }, { it.id })
 
+    private val stretches = StreetStretches(city.roads)
+
     private val homes = city.zones.filter { it.kind == ZoneKind.RESIDENTIAL }
 
     /** Straßen mit Abschnitten nahe an einem Wohngebiet (für „Tempo 30 gewünscht“). */
@@ -163,77 +166,89 @@ internal class Assignments(
     ): AssignmentCase? {
         val busyStreets = cases.filter { it.status == AssignmentStatus.OPEN }.map { it.street }.toSet()
         return when (kind) {
-            AssignmentKind.TEMPO_30 -> {
-                val options =
-                    nearHomes.filter { (street, segments) ->
-                        street !in busyStreets && segments.any { limit(world.state, it) > TEMPO_30 }
-                    }
-                options.keys.randomOrNull(random)?.let { street ->
-                    case(
-                        kind,
-                        street,
-                        nearHomes.getValue(street).toSet(),
-                        rules.assignments.rewardTempo30,
-                        rules.assignments.hoursTempo30,
-                        world,
-                    )
-                }
-            }
-
-            AssignmentKind.ACCIDENT_SPOT -> {
-                val accident =
-                    world.incidents.firstOrNull { it.kind == IncidentKind.ACCIDENT && it.startTime !in seenAccidents }
-                        ?: return null
-                seenAccidents += accident.startTime
-                val street = nearestStreet(accident.x, accident.y) ?: return null
-                if (street in busyStreets) return null
-                case(
-                    kind,
-                    street,
-                    streets.getValue(street).toSet(),
-                    rules.assignments.rewardAccident,
-                    rules.assignments.hoursAccident,
-                    world,
-                )
-            }
-
-            AssignmentKind.POTHOLE -> {
-                val taken = cases.filter { it.status == AssignmentStatus.OPEN }.map { it.reportId }.toSet()
-                val report =
-                    world.state.maintenance.reports.firstOrNull {
-                        it.kind == DamageKind.POTHOLES && it.status == DamageStatus.OPEN && it.id !in taken &&
-                            it.segments.isNotEmpty()
-                    } ?: return null
-                val street = city.roads.segments[report.segment].name ?: report.place
-                case(
-                    kind,
-                    street,
-                    report.segments,
-                    rules.assignments.rewardPothole,
-                    rules.assignments.hoursPothole,
-                    world,
-                    report.id,
-                )
-            }
-
-            AssignmentKind.SPEEDER -> {
-                val options =
-                    streets.filter { (street, segments) ->
-                        street !in busyStreets &&
-                            segments.any { limit(world.state, it) >= SPEEDER_MIN_KMH }
-                    }
-                options.keys.randomOrNull(random)?.let { street ->
-                    case(
-                        kind,
-                        street,
-                        streets.getValue(street).toSet(),
-                        rules.assignments.rewardSpeeder,
-                        rules.assignments.hoursSpeeder,
-                        world,
-                    )
-                }
-            }
+            AssignmentKind.TEMPO_30 -> tempo30(world, busyStreets)
+            AssignmentKind.ACCIDENT_SPOT -> accidentSpot(world, busyStreets)
+            AssignmentKind.POTHOLE -> pothole(world)
+            AssignmentKind.SPEEDER -> speeder(world, busyStreets)
         }
+    }
+
+    /** Nur eine Strecke (ein Schild), sonst kostet der Auftrag mehr Schilder, als er einbringt. */
+    private fun tempo30(
+        world: AssignmentWorld,
+        busyStreets: Set<String>,
+    ): AssignmentCase? {
+        val options =
+            nearHomes.filter { (street, segments) ->
+                street !in busyStreets && segments.any { limit(world.state, it) > TEMPO_30 }
+            }
+        val street = options.keys.randomOrNull(random) ?: return null
+        val start = nearHomes.getValue(street).filter { limit(world.state, it) > TEMPO_30 }.random(random)
+        return case(
+            AssignmentKind.TEMPO_30,
+            street,
+            stretches.stretchOf(start).toSet(),
+            rules.assignments.rewardTempo30,
+            rules.assignments.hoursTempo30,
+            world,
+        )
+    }
+
+    private fun accidentSpot(
+        world: AssignmentWorld,
+        busyStreets: Set<String>,
+    ): AssignmentCase? {
+        val accident =
+            world.incidents.firstOrNull { it.kind == IncidentKind.ACCIDENT && it.startTime !in seenAccidents }
+                ?: return null
+        seenAccidents += accident.startTime
+        val street = nearestStreet(accident.x, accident.y)?.takeIf { it !in busyStreets } ?: return null
+        return case(
+            AssignmentKind.ACCIDENT_SPOT,
+            street,
+            streets.getValue(street).toSet(),
+            rules.assignments.rewardAccident,
+            rules.assignments.hoursAccident,
+            world,
+        )
+    }
+
+    private fun pothole(world: AssignmentWorld): AssignmentCase? {
+        val taken = cases.filter { it.status == AssignmentStatus.OPEN }.map { it.reportId }.toSet()
+        val report =
+            world.state.maintenance.reports.firstOrNull {
+                it.kind == DamageKind.POTHOLES && it.status == DamageStatus.OPEN && it.id !in taken &&
+                    it.segments.isNotEmpty()
+            } ?: return null
+        val street = city.roads.segments[report.segment].name ?: report.place
+        return case(
+            AssignmentKind.POTHOLE,
+            street,
+            report.segments,
+            rules.assignments.rewardPothole,
+            rules.assignments.hoursPothole,
+            world,
+            report.id,
+        )
+    }
+
+    private fun speeder(
+        world: AssignmentWorld,
+        busyStreets: Set<String>,
+    ): AssignmentCase? {
+        val options =
+            streets.filter { (street, segments) ->
+                street !in busyStreets && segments.any { limit(world.state, it) >= SPEEDER_MIN_KMH }
+            }
+        val street = options.keys.randomOrNull(random) ?: return null
+        return case(
+            AssignmentKind.SPEEDER,
+            street,
+            streets.getValue(street).toSet(),
+            rules.assignments.rewardSpeeder,
+            rules.assignments.hoursSpeeder,
+            world,
+        )
     }
 
     private fun case(

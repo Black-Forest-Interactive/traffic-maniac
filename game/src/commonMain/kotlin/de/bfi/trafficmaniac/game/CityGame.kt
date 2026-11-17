@@ -85,6 +85,10 @@ class CityGame(
                 }
             },
         )
+
+    /** Erledigte Aufträge bisher (für den Kopflos-Lauf). */
+    val assignmentsDone: Int get() = assignments.doneCount
+
     private val assignments =
         Assignments(
             city,

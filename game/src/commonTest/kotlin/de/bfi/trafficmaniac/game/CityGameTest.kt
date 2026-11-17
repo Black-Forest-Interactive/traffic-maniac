@@ -200,7 +200,7 @@ class CityGameTest {
 
     @Test
     fun signForestAchievement() {
-        val game = CityGame(straightRoad(), config)
+        val game = CityGame(straightRoad(), config, GameRules(startBudget = 150_000))
         listOf(
             GameCommand.SetSpeedLimit(segment = 0, kmh = 30),
             GameCommand.SetSpeedLimit(segment = 0, kmh = 20, nightOnly = true),

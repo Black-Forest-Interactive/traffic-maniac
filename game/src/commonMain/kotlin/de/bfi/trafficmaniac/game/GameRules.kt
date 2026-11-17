@@ -10,7 +10,7 @@ data class GameRules(
     /** Punkte = Kasse × Faktor; der Faktor wächst linear mit der Reputation von min bis max. */
     val minReputationFactor: Double = 0.5,
     val maxReputationFactor: Double = 2.0,
-    val startBudget: Long = 150_000,
+    val startBudget: Long = 100_000,
     val speedLimitSignCost: Long = 2_000,
     val signalCost: Long = 30_000,
     val signalRemovalCost: Long = 5_000,
@@ -217,17 +217,17 @@ data class GameRules(
 /** Aufträge: so viele je Spielstunde (6–20 Uhr), am ersten Tag mal [firstDayFactor], höchstens [maxOpen] offen. */
 @Serializable
 data class AssignmentRules(
-    val perHour: Double = 1.5,
-    val firstDayFactor: Double = 2.0,
+    val perHour: Double = 1.2,
+    val firstDayFactor: Double = 1.5,
     val maxOpen: Int = 4,
-    val rewardTempo30: Long = 2_000,
+    val rewardTempo30: Long = 2_500,
     val hoursTempo30: Double = 6.0,
     val rewardAccident: Long = 4_000,
     val hoursAccident: Double = 12.0,
-    val rewardPothole: Long = 1_500,
+    val rewardPothole: Long = 2_000,
     val hoursPothole: Double = 8.0,
     val potholeReputation: Double = 0.5,
-    val rewardSpeeder: Long = 1_000,
+    val rewardSpeeder: Long = 1_500,
     val hoursSpeeder: Double = 24.0,
     val speederCheckHours: Int = 2,
     val missedReputationLoss: Double = 0.3,
