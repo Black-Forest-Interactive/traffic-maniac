@@ -132,6 +132,9 @@ data class CameraRecord(
 
     val totalCount: Int get() = countPerTier.sum()
     val totalRevenue: Long get() = revenuePerTier.sum()
+
+    /** Gekaufter, fest stehender Blitzer – keine Tafel, kein Laser, keine Polizeikontrolle. */
+    val isFixedCamera: Boolean get() = !display && !mobile && !policeCheck
 }
 
 /** Veränderliche Zähler eines Blitzers; nach außen gibt es nur [CameraRecord]. */

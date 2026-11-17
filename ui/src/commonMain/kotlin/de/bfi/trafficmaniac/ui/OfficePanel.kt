@@ -177,7 +177,8 @@ private fun HabitsSection(
     PanelSection(title = tr("Blitzer-Warn-Apps")) {
         BasicText(
             tr(
-                "{percent} % der Fahrer warnt eine App vor bekannten festen Blitzern. Jeder feste Blitzer wird jeden Tag bekannter.",
+                "{percent} % der Fahrer warnt eine App vor bekannten festen Blitzern. " +
+                    "Jeder feste Blitzer wird jeden Tag bekannter.",
                 "percent" to (habits.warnerShare * PERCENT).roundToInt(),
             ),
             style = TmType.small,

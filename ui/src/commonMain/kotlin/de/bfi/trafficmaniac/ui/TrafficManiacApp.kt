@@ -303,19 +303,36 @@ fun TrafficManiacApp(
                         input,
                         Modifier.weight(1f),
                     )
-                    hudFrame?.let { frame ->
-                        if (hud.panel != SidePanel.NONE) {
-                            val context =
-                                PanelContext(frame, rules, command, picker, hud::show, sprites) {
-                                    hud.panel =
-                                        SidePanel.NONE
-                                }
-                            SidePanelSlot(hud.panel, context)
-                        }
+                    hudFrame?.takeIf { hud.panel != SidePanel.NONE }?.let { frame ->
+                        val close = { hud.panel = SidePanel.NONE }
+                        SidePanelSlot(hud.panel, PanelContext(frame, rules, command, picker, hud::show, sprites, close))
                     }
                 }
             }
             hudFrame?.let { EndOfDayOverlays(it, onContinueDay, onMenu, sprites) }
+        }
+    }
+}
+
+/** Kartenansichten und Zähler-Chips (Schäden, Vorfälle, Aufträge) oben über der Karte. */
+@Composable
+private fun MapTopControls(
+    city: CityMap,
+    hudFrame: TrafficFrame?,
+    hud: HudState,
+    picker: MapPicker,
+) {
+    // Mittig über dem Teil der Karte rechts neben Verkehrslage und Meldungen – sonst überlappen sie
+    Column(
+        Modifier.fillMaxWidth().padding(start = (FEED_WIDTH + FEED_GAP).dp, top = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        MapViewSwitcher(hud.toggles)
+        hudFrame?.let { frame ->
+            InspectChips(frame, { damage ->
+                hud.showNext(inspectTargets(frame.game, frame.current.incidents, picker, city), damage)
+            })
         }
     }
 }
@@ -338,19 +355,7 @@ private fun MapArea(
     val network = if (input.network) networkData.value else null
     Box(modifier.fillMaxSize()) {
         MapLayer(city, traffic, hud, picker, rules, sprites, network)
-        // Mittig über dem Teil der Karte rechts neben Verkehrslage und Meldungen – sonst überlappen sie
-        Column(
-            Modifier.fillMaxWidth().padding(start = (FEED_WIDTH + FEED_GAP).dp, top = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            MapViewSwitcher(hud.toggles)
-            hudFrame?.let { frame ->
-                InspectChips(frame, { damage ->
-                    hud.showNext(inspectTargets(frame.game, frame.current.incidents, picker, city), damage)
-                })
-            }
-        }
+        MapTopControls(city, hudFrame, hud, picker)
         ZoomControls({ hud.zoom = MapZoom(it) }, Modifier.align(Alignment.CenterEnd).padding(end = 14.dp))
         hudFrame?.let { frame ->
             HudFeed(frame, hud::show, Modifier.align(Alignment.TopStart).padding(14.dp), hud.assignmentActions(command))

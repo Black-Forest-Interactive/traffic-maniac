@@ -182,14 +182,20 @@ class SpeedControl internal constructor(
             )
         vehicle.speedingKmh =
             when {
-                overlooked -> gap + random.nextDouble(0.0, MAX_BASE_EXCESS_KMH)
-                random.nextDouble() < probability -> excess(gap)
-                else -> 0.0
+                overlooked -> {
+                    gap + random.nextDouble(0.0, MAX_BASE_EXCESS_KMH)
+                }
+
+                // Überschreitung nach echten Messungen ([SpeedingProfile]); breite Straßen verleiten zu etwas mehr
+                random.nextDouble() < probability -> {
+                    SpeedingProfile.sample(random) + gap * random.nextDouble(0.0, MAX_GAP_SHARE)
+                }
+
+                else -> {
+                    0.0
+                }
             }
     }
-
-    /** Überschreitung nach echten Messungen ([SpeedingProfile]); breite Straßen verleiten zu etwas mehr. */
-    private fun excess(gap: Double) = SpeedingProfile.sample(random) + gap * random.nextDouble(0.0, MAX_GAP_SHARE)
 
     /**
      * Reizdichte beim Einfahren in [link] (von [previous] kommend): Ampel, Tempowechsel, Nachtlimit und
@@ -246,13 +252,7 @@ class SpeedControl internal constructor(
             accept: (SpeedCamera) -> Boolean,
         ) = sites[link].any { accept(it.camera) && it.position - vehicle.position in 0.0..zone }
         var cap = Double.MAX_VALUE
-        val fixed =
-            sites[link].firstOrNull {
-                val camera = it.camera
-                !camera.mobile && (camera.measuresSpeed || camera.dummy) &&
-                    it.position - vehicle.position in 0.0..CAMERA_BRAKE_ZONE
-            }
-        if (fixed != null && (vehicle.knowsCameras || warned(vehicle, fixed.camera))) cap = limit * CAMERA_BRAKE_FACTOR
+        if (brakesForFixedCamera(vehicle, link)) cap = limit * CAMERA_BRAKE_FACTOR
         if (marathon && ahead(CAMERA_BRAKE_ZONE) { it.measuresSpeed }) cap = min(cap, limit * CAMERA_BRAKE_FACTOR)
         if (graph.linkBikeStreet[link] && vehicle.overtakingLink != link) cap = min(cap, BIKE_PACE / KMH_PER_MS)
         if (ahead(CHECK_ZONE) { it.policeCheck }) cap = min(cap, CHECK_PACE / KMH_PER_MS)
@@ -263,17 +263,23 @@ class SpeedControl internal constructor(
     }
 
     /**
-     * Hat [vehicle] eine Warn-App, die [camera] kennt? Fest je Fahrzeug und Blitzer (kein Würfeln je Bild), Anteil
-     * Bekanntheit × Warner-Quote, höchstens [maxWarned].
+     * Steht kurz vor [vehicle] ein fester Blitzer (oder eine Attrappe), den es kennt? Ortskundige kennen alle; von den
+     * anderen warnt eine App, je bekannter der Blitzer – fest je Fahrzeug und Blitzer, höchstens [maxWarned].
      */
-    private fun warned(
+    private fun brakesForFixedCamera(
         vehicle: Vehicle,
-        camera: SpeedCamera,
+        link: Int,
     ): Boolean {
+        val camera =
+            sites[link]
+                .firstOrNull {
+                    val camera = it.camera
+                    !camera.mobile && (camera.measuresSpeed || camera.dummy) &&
+                        it.position - vehicle.position in 0.0..CAMERA_BRAKE_ZONE
+                }?.camera ?: return false
         val share = min(camera.familiarity * warnerShare, maxWarned)
-        if (share <= 0.0) return false
         val hash = (vehicle.id.toLong() * HASH_A + camera.id.toLong() * HASH_B).mod(HASH_RANGE)
-        return hash < share * HASH_RANGE
+        return vehicle.knowsCameras || (share > 0.0 && hash < share * HASH_RANGE)
     }
 
     /** Prüft, ob [vehicle] auf [link] bei der Fahrt von [oldPosition] aus einen Blitzer passiert hat. */

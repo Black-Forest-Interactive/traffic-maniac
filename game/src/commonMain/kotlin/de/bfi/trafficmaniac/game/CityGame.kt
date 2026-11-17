@@ -113,16 +113,31 @@ class CityGame(
         )
     private val firstDay = simulation.gameTime.day
 
-    /** Gewöhnung an Blitzer: letzte Polizeiaktion (Spieltag), Ende des Blitzermarathons, Würfel für Attrappen. */
-    private var lastCampaignDay = Int.MIN_VALUE / 2
-    private var campaigns = 0
-    private var marathonUntil = -1.0
-    private val habitRandom = kotlin.random.Random(config.seed + HABIT_SEED)
+    private val habits =
+        Habituation(
+            simulation,
+            rules,
+            treasury,
+            politics,
+            works,
+            config.seed,
+            object : HabitEffects {
+                override fun message(
+                    text: String,
+                    place: MapPlace?,
+                    kind: MessageKind,
+                ) = this@CityGame.message(text, place, kind)
 
-    init {
-        simulation.speedControl.warnerShare = rules.habits.warnerShareStart
-        simulation.speedControl.maxWarned = rules.habits.maxEffect
-    }
+                override fun highlight(
+                    kind: HighlightKind,
+                    title: String,
+                    text: String,
+                    place: MapPlace?,
+                ) = highlights.add(kind, title, text, place)
+
+                override fun checkAchievements() = achievements.check(hourlyFacts(), simulation.gameTime.day)
+            },
+        )
 
     private val bridges =
         city.roads.segments
@@ -133,7 +148,7 @@ class CityGame(
     private var moods: List<ZoneMood> = citizens.moods(argumentsCampaign = false)
     private var unhappyShare = 0.0
     private var fineIncomeAtHourStart = 0L
-    private var currentHour = hourIndex()
+    private var currentHour = hourIndex
     private var lastBudgetRound: BudgetRound? = null
     private var finesToday = 0L
     private var recordToday: Pair<Double, Int>? = null
@@ -178,10 +193,6 @@ class CityGame(
     /** Was die Oberfläche einblenden soll (nicht im Spielstand). */
     private val highlights: HighlightLog
         get() = highlightLog ?: HighlightLog().also { highlightLog = it }
-
-    /** Blitzer, die ihre Kosten schon eingespielt haben (für die Meldung, nicht im Spielstand). */
-    @Transient
-    private var paidOff: HashSet<Int>? = null
 
     /** Für Tests: ein Ereignis melden, ohne eines herbeizuspielen. */
     internal fun raiseAlert() {
@@ -248,7 +259,7 @@ class CityGame(
         val reportsBefore = simulation.dayReports.size
         simulation.step()
         collectFines()
-        if (marathonUntil > 0 && simulation.time >= marathonUntil) endMarathon()
+        habits.update()
         winter.update()
         surveillance.update()
         achievements.checkLive(
@@ -258,7 +269,7 @@ class CityGame(
             simulation.gameTime.day,
         )
         simulation.finishedTrips.drain().forEach(citizens::tripFinished)
-        if (hourIndex() != currentHour) hourPassed()
+        if (hourIndex != currentHour) hourPassed()
         if (simulation.dayReports.size > reportsBefore) dayEnded()
     }
 
@@ -284,12 +295,8 @@ class CityGame(
             highlights = highlights.list(),
             assignments = assignments.state(simulation.time),
             warnerShare = simulation.speedControl.warnerShare,
-            marathonActive = marathonUntil > 0,
-            campaignInDays =
-                (rules.habits.campaignPauseDays - (simulation.gameTime.day - lastCampaignDay))
-                    .coerceAtLeast(
-                        0,
-                    ),
+            marathonActive = habits.marathonActive,
+            campaignInDays = habits.campaignInDays,
             grantIncome = treasury.grantIncome,
             prContract = prContract,
             argumentsCampaign = argumentsCampaign,
@@ -303,7 +310,7 @@ class CityGame(
             daysPlayed = simulation.dayReports.size,
             termDays = rules.termDays,
             isTermOver = isTermOver,
-            score = score(),
+            score = score,
             latestEdition = latestEdition,
             fineOffice = office.state(simulation.time),
             bannedDrivers = drivers.bannedCount,
@@ -324,7 +331,7 @@ class CityGame(
             idleTrailers = works.idleTrailers,
         )
 
-    private fun hourIndex() = (simulation.time / SECONDS_PER_HOUR).toInt()
+    private val hourIndex: Int get() = (simulation.time / SECONDS_PER_HOUR).toInt()
 
     /** Neue Blitzerfotos gehen an die Bußgeldstelle; Geld gibt es erst mit dem Bescheid. */
     private fun collectFines() {
@@ -353,7 +360,7 @@ class CityGame(
     }
 
     private fun hourPassed() {
-        currentHour = hourIndex()
+        currentHour = hourIndex
         office.hourPassed(simulation.time, simulation.gameTime)
         maintenance.collect(simulation.time)
         maintenance.hourPassed(simulation.time)
@@ -367,7 +374,13 @@ class CityGame(
             message(it)
             if (politics.recallIndex >= RECALL_WARNING) highlights.add(HighlightKind.WARNING, it)
         }
-        announcePaidOffCameras()
+        for (camera in works.newlyPaidOff()) {
+            highlights.add(
+                HighlightKind.MEDIUM,
+                tr("Blitzer {street} hat sich bezahlt gemacht", "street" to camera.streetName),
+                tr("{revenue} eingenommen – alles Weitere ist Gewinn", "revenue" to formatEuro(camera.totalRevenue)),
+            )
+        }
         press.hourPassed(unhappyShare)
         events.hourPassed(politics.anger, drivers.bannedCount, moods)
         val snapshot = simulation.snapshot()
@@ -404,95 +417,8 @@ class CityGame(
             fineIncome = treasury.fineIncome,
             repairs = maintenanceState.repaired,
             daysEnded = simulation.dayReports.size,
-            campaigns = campaigns,
+            campaigns = habits.campaigns,
         )
-    }
-
-    /** Polizeiaktion „Blitzerwarner“: Treffer bringen Bußgeld, die Warner-Quote sinkt, die Presse spricht von Razzia. */
-    private fun warnerCampaign() {
-        val habits = rules.habits
-        val day = simulation.gameTime.day
-        if (day - lastCampaignDay < habits.campaignPauseDays) {
-            return message(
-                tr(
-                    "Die Polizei hat diese Woche schon kontrolliert – frühestens wieder in {days} Tagen.",
-                    "days" to habits.campaignPauseDays - (day - lastCampaignDay),
-                ),
-            )
-        }
-        if (!treasury.pay(habits.campaignCost, tr("Polizeiaktion"))) return
-        lastCampaignDay = day
-        campaigns++
-        val control = simulation.speedControl
-        val trips = simulation.dayReports.lastOrNull()?.tripsStarted ?: DEFAULT_DAY_TRIPS
-        val hits = (trips * control.warnerShare * habits.campaignHitRate).toInt()
-        repeat(hits) { treasury.earnFine(habits.warnerFine) }
-        control.warnerShare *= 1 - habits.campaignReduction
-        politics.press(-habits.campaignReputationLoss)
-        val text =
-            tr(
-                "Polizeiaktion „Blitzerwarner“: {hits} Handys mit Warn-App, {fines} Bußgeld – nur noch {share} % fahren mit Warner",
-                "hits" to hits,
-                "fines" to formatEuro(hits.toLong() * habits.warnerFine),
-                "share" to (control.warnerShare * PERCENT).toInt(),
-            )
-        message(text, kind = MessageKind.ACTION)
-        highlights.add(HighlightKind.MEDIUM, tr("Handy-Razzia"), text)
-        achievements.check(hourlyFacts(), day)
-    }
-
-    /** Blitzermarathon ankündigen: einen Tag lang bremsen alle, die Zeitung lobt. */
-    private fun announceMarathon() {
-        if (marathonUntil > 0) return message(tr("Der Blitzermarathon läuft schon."))
-        marathonUntil = simulation.time + rules.habits.marathonHours * SECONDS_PER_HOUR
-        simulation.speedControl.marathon = true
-        politics.press(rules.habits.marathonReputationGain)
-        val text = tr("Blitzermarathon angekündigt: Heute fahren alle brav – die Zeitung ist begeistert.")
-        message(text, kind = MessageKind.ACTION)
-        highlights.add(HighlightKind.MEDIUM, tr("Blitzermarathon"), text)
-    }
-
-    private fun endMarathon() {
-        marathonUntil = -1.0
-        val control = simulation.speedControl
-        control.marathon = false
-        control.warnerShare *= 1 - rules.habits.marathonWarnerReduction
-        message(tr("Blitzermarathon vorbei – mancher verlässt sich jetzt lieber auf die Ankündigung als auf die App."))
-    }
-
-    /** Mitternacht: Blitzer werden bekannter, Warn-Apps verbreiten sich, Attrappen fliegen manchmal auf. */
-    private fun habitsDayPassed() {
-        val habits = rules.habits
-        val control = simulation.speedControl
-        control.dayPassed(habits.familiarityPerDay)
-        control.warnerShare = (control.warnerShare + habits.warnerGrowthPerDay).coerceAtMost(1.0)
-        for (camera in control.cameras.filter { it.dummy }) {
-            if (habitRandom.nextDouble() >= habits.dummyDiscoveryChancePerDay) continue
-            politics.press(-habits.dummyDiscoveryReputationLoss)
-            val text =
-                tr(
-                    "Presse: „Stadt blitzt mit Pappe“ – die Attrappe an der {street} ist aufgeflogen",
-                    "street" to works.streetName(camera.segment),
-                )
-            val place = MapPlace(camera.x, camera.y)
-            message(text, place, MessageKind.PROBLEM)
-            highlights.add(HighlightKind.WARNING, tr("Attrappe aufgeflogen"), text, place)
-        }
-    }
-
-    /** Ein fester Blitzer hat so viel eingenommen, wie er gekostet hat: einmal melden. */
-    private fun announcePaidOffCameras() {
-        val announced = paidOff ?: HashSet<Int>().also { paidOff = it }
-        for (camera in works.cameraCounters.values.map { it.toRecord() }) {
-            if (camera.display || camera.mobile || camera.policeCheck || camera.cameraId in announced) continue
-            if (camera.totalRevenue < rules.cameraCost) continue
-            announced += camera.cameraId
-            highlights.add(
-                HighlightKind.MEDIUM,
-                tr("Blitzer {street} hat sich bezahlt gemacht", "street" to camera.streetName),
-                tr("{revenue} eingenommen – alles Weitere ist Gewinn", "revenue" to formatEuro(camera.totalRevenue)),
-            )
-        }
     }
 
     /** Mitternacht: Zeitung drucken, Lasertrupps bezahlen, Haushaltsrunde. */
@@ -550,7 +476,7 @@ class CityGame(
         winter.dayEnded()
         budgetRound()
         if (report.weekday == Weekday.SUNDAY) press.startNewWeek()
-        habitsDayPassed()
+        habits.dayPassed()
         telemetryLog.dayEnded(report.day, state(), report.vehicleKm, report.vehicleHours)
         if (isTermOver) message(tr("Ihre Amtszeit ist zu Ende. Zeit für die Abschiedsrede!"))
     }
@@ -586,12 +512,13 @@ class CityGame(
         )
     }
 
-    private fun score(): Score {
-        val share = politics.reputation / MAX_REPUTATION
-        val factor = rules.minReputationFactor + (rules.maxReputationFactor - rules.minReputationFactor) * share
-        val earnings = treasury.balance - rules.startBudget - treasury.allowances
-        return Score(earnings, politics.reputation, factor)
-    }
+    private val score: Score
+        get() {
+            val share = politics.reputation / MAX_REPUTATION
+            val factor = rules.minReputationFactor + (rules.maxReputationFactor - rules.minReputationFactor) * share
+            val earnings = treasury.balance - rules.startBudget - treasury.allowances
+            return Score(earnings, politics.reputation, factor)
+        }
 
     private fun execute(command: GameCommand) {
         telemetryLog.used(command)
@@ -600,15 +527,14 @@ class CityGame(
                 assignments.decline(command.id, simulation.time)
             }
 
-            is GameCommand.SetSpeedLimit -> {
-                works.setSpeedLimit(command.segment, command.kmh, command.nightOnly)
+            // Jede Stelle übernimmt nur ihre Befehle
+            is GameCommand.SetSpeedLimit, is GameCommand.BuildSignal, is GameCommand.RemoveSignal,
+            is GameCommand.PlaceCamera, is GameCommand.PlaceTrailer, is GameCommand.RemoveCamera,
+            is GameCommand.SetPriorityRoad, is GameCommand.SetBikeCrossing,
+            -> {
+                works.execute(command)
             }
 
-            is GameCommand.BuildSignal -> {
-                works.buildSignal(command.node)
-            }
-
-            // Ampelprogramme und eigene Baustellen – jede Stelle übernimmt nur ihre Befehle
             is GameCommand.SetSignalProgram, is GameCommand.SetGreenWave,
             is GameCommand.SetRoadworks, is GameCommand.SetRoadClosure, is GameCommand.SetPloughs,
             is GameCommand.PlaceRedLightCamera, is GameCommand.PlaceDisplay, is GameCommand.PlacePoliceCheck,
@@ -620,36 +546,8 @@ class CityGame(
                 surveillance.execute(command)
             }
 
-            is GameCommand.RemoveSignal -> {
-                works.removeSignal(command.node)
-            }
-
-            is GameCommand.PlaceCamera -> {
-                works.placeCamera(command.segment, command.mobile, command.dummy)
-            }
-
-            GameCommand.WarnerCampaign -> {
-                warnerCampaign()
-            }
-
-            GameCommand.AnnounceMarathon -> {
-                announceMarathon()
-            }
-
-            is GameCommand.PlaceTrailer -> {
-                works.placeTrailer(command.segment)
-            }
-
-            is GameCommand.RemoveCamera -> {
-                works.removeCamera(command.cameraId)
-            }
-
-            is GameCommand.SetPriorityRoad -> {
-                works.setPriorityRoad(command.segment, command.priority)
-            }
-
-            is GameCommand.SetBikeCrossing -> {
-                works.setBikeCrossing(command.segment, command.crossing)
+            GameCommand.WarnerCampaign, GameCommand.AnnounceMarathon -> {
+                habits.execute(command)
             }
 
             is GameCommand.SetPrContract -> {
@@ -791,12 +689,6 @@ class CityGame(
     }
 
     private companion object {
-        const val HABIT_SEED = 9_173L
-        const val PERCENT = 100
-
-        /** Vor dem ersten Tagesabschluss: so viele Fahrten nimmt die Polizeiaktion als Grundlage. */
-        const val DEFAULT_DAY_TRIPS = 40_000
-
         /** Ab diesem Abwahlindex werden Warnungen der Politik rot eingeblendet. */
         const val RECALL_WARNING = 50.0
 

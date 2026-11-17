@@ -83,8 +83,17 @@ class Screenshots {
             }
         }
         touch(out, city, frame)
-        dayReport(out, frame)
+        dayReport(out)
         inspectCard(out, frame)
+        toastsAndTransit(out, city, frame)
+    }
+
+    /** Einblendungen in allen drei Stufen und die Nahansicht am Marktplatz mit Haltestellen und Bussen. */
+    private fun toastsAndTransit(
+        out: File,
+        city: CityMap,
+        frame: TrafficFrame,
+    ) {
         shoot(File(out, "toasts.png"), TOAST_SHOT_WIDTH, TOAST_SHOT_HEIGHT, settleMillis = TOAST_SETTLE_MILLIS) {
             HighlightToasts(
                 listOf(
@@ -175,10 +184,7 @@ class Screenshots {
     }
 
     /** Tagesabschluss mit Zeitung, Kasten „Aus der Praxis“ und Blitzer-Bilanz. */
-    private fun dayReport(
-        out: File,
-        frame: TrafficFrame,
-    ) {
+    private fun dayReport(out: File) {
         val report =
             DayReport(
                 day = 0,

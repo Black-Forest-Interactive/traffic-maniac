@@ -163,18 +163,7 @@ private fun StackedBar(shares: List<Float>) {
 /** Zeile in der Tabelle: Standort (mit Art), Fotos und Einnahmen – Anzeigetafeln zeigen ihren Raser-Anteil. */
 @Composable
 private fun CameraRow(camera: CameraRecord) {
-    val kind =
-        when {
-            camera.policeCheck -> tr("Polizeikontrolle · noch {minutes} min", "minutes" to (camera.minutesLeft ?: 0))
-            camera.display -> tr("Anzeigetafel")
-            camera.redLight && camera.measuresSpeed -> tr("Rotlicht + Tempo")
-            camera.redLight -> tr("Rotlicht")
-            camera.trailer -> tr("Anhänger")
-            camera.mobile -> tr("Laser")
-            camera.dummy -> tr("Attrappe")
-            camera.familiarityPercent > 0 -> tr("bekannt {percent} %", "percent" to camera.familiarityPercent)
-            else -> null
-        }
+    val kind = kindLabel(camera)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(2f)) {
             BasicText(camera.streetName, style = TmType.text(13.sp, FontWeight.SemiBold))
@@ -199,3 +188,17 @@ private fun CameraRow(camera: CameraRecord) {
 }
 
 private const val PERCENT = 100
+
+/** Art der Messstelle unter dem Straßennamen; bei einem gewöhnlichen festen Blitzer, wie bekannt er ist. */
+private fun kindLabel(camera: CameraRecord): String? =
+    when {
+        camera.policeCheck -> tr("Polizeikontrolle · noch {minutes} min", "minutes" to (camera.minutesLeft ?: 0))
+        camera.display -> tr("Anzeigetafel")
+        camera.redLight && camera.measuresSpeed -> tr("Rotlicht + Tempo")
+        camera.redLight -> tr("Rotlicht")
+        camera.trailer -> tr("Anhänger")
+        camera.mobile -> tr("Laser")
+        camera.dummy -> tr("Attrappe")
+        camera.familiarityPercent > 0 -> tr("bekannt {percent} %", "percent" to camera.familiarityPercent)
+        else -> null
+    }

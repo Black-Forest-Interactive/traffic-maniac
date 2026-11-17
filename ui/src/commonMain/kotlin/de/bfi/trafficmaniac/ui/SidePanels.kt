@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.i18n.tr
@@ -132,14 +133,7 @@ private fun PanelContent(
         }
 
         SidePanel.BUDGET -> {
-            BudgetPanel(
-                game,
-                rules,
-                onContract = { onCommand(GameCommand.SetPrContract(it)) },
-                onArguments = { onCommand(GameCommand.SetArgumentsCampaign(it)) },
-                onCeremony = { onCommand(GameCommand.HoldCeremony) },
-                onClose = onClose,
-            )
+            BudgetSlot(game, rules, onCommand, onClose)
         }
 
         SidePanel.OFFICE -> {
@@ -300,3 +294,21 @@ private fun IncidentCard(
 private const val SLOT_WIDTH = 372
 private const val MAX_ROWS = 12
 private const val SECONDS_PER_MINUTE = 60.0
+
+/** Haushalt: PR-Vertrag, Kampagne und Spatenstich werden zu Befehlen. */
+@Composable
+private fun BudgetSlot(
+    game: GameState,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+    onClose: () -> Unit,
+) {
+    BudgetPanel(
+        game,
+        rules,
+        onContract = { onCommand(GameCommand.SetPrContract(it)) },
+        onArguments = { onCommand(GameCommand.SetArgumentsCampaign(it)) },
+        onCeremony = { onCommand(GameCommand.HoldCeremony) },
+        onClose = onClose,
+    )
+}

@@ -201,15 +201,23 @@ internal class Achievements(
             if (achievement.reached(facts)) {
                 unlocked[achievement] = day
                 events.unlocked(achievement)
-                continue
+            } else {
+                trackProgress(achievement, facts)
             }
-            val count = achievement.progress?.invoke(facts) ?: continue
-            // Teilweise Fakten (z. B. nur live geprüft) zählen nicht rückwärts
-            if (count < (progress[achievement] ?: 0)) continue
-            progress[achievement] = count
-            if (count >= achievement.target * ALMOST && almostTold.add(achievement)) {
-                events.almost(achievement, achievement.target - count)
-            }
+        }
+    }
+
+    /** Fortschritt merken und bei 80 % einmal „fast geschafft“ melden. */
+    private fun trackProgress(
+        achievement: Achievement,
+        facts: AchievementFacts,
+    ) {
+        val count = achievement.progress?.invoke(facts) ?: return
+        // Teilweise Fakten (z. B. nur live geprüft) zählen nicht rückwärts
+        if (count < (progress[achievement] ?: 0)) return
+        progress[achievement] = count
+        if (count >= achievement.target * ALMOST && almostTold.add(achievement)) {
+            events.almost(achievement, achievement.target - count)
         }
     }
 }

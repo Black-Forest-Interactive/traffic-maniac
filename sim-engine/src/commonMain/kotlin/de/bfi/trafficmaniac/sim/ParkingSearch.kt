@@ -64,7 +64,7 @@ internal class ParkingSearch(
         val affordable = fee / stay <= vehicle.feeTolerance
         if (!affordable || !parking.takeCurb(vehicle.parkingZone, time + stay * SECONDS_PER_HOUR)) return null
         pay(vehicle, fee)
-        statistics.parked(curb = true)
+        statistics.parked(curb = true, fee)
         return parked(vehicle, time)
     }
 
@@ -128,8 +128,9 @@ internal class ParkingSearch(
         time: Double,
     ): ParkingOutcome {
         lot.departures += time + stay * SECONDS_PER_HOUR
-        pay(vehicle, lot.fee * payableHours(vehicle, stay))
-        statistics.parked(curb = false)
+        val fee = lot.fee * payableHours(vehicle, stay)
+        pay(vehicle, fee)
+        statistics.parked(curb = false, fee)
         return parked(vehicle, time)
     }
 
@@ -139,7 +140,6 @@ internal class ParkingSearch(
     ) {
         if (euros <= 0) return
         parking.payments += ParkingPayment(vehicle.homeZone, euros)
-        statistics.parkingFee(euros)
     }
 
     private fun parked(

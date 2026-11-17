@@ -23,6 +23,33 @@ internal class PublicWorks(
     var signalNodes: Set<Int> = signalNodesOf()
         private set
 
+    /** Blitzer, die ihre Kosten schon eingespielt haben (für die Meldung, nicht im Spielstand). */
+    @Transient
+    private var paidOff: HashSet<Int>? = null
+
+    /** Die Befehle des Tiefbauamts; alle anderen werden ignoriert. */
+    fun execute(command: GameCommand) {
+        when (command) {
+            is GameCommand.SetSpeedLimit -> setSpeedLimit(command.segment, command.kmh, command.nightOnly)
+            is GameCommand.BuildSignal -> buildSignal(command.node)
+            is GameCommand.RemoveSignal -> removeSignal(command.node)
+            is GameCommand.PlaceCamera -> placeCamera(command.segment, command.mobile, command.dummy)
+            is GameCommand.PlaceTrailer -> placeTrailer(command.segment)
+            is GameCommand.RemoveCamera -> removeCamera(command.cameraId)
+            is GameCommand.SetPriorityRoad -> setPriorityRoad(command.segment, command.priority)
+            is GameCommand.SetBikeCrossing -> setBikeCrossing(command.segment, command.crossing)
+            else -> Unit
+        }
+    }
+
+    /** Feste Blitzer, die seit dem letzten Aufruf so viel eingenommen haben, wie sie gekostet haben. */
+    fun newlyPaidOff(): List<CameraRecord> {
+        val announced = paidOff ?: HashSet<Int>().also { paidOff = it }
+        return cameraCounters.values
+            .map { it.toRecord() }
+            .filter { it.isFixedCamera && it.totalRevenue >= rules.cameraCost && announced.add(it.cameraId) }
+    }
+
     /**
      * Tempolimit für die ganze Strecke von Kreuzung zu Kreuzung, zu der [segment] gehört – ein Schild am Anfang,
      * eins am Ende, bezahlt wird einmal. `null` hebt es für die Strecke auf.

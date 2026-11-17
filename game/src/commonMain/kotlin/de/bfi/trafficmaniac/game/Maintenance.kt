@@ -188,10 +188,19 @@ internal class Maintenance(
 
     fun startNewDay(): MaintenanceNews = today.also { today = MaintenanceNews() }
 
-    /** Neue Schäden aus der Simulation entgegennehmen. */
+    /**
+     * Neue Schäden aus der Simulation entgegennehmen. Unfälle durch Schlagloch oder Krater: ohne Schild oder
+     * Verfahren klagen die Geschädigten.
+     */
     fun collect(time: Double) {
         for (event in simulation.infrastructure.drainEvents()) handle(event, time)
-        for (segment in simulation.infrastructure.drainPotholeAccidents()) potholeAccident(segment)
+        for (segment in simulation.infrastructure.drainPotholeAccidents()) {
+            if (cases.firstOrNull { segment in it.segments }?.status?.isCovered == true) continue
+            sue(
+                random.nextLong(rules.lawsuitMin, rules.lawsuitMax + 1),
+                tr("Unfall durch Schlagloch, {segment}", "segment" to places.streetName(segment)),
+            )
+        }
     }
 
     private fun handle(
@@ -290,16 +299,6 @@ internal class Maintenance(
             tr("EINSTURZ: {place} ist eingestürzt", "place" to place) +
                 if (event.victims > 0) tr(" – {victims} Fahrzeuge in der Tiefe", "victims" to event.victims) else "",
             city.placeOfSegment(event.segment),
-        )
-    }
-
-    /** Unfall durch Schlagloch oder Krater: ohne Schild oder Verfahren klagen die Geschädigten. */
-    private fun potholeAccident(segment: Int) {
-        val case = cases.firstOrNull { segment in it.segments }
-        if (case != null && case.status.isCovered) return
-        sue(
-            random.nextLong(rules.lawsuitMin, rules.lawsuitMax + 1),
-            tr("Unfall durch Schlagloch, {segment}", "segment" to places.streetName(segment)),
         )
     }
 

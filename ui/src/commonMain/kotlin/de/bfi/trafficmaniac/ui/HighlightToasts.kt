@@ -123,19 +123,7 @@ private fun Toast(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Box(
-                    Modifier.size(if (big) 36.dp else 24.dp).background(accent, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    val icon =
-                        when (highlight.kind) {
-                            HighlightKind.BIG -> Icons.Award
-                            HighlightKind.MEDIUM -> Icons.Check
-                            HighlightKind.WARNING -> Icons.Info
-                        }
-                    val tint = if (highlight.kind == HighlightKind.WARNING) TmColors.Danger else TmColors.Ink
-                    Icon(icon, null, tint = tint, size = if (big) 20.dp else 14.dp)
-                }
+                ToastBadge(highlight.kind, accent)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     BasicText(
                         highlight.title,
@@ -204,3 +192,25 @@ private const val SPIN = 240f
 private const val FULL_TURN = 360f
 private const val PIECE_WIDTH = 6f
 private const val PIECE_HEIGHT = 10f
+
+/** Runder Knopf links in der Einblendung: Siegel, Haken oder Hinweis. */
+@Composable
+private fun ToastBadge(
+    kind: HighlightKind,
+    accent: Color,
+) {
+    val big = kind == HighlightKind.BIG
+    Box(
+        Modifier.size(if (big) 36.dp else 24.dp).background(accent, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        val icon =
+            when (kind) {
+                HighlightKind.BIG -> Icons.Award
+                HighlightKind.MEDIUM -> Icons.Check
+                HighlightKind.WARNING -> Icons.Info
+            }
+        val tint = if (kind == HighlightKind.WARNING) TmColors.Danger else TmColors.Ink
+        Icon(icon, null, tint = tint, size = if (big) 20.dp else 14.dp)
+    }
+}

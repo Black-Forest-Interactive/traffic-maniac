@@ -124,7 +124,7 @@ data class GameRules(
     val assignments: AssignmentRules = AssignmentRules(),
     /** Gewöhnung an feste Blitzer und was dagegen hilft (v0.9 Paket 4). */
     val habits: CameraHabits = CameraHabits(),
-    /** Flicken mit Kaltasphalt: sofort, billig, aber nur knapp über der Schlagloch-Schwelle und doppelter Verschleiß. */
+    /** Flicken mit Kaltasphalt: sofort, billig, aber nur knapp über der Schlagloch-Schwelle, doppelter Verschleiß. */
     val patchCost: Long = 1_500,
     val patchCondition: Double = 0.65,
     val patchWearFactor: Double = 2.0,
