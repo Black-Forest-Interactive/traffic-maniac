@@ -163,8 +163,10 @@ class PlanningTest {
         val camera = ToolSelection.of(ToolKind.POLICE_CHECK).copy(tool = Tool.LOOK)
         assertEquals(ToolKind.LOOK, camera.kind)
         assertEquals(ToolKind.POLICE_CHECK, camera.copy(tool = Tool.CAMERA).kind, "Die Gruppe merkt sich die Art")
-        // Polizeikontrolle ist die letzte Art – die nächste ist wieder der feste Blitzer
-        assertEquals(ToolKind.CAMERA_FIXED, camera.copy(tool = Tool.CAMERA).next().kind)
+        // Nach der Polizeikontrolle kommt der Busspur-Blitzer, danach wieder der feste Blitzer
+        val busLane = camera.copy(tool = Tool.CAMERA).next()
+        assertEquals(ToolKind.BUS_LANE_CAMERA, busLane.kind)
+        assertEquals(ToolKind.CAMERA_FIXED, busLane.next().kind)
         assertEquals(Tool.entries.size, 7, "Sieben Kacheln im Dock")
     }
 

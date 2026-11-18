@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.sim.MidSegmentCamera
 import de.bfi.trafficmaniac.sim.Simulation
 
 /** Rotlichtblitzer an Ampelzufahrten und Geschwindigkeits-Anzeigetafeln – zusätzlich zu den Blitzern von [works]. */
@@ -46,7 +47,7 @@ internal class Surveillance(
     private fun placeDisplay(segment: Int) {
         if (works.cameraCounters.values.any { it.segment == segment }) return message(tr("Hier blitzt es schon"))
         if (!treasury.pay(rules.displayCost, tr("Anzeigetafel"))) return
-        val camera = simulation.speedControl.placeDisplay(segment)
+        val camera = simulation.speedControl.placeMidSegment(segment, MidSegmentCamera.DISPLAY)
         works.cameraCounters[camera.id] = CameraCounter(camera.id, segment, streetName(segment), camera = camera)
         message(tr("Anzeigetafel aufgestellt: {street}", "street" to streetName(segment)))
     }
@@ -65,7 +66,7 @@ internal class Surveillance(
         }
         if (works.cameraCounters.values.any { it.segment == segment }) return message(tr("Hier blitzt es schon"))
         if (!treasury.pay(rules.policeCheckCost, tr("Polizeikontrolle"))) return
-        val camera = simulation.speedControl.placePoliceCheck(segment)
+        val camera = simulation.speedControl.placeMidSegment(segment, MidSegmentCamera.POLICE_CHECK)
         works.cameraCounters[camera.id] = CameraCounter(camera.id, segment, streetName(segment), camera = camera)
         checks[camera.id] = simulation.time + rules.policeCheckHours * SECONDS_PER_HOUR
         message(tr("Polizeikontrolle: {street}", "street" to streetName(segment)))

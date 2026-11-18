@@ -199,6 +199,7 @@ private fun kindLabel(camera: CameraRecord): String? =
         camera.trailer -> tr("Anhänger")
         camera.mobile -> tr("Laser")
         camera.dummy -> tr("Attrappe")
+        camera.busLane -> tr("Busspur")
         camera.familiarityPercent > 0 -> tr("bekannt {percent} %", "percent" to camera.familiarityPercent)
         else -> null
     }

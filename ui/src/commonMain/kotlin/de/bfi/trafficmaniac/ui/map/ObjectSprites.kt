@@ -185,6 +185,7 @@ private const val CONE = 0.22f
 private fun cameraSprite(camera: SpeedCamera): String =
     when {
         camera.policeCheck -> "police_check"
+        camera.busLane -> "camera_bus_lane"
         camera.redLight -> "camera_red_light"
         camera.mobile -> "camera_laser"
         else -> "camera_fixed"
@@ -194,6 +195,7 @@ private fun cameraSprite(camera: SpeedCamera): String =
 private fun cameraBody(camera: SpeedCamera): Color =
     when {
         camera.policeCheck -> MapStyle.policeCheck
+        camera.busLane -> MapStyle.busLaneCamera
         camera.redLight -> MapStyle.redLightCamera
         camera.mobile -> MapStyle.laser
         else -> MapStyle.camera

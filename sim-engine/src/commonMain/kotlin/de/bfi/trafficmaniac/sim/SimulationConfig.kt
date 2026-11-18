@@ -108,6 +108,8 @@ data class SimulationConfig(
     val redLightRunnerShare: Double = 0.05,
     /** Anteil der Fahrer, die auf Fahrradstraßen trotzdem überholen (mal [DriverProfile.speedingFactor]). */
     val overtakingBanIgnoreShare: Double = 0.12,
+    /** Anteil der Fahrer, die trotzdem auf der Busspur fahren (mal [DriverProfile.speedingFactor]). */
+    val busLaneIgnoreShare: Double = 0.06,
     /** Bei einer Polizeikontrolle: Anteil der Angehaltenen mit Mängeln oder Handy am Steuer. */
     val checkFindingRate: Double = 0.04,
     /** Wetter (Schnee, Sommerreifen, Räumdienst); `null` = trocken. */

@@ -46,7 +46,7 @@ class RedLightTest {
     fun aDisplayCountsSpeedersButIssuesNoFines() {
         val simulation = Simulation(crossroads(signals = false), config(runners = 0.0))
         simulation.graph.setSegmentSpeedLimit(0, 30)
-        val display = simulation.speedControl.placeDisplay(0)
+        val display = simulation.speedControl.placeMidSegment(0, MidSegmentCamera.DISPLAY)
 
         simulation.run(minutes = 30)
 

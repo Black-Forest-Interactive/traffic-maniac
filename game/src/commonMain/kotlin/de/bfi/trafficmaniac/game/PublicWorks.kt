@@ -47,7 +47,10 @@ internal class PublicWorks(
         val announced = paidOff ?: HashSet<Int>().also { paidOff = it }
         return cameraCounters.values
             .map { it.toRecord() }
-            .filter { it.isFixedCamera && it.totalRevenue >= rules.cameraCost && announced.add(it.cameraId) }
+            .filter {
+                val cost = if (it.busLane) rules.bus.laneCameraCost else rules.cameraCost
+                it.isFixedCamera && it.totalRevenue >= cost && announced.add(it.cameraId)
+            }
     }
 
     /**

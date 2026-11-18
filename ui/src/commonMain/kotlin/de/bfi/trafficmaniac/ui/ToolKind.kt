@@ -157,6 +157,14 @@ enum class ToolKind(
         translatable("Drei Stunden, höchstens zwei"),
         cost = { it.policeCheckCost },
     ),
+    BUS_LANE_CAMERA(
+        Tool.CAMERA,
+        translatable("Busspur-Blitzer"),
+        translatable("Busspur"),
+        Icons.Camera,
+        translatable("Autos auf der Busspur"),
+        cost = { it.bus.laneCameraCost },
+    ),
     PRIORITY(
         Tool.ROUTE,
         translatable("Vorfahrtsstraße"),
@@ -181,6 +189,23 @@ enum class ToolKind(
         translatable("Tempo 30, kein Überholen"),
         cost = { it.bikeStreetCost },
         unit = PriceUnit.STRETCH,
+    ),
+    BUS_LANE(
+        Tool.ROUTE,
+        translatable("Busspur"),
+        null,
+        Icons.Bus,
+        translatable("Rechte Spur für Busse"),
+        cost = { it.bus.laneCost },
+        unit = PriceUnit.STRETCH,
+    ),
+    BUS_PRIORITY(
+        Tool.ROUTE,
+        translatable("Busvorrang"),
+        null,
+        Icons.TrafficLight,
+        translatable("Bus hat immer Grün"),
+        cost = { it.bus.priorityCost },
     ),
     DETOUR(Tool.ROUTE, translatable("Umleitung"), null, Icons.Detour, translatable("Nebenstraßen zuschalten")),
     ROADWORKS(

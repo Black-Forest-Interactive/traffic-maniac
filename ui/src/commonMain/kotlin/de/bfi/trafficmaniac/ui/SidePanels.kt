@@ -180,7 +180,7 @@ private fun PanelContent(
         }
 
         SidePanel.TRANSIT -> {
-            TransitPanel(frame.current.transit, onClose = onClose)
+            TransitPanel(frame.current.transit, game.busModeShift, onClose = onClose)
         }
 
         SidePanel.ACHIEVEMENTS -> {

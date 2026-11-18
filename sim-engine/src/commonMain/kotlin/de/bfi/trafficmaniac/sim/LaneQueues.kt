@@ -20,15 +20,50 @@ internal class LaneQueues(
         lane: Int,
     ): Double = queues[link][lane].lastOrNull()?.let { it.position - it.type.length } ?: Double.POSITIVE_INFINITY
 
-    /** Bleibt möglichst auf der eigenen Spur, weicht aber auf die freieste aus, wenn es eng wird. */
+    /**
+     * Bleibt möglichst auf der eigenen Spur, weicht aber auf die freieste aus, wenn es eng wird. Eine Busspur nimmt
+     * nur, wer darf ([Vehicle.mayUseBusLane]); Busse fahren dort bevorzugt.
+     */
     fun bestEntryLane(
         link: Int,
         currentLane: Int,
+        vehicle: Vehicle,
     ): Int {
         val laneCount = graph.linkLanes[link]
-        val preferred = minOf(currentLane, laneCount - 1)
-        if (freeSpaceAtStart(link, preferred) >= COMFORTABLE_ENTRY_SPACE) return preferred
-        return (0 until laneCount).maxBy { freeSpaceAtStart(link, it) }
+        val busLane = graph.busLane(link)
+        val open = (0 until laneCount).filter { it != busLane || vehicle.mayUseBusLane }
+        val preferred = minOf(currentLane, laneCount - 1).takeIf { it in open } ?: open.last()
+        return when {
+            busLane >= 0 && vehicle.role == VehicleRole.BUS -> {
+                busLane
+            }
+
+            // Busspur-Sünder nehmen sie gern, wenn sie freier ist
+            busLane < 0 || !vehicle.ignoresBusLane -> {
+                if (freeSpaceAtStart(link, preferred) >= COMFORTABLE_ENTRY_SPACE) preferred else freest(link, open)
+            }
+
+            else -> {
+                freest(link, open)
+            }
+        }
+    }
+
+    private fun freest(
+        link: Int,
+        lanes: List<Int>,
+    ): Int = lanes.maxBy { freeSpaceAtStart(link, it) }
+
+    /**
+     * Der Letzte auf der Spur von [next], die [vehicle] dort nehmen wird – vor einer Busspur ist das nicht unbedingt
+     * dieselbe Spurnummer wie jetzt.
+     */
+    fun rearmostFor(
+        next: Int,
+        vehicle: Vehicle,
+    ): Vehicle? {
+        val lane = if (graph.busLane(next) >= 0) bestEntryLane(next, vehicle.lane, vehicle) else vehicle.lane
+        return rearmost(next, lane)
     }
 
     /** Längste Standzeit eines Fahrzeugs an der Spitze einer Spur des Links. */

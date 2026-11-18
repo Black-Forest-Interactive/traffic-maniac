@@ -99,25 +99,29 @@ class SpeedControl internal constructor(
         return camera
     }
 
-    /** Polizeikontrolle in der Mitte von [segment]: beide Richtungen, mobil (niemand kennt sie vorher). */
-    fun placePoliceCheck(segment: Int): SpeedCamera {
+    /**
+     * Gerät in der Mitte von [segment], das beide Richtungen erfasst: Anzeigetafel (misst, blitzt nicht),
+     * Polizeikontrolle (mobil – niemand kennt sie vorher) oder Busspur-Blitzer (fest, misst kein Tempo).
+     */
+    fun placeMidSegment(
+        segment: Int,
+        kind: MidSegmentCamera,
+    ): SpeedCamera {
         val links = graph.segmentLinks[segment]
         val point = FloatArray(LOCATE_SIZE)
         graph.locate(links.first(), graph.linkLength[links.first()] / 2, 0, point)
         val camera =
-            SpeedCamera(nextCameraId++, segment, point[LOCATE_X], point[LOCATE_Y], mobile = true, policeCheck = true)
-        cameraList += camera
-        for (link in links) sites[link] += CameraSite(camera, graph.linkLength[link] / 2.0)
-        return camera
-    }
-
-    /** Geschwindigkeits-Anzeigetafel in der Mitte von [segment]: misst beide Richtungen, blitzt nicht. */
-    fun placeDisplay(segment: Int): SpeedCamera {
-        val links = graph.segmentLinks[segment]
-        val point = FloatArray(LOCATE_SIZE)
-        graph.locate(links.first(), graph.linkLength[links.first()] / 2, 0, point)
-        val camera =
-            SpeedCamera(nextCameraId++, segment, point[LOCATE_X], point[LOCATE_Y], mobile = true, display = true)
+            SpeedCamera(
+                nextCameraId++,
+                segment,
+                point[LOCATE_X],
+                point[LOCATE_Y],
+                mobile = kind != MidSegmentCamera.BUS_LANE,
+                measuresSpeed = kind != MidSegmentCamera.BUS_LANE,
+                display = kind == MidSegmentCamera.DISPLAY,
+                policeCheck = kind == MidSegmentCamera.POLICE_CHECK,
+                busLane = kind == MidSegmentCamera.BUS_LANE,
+            )
         cameraList += camera
         for (link in links) sites[link] += CameraSite(camera, graph.linkLength[link] / 2.0)
         return camera
@@ -300,20 +304,18 @@ class SpeedControl internal constructor(
                     if (measured > limitKmh) camera.speeding++
                     continue
                 }
-                if (camera.policeCheck) {
-                    checkFinding(vehicle, link)?.let { finding ->
-                        violations +=
-                            SpeedViolation(
-                                camera.id,
-                                vehicle.id,
-                                vehicle.homeZone,
-                                vehicle.person,
-                                measured,
-                                limitKmh,
-                                0.0,
-                                finding = finding,
-                            )
-                    }
+                findingAt(camera, vehicle, link)?.let { finding ->
+                    violations +=
+                        SpeedViolation(
+                            camera.id,
+                            vehicle.id,
+                            vehicle.homeZone,
+                            vehicle.person,
+                            measured,
+                            limitKmh,
+                            0.0,
+                            finding = finding,
+                        )
                 }
                 if (!camera.measuresSpeed) continue
                 val excess = measured - toleranceKmh - limitKmh
@@ -336,14 +338,23 @@ class SpeedControl internal constructor(
     }
 
     /** Was die Polizei bei [vehicle] findet: Überholen in der Fahrradstraße, sonst manchmal Mängel oder Handy. */
-    private fun checkFinding(
+    private fun findingAt(
+        camera: SpeedCamera,
         vehicle: Vehicle,
         link: Int,
     ): CheckFinding? =
         when {
+            // Busspur-Blitzer: wer auf der Busspur fährt; sonst findet nur die Polizeikontrolle etwas
+            camera.busLane -> CheckFinding.BUS_LANE.takeIf { vehicle.lane == graph.busLane(link) }
+
+            !camera.policeCheck -> null
+
             vehicle.overtakingLink == link -> CheckFinding.OVERTAKING
+
             random.nextDouble() >= config.checkFindingRate -> null
+
             random.nextBoolean() -> CheckFinding.DEFECT
+
             else -> CheckFinding.PHONE
         }
 
@@ -401,3 +412,6 @@ class SpeedControl internal constructor(
         private const val MAX_DENSITY = 3f
     }
 }
+
+/** Geräte, die [SpeedControl.placeMidSegment] in die Mitte eines Abschnitts stellt. */
+enum class MidSegmentCamera { DISPLAY, POLICE_CHECK, BUS_LANE }

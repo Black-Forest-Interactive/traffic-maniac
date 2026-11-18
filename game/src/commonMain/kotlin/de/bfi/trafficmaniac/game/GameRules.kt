@@ -42,6 +42,8 @@ data class GameRules(
     val maxPoliceChecks: Int = 2,
     /** Fahrradstraße einrichten (Markierung, Schilder), je Strecke. */
     val bikeStreetCost: Long = 5_000,
+    /** Busspur, Busspur-Blitzer, Busvorrang und was pünktliche Busse bringen (ÖPNV Schritt 2). */
+    val bus: BusRules = BusRules(),
     /** Wählbare Tempolimits; 7 km/h steht für Schrittgeschwindigkeit. */
     val speedLimitOptions: List<Int> = DEFAULT_SPEED_LIMITS,
     /** Fester Haushalt je Woche; jede Nacht um Mitternacht wird ein Siebtel überwiesen. */
@@ -259,4 +261,22 @@ data class CameraHabits(
     val marathonReputationGain: Double = 2.0,
     val marathonWarnerReduction: Double = 0.1,
     val marathonHours: Double = 24.0,
+)
+
+/** ÖPNV: Preise für Busspur, Busspur-Blitzer und Busvorrang, dazu die Wirkung pünktlicher Busse. */
+@Serializable
+data class BusRules(
+    /** Busspur markieren (rote Fahrbahn, Schilder), je Strecke – nur auf mehrspurigen Straßen. */
+    val laneCost: Long = 4_000,
+    /** Busspur-Blitzer (fest, misst kein Tempo). */
+    val laneCameraCost: Long = 25_000,
+    /** Busvorrang an einer Ampel (Bussignal, Anmeldung per Funk). */
+    val priorityCost: Long = 12_000,
+    /** Pünktlichkeit der Busse am Abend: ab diesem Anteil lobt die Presse, darunter schimpft sie. */
+    val praiseShare: Double = 0.85,
+    val complaintShare: Double = 0.6,
+    /** Reputation je Schlagzeile über die Busse (Lob bzw. Schelte). */
+    val pressReputation: Double = 2.0,
+    /** Höchstens so viele Autofahrten fallen weg, weil die Leute Bus fahren (bei voller Pünktlichkeit). */
+    val modeShiftMax: Double = 0.05,
 )
