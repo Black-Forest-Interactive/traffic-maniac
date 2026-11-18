@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         hideSystemBars()
         val content = GameContent(assets)
-        val data = AppData(filesDir)
+        val data = AppData(filesDir, Statistics(filesDir))
         content.use(content.languageFor(data.settings().language))
         setContent { AndroidGame(content, data, session, onQuit = ::finish) }
     }
