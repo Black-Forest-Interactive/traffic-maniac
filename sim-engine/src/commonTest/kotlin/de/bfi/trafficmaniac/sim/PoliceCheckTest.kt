@@ -20,7 +20,7 @@ class PoliceCheckTest {
     fun aPoliceCheckOnABikeStreetCatchesDriversOvertakingCyclists() {
         val simulation = Simulation(crossroads(signals = false), config(ignoreBan = 0.3))
         simulation.graph.setSegmentBikeStreet(0, true)
-        simulation.speedControl.placePoliceCheck(0)
+        simulation.speedControl.placeMidSegment(0, MidSegmentCamera.POLICE_CHECK)
 
         simulation.run(minutes = 30)
 
@@ -32,7 +32,7 @@ class PoliceCheckTest {
     @Test
     fun withoutABikeStreetNobodyIsCaughtOvertaking() {
         val simulation = Simulation(crossroads(signals = false), config(ignoreBan = 0.3))
-        simulation.speedControl.placePoliceCheck(0)
+        simulation.speedControl.placeMidSegment(0, MidSegmentCamera.POLICE_CHECK)
 
         simulation.run(minutes = 30)
 
@@ -45,7 +45,7 @@ class PoliceCheckTest {
     fun lawAbidingDriversKeepToCyclingPaceOnABikeStreet() {
         val simulation = Simulation(crossroads(signals = false), config(ignoreBan = 0.0))
         simulation.graph.setSegmentBikeStreet(0, true)
-        val display = simulation.speedControl.placeDisplay(0)
+        val display = simulation.speedControl.placeMidSegment(0, MidSegmentCamera.DISPLAY)
 
         simulation.run(minutes = 30)
 

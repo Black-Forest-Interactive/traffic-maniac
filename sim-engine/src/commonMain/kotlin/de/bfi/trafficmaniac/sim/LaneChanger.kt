@@ -18,7 +18,8 @@ internal class LaneChanger(
                 val bikeStreet = graph.linkBikeStreet[link]
                 val candidates =
                     queue.filter {
-                        (it.id + tick) % INTERVAL_TICKS == 0L && wantsToChange(it) &&
+                        (it.id + tick) % INTERVAL_TICKS == 0L &&
+                            (wantsToChange(it) || (it.role == VehicleRole.BUS && behindParked(it, link))) &&
                             (!bikeStreet || it.ignoresOvertakingBan)
                     }
                 for (vehicle in candidates) tryChangeLane(vehicle, link, desired)
@@ -68,6 +69,16 @@ internal class LaneChanger(
         return ahead > ROOM && behind > ROOM
     }
 
+    /** Steht der Vordermann auf derselben Spur (z. B. ein Bus an der Haltestelle)? */
+    private fun behindParked(
+        vehicle: Vehicle,
+        link: Int,
+    ): Boolean {
+        val queue = lanes[link][vehicle.lane]
+        val index = queue.indexOf(vehicle)
+        return index > 0 && queue[index - 1].isParked
+    }
+
     /** Wer gebremst wird oder frustriert ist, sucht eine andere Spur. */
     private fun wantsToChange(vehicle: Vehicle) =
         vehicle.acceleration < THRESHOLD - vehicle.maxAcceleration || vehicle.frustration > FRUSTRATED
@@ -77,9 +88,13 @@ internal class LaneChanger(
         link: Int,
         desired: Double,
     ) {
+        val busLane = graph.busLane(link)
+        // Der Bus bleibt auf seiner Spur – außer um einen haltenden Bus zu überholen; auf die Busspur wechselt nur, wer
+        // darf
+        if (vehicle.role == VehicleRole.BUS && vehicle.lane == busLane && !behindParked(vehicle, link)) return
         val target =
             intArrayOf(vehicle.lane - 1, vehicle.lane + 1)
-                .filter { it in 0 until graph.linkLanes[link] }
+                .filter { it in 0 until graph.linkLanes[link] && (it != busLane || vehicle.mayUseBusLane) }
                 .firstOrNull { isBetterAndSafe(vehicle, lanes[link][it], desired) }
                 ?: return
         val queue = lanes[link][target]

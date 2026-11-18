@@ -25,6 +25,8 @@ class SpeedCamera(
     val policeCheck: Boolean = false,
     /** Attrappe: leeres Gehäuse – wer es sieht, bremst, gemessen wird nichts. */
     val dummy: Boolean = false,
+    /** Busspur-Blitzer: fotografiert Autos auf der Busspur, misst kein Tempo. */
+    val busLane: Boolean = false,
 ) {
     /**
      * Wie bekannt der feste Blitzer ist (0..1): steigt jeden Spieltag. Mit Warn-App bremsen davor dann auch Ortsfremde
@@ -70,6 +72,9 @@ enum class CheckFinding {
 
     /** Radfahrer in der Fahrradstraße überholt. */
     OVERTAKING,
+
+    /** Auto auf der Busspur (Busspur-Blitzer). */
+    BUS_LANE,
 }
 
 /** Messpunkt eines Blitzers auf einem Link. */

@@ -99,6 +99,15 @@
         "marathonWarnerReduction": 0.1,
         "marathonHours": 24.0
     },
+    "bus": {
+        "laneCost": 4000,
+        "laneCameraCost": 25000,
+        "priorityCost": 12000,
+        "praiseShare": 0.85,
+        "complaintShare": 0.6,
+        "pressReputation": 2.0,
+        "modeShiftMax": 0.05
+    },
     "patchCost": 1500,
     "patchCondition": 0.65,
     "patchWearFactor": 2.0,
