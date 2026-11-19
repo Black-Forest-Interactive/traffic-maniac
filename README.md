@@ -57,7 +57,8 @@ per Smoke-Test geprüft. Die APK lokal bauen und von Hand anhängen, falls die S
 
 ```bash
 set -a; . ~/.android/traffic-maniac-release.properties; set +a   # TM_KEYSTORE, TM_KEYSTORE_PASSWORD, …
-./gradlew :android-app:assembleRelease -PappVersion=0.2.0 -PappVersionCode=2
+./gradlew :android-app:assembleRelease -PappVersion=0.2.0 -PappVersionCode=2 \
+  -PstatsUrl=https://stats.blackforrestdevelopment.de/api   # ohne statsUrl sendet die App keine Statistik
 ```
 
 Spielwerte (Kosten, Bußgelder, Schwellen für Bürgerzorn usw.) stehen in `balancing/*.json`.
