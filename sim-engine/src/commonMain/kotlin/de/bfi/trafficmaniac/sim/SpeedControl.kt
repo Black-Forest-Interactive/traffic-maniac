@@ -1,0 +1,417 @@
+package de.bfi.trafficmaniac.sim
+
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.random.Random
+
+/**
+ * Geschwindigkeit und Überwachung: wer wie schnell fahren will, wer zu schnell ist und wer geblitzt wird.
+ *
+ * Zu schnell fährt, wem das Limit unpassend niedrig vorkommt: Je weiter es unter dem Tempo liegt, das sich
+ * auf der Straße "richtig anfühlt" (dem ursprünglichen Limit), desto mehr Fahrer überschreiten es – und desto
+ * deutlicher. Grobe Werte auf einer 50er-Straße: Limit 50 → ~8 %, 30 → ~48 %, 20 → ~68 %, Schritttempo → ~90 %.
+ * Dazu kommen Fahrer, die das Schild schlicht übersehen.
+ *
+ * Feste Blitzer messen beide Fahrtrichtungen. Ortskundige kennen sie und bremsen davor deutlich ab;
+ * mobile Lasermessungen kennt niemand.
+ */
+class SpeedControl internal constructor(
+    private val graph: RoadGraph,
+    private val config: SimulationConfig,
+    private val random: Random,
+) {
+    private val sites = Array(graph.linkCount) { ArrayList<CameraSite>() }
+    private val cameraList = ArrayList<SpeedCamera>()
+    private val violations = ArrayList<SpeedViolation>()
+    private var nextCameraId = 0
+
+    /** Messtoleranz in km/h (einstellbar über die Schärfe des Ordnungsamts). */
+    var toleranceKmh = DEFAULT_TOLERANCE_KMH
+
+    /** Anteil der Fahrer mit Blitzer-Warn-App (0..1). Vor bekannten festen Blitzern bremsen sie wie Ortskundige. */
+    var warnerShare = 0.0
+
+    /** Höchstens so viele Ortsfremde bremsen vor einem bekannten Blitzer – etwas Wirkung bleibt immer. */
+    var maxWarned = 1.0
+
+    /** Angekündigter Blitzermarathon: Alle bremsen vor jedem Blitzer, auch vor mobilen. */
+    var marathon = false
+
+    /** Ein Spieltag ist vergangen: Jeder feste Blitzer wird um [perDay] bekannter (höchstens 1). */
+    fun dayPassed(perDay: Double) {
+        for (camera in cameraList) {
+            if (camera.isFixed) camera.familiarity = (camera.familiarity + perDay).coerceAtMost(1.0)
+        }
+    }
+
+    /** Alle aufgestellten Blitzer und Lasermessungen. */
+    val cameras: List<SpeedCamera> get() = cameraList
+
+    /** Stellt einen Blitzer (oder mit [mobile] eine Lasermessung) in die Mitte von [segment]. */
+    fun placeCamera(
+        segment: Int,
+        mobile: Boolean = false,
+        trailer: Boolean = false,
+        dummy: Boolean = false,
+    ): SpeedCamera {
+        val links = graph.segmentLinks[segment]
+        val point = FloatArray(LOCATE_SIZE)
+        graph.locate(links.first(), graph.linkLength[links.first()] / 2, 0, point)
+        val camera =
+            SpeedCamera(
+                nextCameraId++,
+                segment,
+                point[LOCATE_X],
+                point[LOCATE_Y],
+                mobile || trailer,
+                trailer,
+                measuresSpeed = !dummy,
+                dummy = dummy,
+            )
+        cameraList += camera
+        for (link in links) sites[link] += CameraSite(camera, graph.linkLength[link] / 2.0)
+        return camera
+    }
+
+    /**
+     * Rotlichtblitzer an der Haltelinie von [link] (eine Ampelzufahrt); mit [withSpeed] misst er auch das Tempo
+     * (kurz vor der Haltelinie).
+     */
+    fun placeRedLightCamera(
+        link: Int,
+        withSpeed: Boolean,
+    ): SpeedCamera {
+        val point = FloatArray(LOCATE_SIZE)
+        val position = (graph.linkLength[link] - STOP_LINE_SETBACK).coerceAtLeast(0f)
+        graph.locate(link, position, 0, point)
+        val camera =
+            SpeedCamera(
+                nextCameraId++,
+                graph.linkSegment[link],
+                point[LOCATE_X],
+                point[LOCATE_Y],
+                redLight = true,
+                measuresSpeed = withSpeed,
+                link = link,
+            )
+        cameraList += camera
+        sites[link] += CameraSite(camera, position.toDouble())
+        return camera
+    }
+
+    /**
+     * Gerät in der Mitte von [segment], das beide Richtungen erfasst: Anzeigetafel (misst, blitzt nicht),
+     * Polizeikontrolle (mobil – niemand kennt sie vorher) oder Busspur-Blitzer (fest, misst kein Tempo).
+     */
+    fun placeMidSegment(
+        segment: Int,
+        kind: MidSegmentCamera,
+    ): SpeedCamera {
+        val links = graph.segmentLinks[segment]
+        val point = FloatArray(LOCATE_SIZE)
+        graph.locate(links.first(), graph.linkLength[links.first()] / 2, 0, point)
+        val camera =
+            SpeedCamera(
+                nextCameraId++,
+                segment,
+                point[LOCATE_X],
+                point[LOCATE_Y],
+                mobile = kind != MidSegmentCamera.BUS_LANE,
+                measuresSpeed = kind != MidSegmentCamera.BUS_LANE,
+                display = kind == MidSegmentCamera.DISPLAY,
+                policeCheck = kind == MidSegmentCamera.POLICE_CHECK,
+                busLane = kind == MidSegmentCamera.BUS_LANE,
+            )
+        cameraList += camera
+        for (link in links) sites[link] += CameraSite(camera, graph.linkLength[link] / 2.0)
+        return camera
+    }
+
+    /**
+     * [vehicle] überquert die Haltelinie am Ende von [link]; [redSeconds] = Sekunden seit Beginn der Rotphase
+     * (NaN bei Grün oder Gelb). Steht dort ein Rotlichtblitzer, gibt es ein Foto.
+     */
+    internal fun stopLine(
+        vehicle: Vehicle,
+        link: Int,
+        redSeconds: Double,
+    ) {
+        if (redSeconds.isNaN() || vehicle.role != VehicleRole.PRIVATE) return
+        for (site in sites[link]) {
+            if (!site.camera.redLight) continue
+            violations +=
+                SpeedViolation(
+                    site.camera.id,
+                    vehicle.id,
+                    vehicle.homeZone,
+                    vehicle.person,
+                    vehicle.speed * KMH_PER_MS,
+                    graph.speedLimitKmh(link).toInt(),
+                    0.0,
+                    redSeconds = redSeconds,
+                )
+        }
+    }
+
+    fun removeCamera(id: Int) {
+        cameraList.removeAll { it.id == id }
+        for (list in sites) list.removeAll { it.camera.id == id }
+    }
+
+    /** Liefert die Messungen seit dem letzten Aufruf und leert den Puffer. */
+    fun drainViolations(): List<SpeedViolation> {
+        val result = violations.toList()
+        violations.clear()
+        return result
+    }
+
+    /**
+     * Würfelt beim Einfahren in [link], ob und wie viel [vehicle] zu schnell fährt.
+     * Wer das Schild übersieht (je unaufmerksamer, desto eher), fährt einfach, was sich richtig anfühlt.
+     * Frust und Stress machen die Überschreitung wahrscheinlicher.
+     */
+    internal fun roll(
+        vehicle: Vehicle,
+        link: Int,
+    ) {
+        // Fahrradstraße: Wer das Überholverbot ignoriert, zieht an den Radfahrern vorbei
+        vehicle.overtakingLink = if (graph.linkBikeStreet[link] && vehicle.ignoresOvertakingBan) link else -1
+        val gap = max(0f, graph.linkPerceivedSpeedKmh[link] - graph.speedLimitKmh(link)).toDouble()
+        val overlooked = gap > 0 && random.nextDouble() < (1 - vehicle.attention) * config.overlookProbability
+        val tendency = vehicle.driver.speedingFactor * (1 + vehicle.irritation)
+        val probability =
+            min(
+                MAX_PROBABILITY,
+                (config.speedingBaseProbability + gap / GAP_SCALE_KMH * GAP_WEIGHT) * tendency,
+            )
+        vehicle.speedingKmh =
+            when {
+                overlooked -> {
+                    gap + random.nextDouble(0.0, MAX_BASE_EXCESS_KMH)
+                }
+
+                // Überschreitung nach echten Messungen ([SpeedingProfile]); breite Straßen verleiten zu etwas mehr
+                random.nextDouble() < probability -> {
+                    SpeedingProfile.sample(random) + gap * random.nextDouble(0.0, MAX_GAP_SHARE)
+                }
+
+                else -> {
+                    0.0
+                }
+            }
+    }
+
+    /**
+     * Reizdichte beim Einfahren in [link] (von [previous] kommend): Ampel, Tempowechsel, Nachtlimit und
+     * Blitzer kosten Aufmerksamkeit – auf kurzen Abschnitten überproportional ("Schilderwald").
+     */
+    internal fun stimulus(
+        previous: Int,
+        link: Int,
+    ): Double {
+        var stimuli = 0.0
+        if (graph.nodeHasSignals[graph.linkTo[link]]) stimuli += SIGNAL_STIMULUS
+        if (previous >= 0 &&
+            graph.linkSpeedLimit[previous] != graph.linkSpeedLimit[link]
+        ) {
+            stimuli += LIMIT_CHANGE_STIMULUS
+        }
+        if (graph.hasNightLimit(link)) stimuli += NIGHT_LIMIT_STIMULUS
+        if (sites[link].isNotEmpty()) stimuli += CAMERA_STIMULUS
+        if (graph.hasBikeCrossing(link)) stimuli += BIKE_CROSSING_STIMULUS
+        if (previous >= 0 && graph.hasPriority(previous) != graph.hasPriority(link)) stimuli += PRIORITY_CHANGE_STIMULUS
+        val density = (DENSITY_REFERENCE_METERS / graph.linkLength[link]).coerceIn(1f, MAX_DENSITY)
+        return stimuli * density
+    }
+
+    /** Wunschgeschwindigkeit in m/s auf [link]: Limit, Fahrertyp, Überschreitung, Blitzer und Kreuzungen. */
+    internal fun desiredSpeed(
+        vehicle: Vehicle,
+        link: Int,
+    ): Double {
+        val limit = graph.linkSpeedLimit[link].toDouble()
+        if (vehicle.role.isEmergency) return min(limit * EMERGENCY_SPEED_FACTOR, vehicle.type.maxSpeed)
+        if (vehicle.role.isEvent) return min(limit, vehicle.type.maxSpeed)
+        val speeding = vehicle.speedingKmh > 0
+        var desired = if (speeding) limit + vehicle.speedingKmh / KMH_PER_MS else limit * vehicle.driver.speedFactor
+        desired *= graph.speedFactor(link)
+        desired = min(desired, localCap(vehicle, link, limit))
+        // Unsichere werden vor Kreuzungen langsamer
+        if (graph.linkLength[link] - vehicle.position < JUNCTION_ZONE) desired *= vehicle.driver.junctionCaution
+        return min(min(desired, vehicle.type.maxSpeed), graph.linkEventSpeedCap[link].toDouble())
+    }
+
+    /**
+     * Was vor Ort bremst: Ortskundige vor festen Blitzern, Radfahrer vor einem auf der Fahrradstraße (außer man
+     * überholt verbotenerweise), die Kelle der Polizeikontrolle, und vor der Anzeigetafel nimmt mancher Raser den Fuß
+     * vom Gas. Ohne all das: unbegrenzt.
+     */
+    private fun localCap(
+        vehicle: Vehicle,
+        link: Int,
+        limit: Double,
+    ): Double {
+        fun ahead(
+            zone: Double,
+            accept: (SpeedCamera) -> Boolean,
+        ) = sites[link].any { accept(it.camera) && it.position - vehicle.position in 0.0..zone }
+        var cap = Double.MAX_VALUE
+        if (brakesForFixedCamera(vehicle, link)) cap = limit * CAMERA_BRAKE_FACTOR
+        if (marathon && ahead(CAMERA_BRAKE_ZONE) { it.measuresSpeed }) cap = min(cap, limit * CAMERA_BRAKE_FACTOR)
+        if (graph.linkBikeStreet[link] && vehicle.overtakingLink != link) cap = min(cap, BIKE_PACE / KMH_PER_MS)
+        if (ahead(CHECK_ZONE) { it.policeCheck }) cap = min(cap, CHECK_PACE / KMH_PER_MS)
+        if (vehicle.speedingKmh > 0 && ahead(DISPLAY_ZONE) { it.display }) {
+            cap = min(cap, limit + vehicle.speedingKmh * DISPLAY_EFFECT / KMH_PER_MS)
+        }
+        return cap
+    }
+
+    /**
+     * Steht kurz vor [vehicle] ein fester Blitzer (oder eine Attrappe), den es kennt? Ortskundige kennen alle; von den
+     * anderen warnt eine App, je bekannter der Blitzer – fest je Fahrzeug und Blitzer, höchstens [maxWarned].
+     */
+    private fun brakesForFixedCamera(
+        vehicle: Vehicle,
+        link: Int,
+    ): Boolean {
+        val camera =
+            sites[link]
+                .firstOrNull {
+                    val camera = it.camera
+                    !camera.mobile && (camera.measuresSpeed || camera.dummy) &&
+                        it.position - vehicle.position in 0.0..CAMERA_BRAKE_ZONE
+                }?.camera ?: return false
+        val share = min(camera.familiarity * warnerShare, maxWarned)
+        val hash = (vehicle.id.toLong() * HASH_A + camera.id.toLong() * HASH_B).mod(HASH_RANGE)
+        return vehicle.knowsCameras || (share > 0.0 && hash < share * HASH_RANGE)
+    }
+
+    /** Prüft, ob [vehicle] auf [link] bei der Fahrt von [oldPosition] aus einen Blitzer passiert hat. */
+    internal fun measure(
+        vehicle: Vehicle,
+        link: Int,
+        oldPosition: Double,
+    ) {
+        val list = sites[link]
+        if (list.isEmpty() || vehicle.role != VehicleRole.PRIVATE) return
+        val limitKmh = graph.speedLimitKmh(link).toInt()
+        for (site in list) {
+            if (oldPosition < site.position && vehicle.position >= site.position) {
+                val measured = vehicle.speed * KMH_PER_MS
+                val camera = site.camera
+                if (camera.display) {
+                    camera.passed++
+                    if (measured > limitKmh) camera.speeding++
+                    continue
+                }
+                findingAt(camera, vehicle, link)?.let { finding ->
+                    violations +=
+                        SpeedViolation(
+                            camera.id,
+                            vehicle.id,
+                            vehicle.homeZone,
+                            vehicle.person,
+                            measured,
+                            limitKmh,
+                            0.0,
+                            finding = finding,
+                        )
+                }
+                if (!camera.measuresSpeed) continue
+                val excess = measured - toleranceKmh - limitKmh
+                if (excess >
+                    0
+                ) {
+                    violations +=
+                        SpeedViolation(
+                            site.camera.id,
+                            vehicle.id,
+                            vehicle.homeZone,
+                            vehicle.person,
+                            measured,
+                            limitKmh,
+                            excess,
+                        )
+                }
+            }
+        }
+    }
+
+    /** Was die Polizei bei [vehicle] findet: Überholen in der Fahrradstraße, sonst manchmal Mängel oder Handy. */
+    private fun findingAt(
+        camera: SpeedCamera,
+        vehicle: Vehicle,
+        link: Int,
+    ): CheckFinding? =
+        when {
+            // Busspur-Blitzer: wer auf der Busspur fährt; sonst findet nur die Polizeikontrolle etwas
+            camera.busLane -> CheckFinding.BUS_LANE.takeIf { vehicle.lane == graph.busLane(link) }
+
+            !camera.policeCheck -> null
+
+            vehicle.overtakingLink == link -> CheckFinding.OVERTAKING
+
+            random.nextDouble() >= config.checkFindingRate -> null
+
+            random.nextBoolean() -> CheckFinding.DEFECT
+
+            else -> CheckFinding.PHONE
+        }
+
+    companion object {
+        private const val HASH_A = 2_654_435_761L
+        private const val HASH_B = 40_503L
+        private const val HASH_RANGE = 10_000L
+
+        /** Messtoleranz innerorts. */
+        const val DEFAULT_TOLERANCE_KMH = 3.0
+
+        private const val GAP_SCALE_KMH = 40.0
+
+        /** Tempo 30 auf einer Straße, die nach 50 aussieht: +15 Prozentpunkte (Höhrenbergstraße, Hegne: 25–30 %). */
+        private const val GAP_WEIGHT = 0.3
+        private const val MAX_PROBABILITY = 0.6
+        private const val MAX_BASE_EXCESS_KMH = 10.0
+        private const val MAX_GAP_SHARE = 0.25
+
+        /** So weit vor dem Blitzer bremsen Ortskundige ab ... */
+        private const val CAMERA_BRAKE_ZONE = 120.0
+
+        /** ... und zwar auf diesen Anteil des Limits ("panisches" Bremsen). */
+        private const val CAMERA_BRAKE_FACTOR = 0.85
+        private const val JUNCTION_ZONE = 40.0
+
+        /** Rotlichtblitzer: so weit vor dem Ende der Zufahrt steht er. */
+        private const val STOP_LINE_SETBACK = 3f
+
+        /** Tempo hinter Radfahrern auf einer Fahrradstraße. */
+        private const val BIKE_PACE = 22.0
+
+        /** Polizeikontrolle: so weit vorher wird abgebremst … */
+        private const val CHECK_ZONE = 150.0
+
+        /** … auf dieses Tempo. */
+        private const val CHECK_PACE = 25.0
+
+        /** Anzeigetafel: so weit vorher sieht man sie … */
+        private const val DISPLAY_ZONE = 150.0
+
+        /** … und Raser fahren dann nur noch mit diesem Anteil ihrer Überschreitung. */
+        private const val DISPLAY_EFFECT = 0.5
+        private const val EMERGENCY_SPEED_FACTOR = 1.3
+
+        private const val SIGNAL_STIMULUS = 0.03
+        private const val LIMIT_CHANGE_STIMULUS = 0.06
+        private const val NIGHT_LIMIT_STIMULUS = 0.04
+        private const val CAMERA_STIMULUS = 0.03
+        private const val BIKE_CROSSING_STIMULUS = 0.05
+        private const val PRIORITY_CHANGE_STIMULUS = 0.05
+
+        /** Reize auf weniger als 100 m zählen mehrfach, höchstens dreifach. */
+        private const val DENSITY_REFERENCE_METERS = 100f
+        private const val MAX_DENSITY = 3f
+    }
+}
+
+/** Geräte, die [SpeedControl.placeMidSegment] in die Mitte eines Abschnitts stellt. */
+enum class MidSegmentCamera { DISPLAY, POLICE_CHECK, BUS_LANE }

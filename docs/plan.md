@@ -443,7 +443,7 @@ Der Spieler stellt die **Schärfe** ein, z. B. in drei Stufen (kulant / normal /
 - Die Simulation läuft **Tag für Tag** durch, jeder Tag mit vollem 24-Stunden-Verlauf: Berufsverkehr morgens und abends, Mittagsflaute, Nachtruhe (wichtig für "30 nur nachts").
 - **Zeitraffer**: Pause, 1x, 2x, 4x, 8x; ruhige Phasen (Nacht) laufen automatisch schneller. Ziel: ein Spieltag dauert ca. 5–10 Minuten echte Zeit.
 - **Wochentage** unterscheiden sich: Werktage mit Pendlern, Samstag mit Einkaufsverkehr, Sonntag mit Freizeitverkehr (→ militante Radfahrer).
-- **Haushaltsrunde** einmal pro Spielwoche (z. B. Sonntagabend): Budget verteilen, Personal einstellen, PR-Verträge verlängern.
+- **Haushaltsrunde** jede Nacht um Mitternacht mit einem Siebtel der Wochenbeträge (seit v0.8; vorher sonntags): Haushalt, PR, Gehälter, Erhalt.
 - **Amtszeit** in Spieltagen (z. B. 8 Wochen), pro Szenario einstellbar.
 - **Langsame Prozesse werden auf Spieltage skaliert** – die Spielwelt ist ein "gestauchter" Kalender:
   - Verfall: Schlaglöcher entstehen innerhalb weniger Spieltage, Brücken verfallen über Wochen.
@@ -552,6 +552,7 @@ Vorschlag: **Compose Multiplatform**, weil das Spiel viel UI hat (Werkzeuge, Sta
 ```
 traffic-maniac/
 ├─ docs/                    # Pläne, Konzepte, ADRs
+├─ city/                    # KMP, commonMain: Stadtdatei-Format (Straßennetz + Kulisse)
 ├─ sim-engine/              # KMP, commonMain: reine Simulation
 ├─ game/                    # KMP, commonMain: Spielregeln, Werkzeuge, Level
 ├─ ui/                      # Compose Multiplatform: Renderer, HUD
@@ -577,6 +578,8 @@ Jede Version hat einen eigenen Plan mit Ziel, Umfang, Arbeitspaketen, Abnahmekri
 | 0.5     | Stadtverwaltung          | Verfall, Reaktionspflicht, Reparaturwege, Parken & Strafzettel, Umleitungen              | [v0.5-stadtverwaltung.md](versions/v0.5-stadtverwaltung.md) |
 | 0.6     | Ereignisse & Presse      | Rad-Korsos, Demos, Stadtfeste, Pressemodell, Reputation, Achievements                    | [v0.6-ereignisse-presse.md](versions/v0.6-ereignisse-presse.md) |
 | 0.7     | Cartoon-Look & Sound     | Kartenstil, Sprites, Animationen, Effekte, UI-Theme, Sound                               | [v0.7-cartoon-look.md](versions/v0.7-cartoon-look.md) |
+| 0.8     | Lerneffekt, Abwechslung & Technik | Verkehrsbilanz im Spielziel, wiederkehrende Entscheidungen, Tablet-Performance, Installer/Import unter Windows, anonyme Statistiken | [v0.8-lernen-abwechslung-technik.md](versions/v0.8-lernen-abwechslung-technik.md) |
+| 0.9     | Beschäftigung, Tempo & Feedback | Tempo bis 64×, Aktionen direkt auf der Karte, Einblendungen und Töne (Errungenschaften), Aufträge und Verfahren nach Pforzheimer Vorbild | [v0.9-beschaeftigung-feedback.md](versions/v0.9-beschaeftigung-feedback.md) |
 | 1.0     | Release                  | Tutorial, Szenarien, Spielstände, Balancing, Packaging                                   | [v1.0-release.md](versions/v1.0-release.md) |
 | später  | Online & Web             | Micronaut-Backend, weitere Städte, Web-Variante, Multiplayer                             | [spaeter-online-web.md](versions/spaeter-online-web.md) |
 

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Traffic Maniac – Farben und Schrift</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&amp;family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#FFFFFF}</style>
+</helmet>
+<div style="width: 640px; height: 700px; box-sizing: border-box; padding: 36px; background: #FFFFFF; font-family: Inter, system-ui, sans-serif; color: #15202B; display: flex; flex-direction: column; gap: 24px">
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 30px">Leitstelle</h1>
+    <span style="font-size: 13px; color: #586674">Dunkles Bedienfeld, helle Fenster – die bunte Karte bleibt der Star.</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+    <sc-for list="{{swatches}}" as="s" hint-placeholder-count="12">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="{{s.box}}"></span>
+        <span style="font-size: 12px; font-weight: 700">{{s.name}}</span>
+        <span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">{{s.hex}}</span>
+        <span style="font-size: 11px; color: #586674; line-height: 1.35">{{s.role}}</span>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid #E3E8ED">
+    <span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 24px">Bricolage Grotesque – Titel</span>
+    <span style="font-size: 15px">Inter – Fließtext, Buttons, Beschriftungen</span>
+    <span style="font: 700 15px 'JetBrains Mono', monospace">JetBrains Mono – 375.070 € · 10:04</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var sw = [
+      ['Ink', '#15202B', 'Leisten, Dock, Text'],
+      ['Ink 2', '#1E2B38', 'Seitenleiste'],
+      ['Ink 3', '#243444', 'Chips auf Dunkel'],
+      ['Linie dunkel', '#3B4C5D', 'Trenner auf Dunkel'],
+      ['Grund', '#EEF1F4', 'Menü-Hintergrund, Kacheln'],
+      ['Fenster', '#FFFFFF', 'Panels, Karten'],
+      ['Linie', '#C3CCD5', 'Rahmen hell'],
+      ['Grau', '#586674', 'Nebentext'],
+      ['Amtsblau', '#2257B8', 'Primär, Auswahl, Balken'],
+      ['Ampelgelb', '#FFC21A', 'Aktives Werkzeug, Tempo'],
+      ['Alarmrot', '#C62B3B', 'Badges, Unfälle, Fristen'],
+      ['Grün', '#1E7A44', 'Einnahmen, erledigt']
+    ];
+    return {
+      swatches: sw.map(function (s) {
+        return { name: s[0], hex: s[1], role: s[2], box: 'display: block; height: 52px; border-radius: 10px; background: ' + s[1] + '; border: 1px solid #C3CCD5;' };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -4,11 +4,19 @@ Eine Parodie auf klassische Verkehrssimulatoren: Statt den Verkehr einer echten 
 
 Gewonnen hat aber nicht, wer die Stadt am besten lahmlegt, sondern wer dabei **am meisten Geld verdient und sich am besten präsentiert**. Ob die Stadt am Ende in Trümmern liegt oder strahlt, ist völlig egal.
 
-Erste Stadt: **Pforzheim** (Straßennetz aus OpenStreetMap).
+Erste Stadt: **Pforzheim** (Straßennetz aus OpenStreetMap). Weitere Städte kommen als Stadtpakete nach `cities/` (siehe `cities/README.md`).
 
 ## Status
 
-Version 0.1 in Arbeit – Meilenstein M0 (Projekt-Setup) steht, das Spiel selbst ist noch ein leeres Fenster.
+Version 0.1 ist spielbar (Meilensteine M0–M6), 0.2 (Fahrer & Überwachung) ist fertig, 0.3 (Bürger & Umwelt), 0.4 (Fahrzeugvielfalt & Chaos), 0.5 (Stadtverwaltung: Verfall, Reparaturen, Parken, Umleitungen), 0.6 (Ereignisse & Presse: Rad-Korsos, Demos, Spielkalender, Pressemodell, Achievements) und 0.7 (Cartoon-Look & Sound) sind größtenteils umgesetzt: Pforzheim mit rund 2.000 gleichzeitig fahrenden Autos, Tagesgang mit Berufsverkehr, Werkzeuge (Tempolimit, Ampel, Blitzer), Bußgelder, Bürgerzorn, Abwahlindex, PR, Lokalzeitung und Wertung nach 14 Spieltagen. Die Grafik ist im Comic-Stil selbst gezeichnet, Musik und Geräusche kommen aus einem eingebauten Synthesizer.
+
+## Spielen
+
+- Mausrad zoomt, Ziehen verschiebt die Karte.
+- Unten die Werkzeugleiste: Tempolimit (mit Wert, auch "nur nachts"), Ampel, Blitzer, Laser, Vorfahrt, Radweg-Querung, Umleitung (auch über Nebenstraßen), Abbauen – dann auf eine Straße bzw. Kreuzung klicken.
+- Rechts oben: Umwelt-Ebenen (Lärm, Luft, CO₂), Zufriedenheit der Wohngebiete, Straßenzustand, Blitzer-Statistik, Haushalt & PR, Ordnungsamt, Bauamt (Schadensmeldungen, Reparaturen, Erhaltungsbudget), Parken (Gebühren, Stellplätze, Politessen), Bürger, Kalender (Demos, Korsos, Markt, Marathon, Stadtfest), Achievements. Im Fenster Haushalt & PR gibt es einmal am Tag einen Spatenstich für die Presse.
+- Leertaste pausiert, 1–4 wählen Tempo 1x/2x/4x/8x (nachts automatisch 8× schneller), Enter schließt den Tagesabschluss, M schaltet den Ton stumm, N die Musik.
+- Ziel: nach 14 Tagen möglichst viel Geld in der Kasse und eine gute Reputation. Wird der Bürgerzorn zu groß, ist man vorher abgewählt.
 
 ## Entwickeln
 
@@ -16,19 +24,71 @@ Voraussetzung: JDK 25 (Gradle lädt sich selbst über den Wrapper).
 
 ```bash
 ./gradlew build                  # kompilieren, Tests, ktlint, detekt
-./gradlew :desktop-app:run       # Spiel starten
-./gradlew :osm-import:run        # Kartenimport (folgt in M1)
+./gradlew :desktop-app:run       # Spiel starten (Startmenü mit Szenarien)
+./gradlew :desktop-app:run --args="--scenario berufsverkehr"   # direkt in ein Szenario
+./gradlew :desktop-app:run --args="--warmup 60"   # mit einer Stunde Vorlauf (volle Straßen)
+./gradlew :desktop-app:benchmark --args="5000 60" # Simulation ohne Oberfläche messen (Spitzen-Fahrten/h, Minuten)
+./gradlew :desktop-app:headless --args="7"        # Strategien ohne Oberfläche durchspielen (Balancing)
+./gradlew importCity -Pcity=pforzheim  # OSM-Auszug laden (155 MB, nur beim ersten Mal; -Prefresh lädt neu) und cities/pforzheim/map.city erzeugen – auch unter Windows (gradlew.bat)
 ./gradlew ktlintFormat           # Formatierung automatisch korrigieren
 ```
 
+
+### Android
+
+Die Android-App wird nur gebaut, wenn ein Android-SDK gefunden wird (`sdk.dir` in `local.properties`, `ANDROID_HOME`
+oder `~/Android/Sdk`) – ohne SDK bleibt alles beim Desktop. Querformat, ab Android 9.
+
+```bash
+./gradlew :android-app:assembleDebug   # APK nach android-app/build/outputs/apk/debug/
+./gradlew :android-app:installDebug    # auf das per USB verbundene Handy (USB-Debugging an)
+```
+
+Release: Ein Tag `v<Version>` (z. B. `v0.2.0`, mit Bindestrich wie `v0.2.0-preview.1` als Vorabversion) legt per
+GitHub Actions ein Release an (`.github/workflows/release.yml`): Windows-Installer (MSI, unsigniert), ein ZIP, die Stadtkarte
+`pforzheim.city` und – wenn der Release-Schlüssel in den Secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` liegt – die signierte APK. Installer und APK enthalten die Karte; das MSI
+wird vor dem Veröffentlichen auf dem Windows-Runner installiert und mit `--smoke-test` gestartet (Exit 0 = ok,
+2 = keine Karte, 3 = Absturz, 4 = mitgelieferte Java-Laufzeit ist nicht Eclipse Temurin). Fehlt einem installierten
+Spiel trotzdem eine Karte, lädt es sie per Knopf vom Release
+seiner Version nach `~/.traffic-maniac/cities/`. Windows warnt beim unsignierten MSI („Windows hat den PC geschützt“):
+„Weitere Informationen“ → „Trotzdem ausführen“. Wer nicht installieren will oder darf, nimmt das ZIP
+(`traffic-maniac-<Version>-windows.zip`): entpacken, `Traffic Maniac\Traffic Maniac.exe` starten – es wird genauso
+per Smoke-Test geprüft. Ein neues MSI installiert sich über das alte (vorher wird im Workflow genau das mit der
+letzten Release getestet). Dafür bekommt jede Release eine eigene MSI-Version, weil MSI nur MAJOR.MINOR.BUILD kennt:
+`0.2.0-preview.3` → `0.2.3`, `0.2.0` → `0.2.999` (siehe `msiVersion` in `desktop-app/build.gradle.kts`).
+Die APK lokal bauen und von Hand anhängen, falls die Secrets fehlen:
+
+```bash
+set -a; . ~/.android/traffic-maniac-release.properties; set +a   # TM_KEYSTORE, TM_KEYSTORE_PASSWORD, …
+./gradlew :android-app:assembleRelease -PappVersion=0.2.0 -PappVersionCode=2 \
+  -PstatsUrl=https://stats.blackforrestdevelopment.de/api   # ohne statsUrl sendet die App keine Statistik
+```
+
+Spielwerte (Kosten, Bußgelder, Schwellen für Bürgerzorn usw.) stehen in `balancing/*.json`.
+
 | Modul         | Inhalt                                                      |
 |---------------|-------------------------------------------------------------|
+| `city`        | Format der Stadtdatei: Straßennetz und Kulisse (Multiplatform) |
 | `sim-engine`  | Verkehrssimulation, reines Kotlin (Multiplatform)           |
 | `game`        | Spielregeln: Geld, Bürgerzorn, Werkzeuge (Multiplatform)    |
 | `ui`          | Oberfläche mit Compose Multiplatform                        |
 | `desktop-app` | Startpunkt und Packaging der Desktop-Anwendung              |
+| `android-app` | Android-App: gleicher Kern und dieselbe Karte, eigene Hülle (nur mit SDK) |
 | `osm-import`  | Kommandozeilenwerkzeug: OpenStreetMap → Stadtdatei          |
 | `build-logic` | gemeinsame Gradle-Konfiguration (Convention-Plugins)        |
+
+## Anonyme Statistiken
+
+Nach jeder Partie kann das Spiel ein kleines, anonymes Paket senden – **nur, wenn der Spieler beim ersten Start
+zustimmt** (jederzeit änderbar unter Einstellungen). Enthalten sind Version, Plattform, grobe Geräteklasse, Sprache,
+Stadt, Szenario, Schwierigkeit, Dauer, wie die Partie endete, Punkte, Einnahmen und Ausgaben, je Spieltag Kasse,
+Stimmung, Zorn, Abwahlindex, Reputation und Verkehrsbilanz sowie wie oft welche Werkzeuge und Zeitraffer benutzt
+wurden. Keine Namen, keine Spielstände, keine IP-Adressen; eine zufällige Kennung der Installation lässt sich
+zurücksetzen. „Anzeigen, was gesendet wird“ zeigt das letzte Paket im Klartext. Pakete liegen bis zum nächsten Start in
+`~/.traffic-maniac/outbox/`; gesendet wird nur, wenn das Spiel mit einer Server-Adresse gebaut wurde
+(`-PstatsUrl=…`, im Release-Workflow aus der Repository-Variable `STATS_URL`). Der Statistik-Server liegt in einem
+eigenen, nicht öffentlichen Repository.
 
 ## Dokumentation
 
@@ -46,5 +106,10 @@ Voraussetzung: JDK 25 (Gradle lädt sich selbst über den Wrapper).
 ## Lizenz
 
 Apache License 2.0, siehe [LICENSE](LICENSE).
+
+Installer und ZIP bringen eine Java-Laufzeit mit: Eclipse Temurin (OpenJDK, GPL v2 mit Classpath Exception). Sie und
+die übrigen Drittanbieter-Komponenten (Bibliotheken, Schriften) stehen in
+[licenses/THIRD-PARTY.md](licenses/THIRD-PARTY.md); die Datei liegt auch dem Installer bei. Gebaut wird nur mit Temurin
+(`actions/setup-java` mit `distribution: temurin`); der Smoke-Test bricht ab, wenn eine andere Laufzeit drinsteckt.
 
 Kartendaten © OpenStreetMap-Mitwirkende, verfügbar unter der [Open Database License (ODbL)](https://www.openstreetmap.org/copyright).

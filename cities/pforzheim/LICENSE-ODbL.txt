@@ -1,0 +1,10 @@
+Kartendaten: © OpenStreetMap-Mitwirkende
+
+Die Datei map.city in diesem Ordner ist aus OpenStreetMap-Daten abgeleitet und steht wie diese unter der
+Open Database License (ODbL) 1.0: https://opendatacommons.org/licenses/odbl/1-0/
+
+Sie dürfen die Daten kopieren, verbreiten, nutzen und bearbeiten, solange Sie OpenStreetMap und seine
+Mitwirkenden als Quelle nennen. Wenn Sie die Daten verändern oder darauf aufbauen, dürfen Sie das Ergebnis
+nur unter derselben Lizenz weitergeben. Mehr: https://www.openstreetmap.org/copyright
+
+Die übrigen Dateien (city.json) und das Spiel selbst fallen nicht unter diese Lizenz.

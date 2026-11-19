@@ -1,0 +1,256 @@
+package de.bfi.trafficmaniac.ui
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.game.GameState
+import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.formatDecimal
+import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.ui.map.NoSprites
+import de.bfi.trafficmaniac.ui.map.SpriteSource
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
+
+private val Gold = Color(0xFFFFC300)
+private const val HONORARY_CITIZEN = 70.0
+private const val PRESS_DARLING = 60.0
+private const val PRESS_HATED = 30.0
+private const val MANY_CAMERAS = 5
+private const val STAMP_DEGREES = -12f
+private const val SEAL_POINTS = 16
+private const val SEAL_INNER = 0.82f
+private const val SEAL_CENTER = 0.45f
+private const val SEAL_INK = 2f
+private const val SEAL_SIZE = 64
+private const val STAMP_WIDTH = 330
+
+/** Spielende: abgewählt oder Amtszeit vorbei – im zweiten Fall mit Abschiedsrede, Wertung und (vielleicht) Urkunde. */
+@Composable
+fun ResultOverlay(
+    state: GameState,
+    modifier: Modifier = Modifier,
+    onMenu: (() -> Unit)? = null,
+    sprites: SpriteSource = NoSprites,
+) {
+    val recalled = state.isGameOver
+    val text = TmType.text(14.sp, color = ComicTheme.ink)
+    Box(modifier.fillMaxSize().background(ComicTheme.scrim), contentAlignment = Alignment.Center) {
+        Column(
+            Modifier.width(620.dp).comicPanel(shadow = 8.dp).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            BasicText(
+                if (recalled) {
+                    tr("Abgewählt!")
+                } else {
+                    tr(
+                        "Abschiedsrede nach {termDays} Tagen im Amt",
+                        "termDays" to state.termDays,
+                    )
+                },
+                style =
+                    TmType.display(28.sp, if (recalled) ComicTheme.red else ComicTheme.ink),
+            )
+            // Die Rede als Sprechblase
+            Column(
+                Modifier.comicPanel(background = ComicTheme.paperDark, shadow = 3.dp).padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                for (line in farewellSpeech(state)) {
+                    BasicText(line, style = text.copy(fontStyle = FontStyle.Italic, fontSize = 15.sp))
+                }
+            }
+            ResultFigures(state, text)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (!recalled) {
+                    BasicText(
+                        tr("Punkte: {points}", "points" to state.score.points),
+                        style = TmType.display(24.sp),
+                    )
+                }
+                Certificate(
+                    honorary = !recalled && state.reputation >= HONORARY_CITIZEN,
+                    recalled = recalled,
+                    sprites = sprites,
+                )
+            }
+            onMenu?.let { BackToMenu(it, Modifier.align(Alignment.End)) }
+        }
+    }
+}
+
+/** Kasse, Reputation und Achievements am Ende der Amtszeit. */
+@Composable
+private fun ResultFigures(
+    state: GameState,
+    text: TextStyle,
+) {
+    BasicText(
+        tr(
+            "Kasse: {balance} · selbst verdient: {earnings} · " +
+                "Bußgelder: {fineIncome}",
+            "balance" to formatEuro(state.balance),
+            "earnings" to formatEuro(state.score.earnings),
+            "fineIncome" to formatEuro(state.fineIncome),
+        ),
+        style = text,
+    )
+    BasicText(
+        tr(
+            "Reputation: {reputation} / 100 (Faktor ×{reputationFactor})",
+            "reputation" to state.reputation.roundToInt(),
+            "reputationFactor" to
+                formatDecimal(state.score.reputationFactor, 2),
+        ),
+        style = text,
+    )
+    if (state.achievements.isNotEmpty()) {
+        BasicText(
+            tr("Achievements: {achievements}", "achievements" to state.achievements.joinToString()),
+            style = text,
+        )
+    }
+}
+
+@Composable
+private fun BackToMenu(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BasicText(
+        tr("Zurück zum Menü"),
+        style = TmType.text(15.sp, FontWeight.Bold, ComicTheme.ink),
+        modifier =
+            modifier
+                .comicButton(
+                    active = true,
+                ).clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
+/** Urkunde: goldenes Siegel für die Ehrenbürgerschaft, sonst ein schiefer roter Stempel. */
+@Composable
+private fun Certificate(
+    honorary: Boolean,
+    recalled: Boolean,
+    sprites: SpriteSource,
+) {
+    if (honorary) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SpriteIcon(sprites, "seal_honorary", SEAL_SIZE.dp) { DrawnSeal() }
+            BasicText(
+                tr("Ehrenbürgerschaft verliehen!"),
+                style = TmType.display(18.sp, ComicTheme.ink),
+            )
+        }
+        return
+    }
+    val text = if (recalled) tr("ABGEWÄHLT") else tr("EHRENBÜRGERSCHAFT ABGELEHNT")
+    val style = TmType.display(18.sp, ComicTheme.red)
+    if (sprites.has("stamp_rejected")) {
+        // Stempelrahmen als Grafik, der Text kommt vom Spiel
+        Box(Modifier.rotate(STAMP_DEGREES), contentAlignment = Alignment.Center) {
+            SpriteIcon(sprites, "stamp_rejected", STAMP_WIDTH.dp)
+            BasicText(text, style = style)
+        }
+    } else {
+        BasicText(
+            text,
+            style = style,
+            modifier =
+                Modifier
+                    .rotate(
+                        STAMP_DEGREES,
+                    ).comicButton(active = false)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+    }
+}
+
+/** Gezeichnetes goldenes Siegel (wenn es keine Grafik gibt). */
+@Composable
+private fun DrawnSeal() {
+    Canvas(Modifier.size(SEAL_SIZE.dp)) {
+        val c = Offset(size.width / 2, size.height / 2)
+        val r = size.minDimension / 2
+        val seal = Path()
+        for (k in 0 until SEAL_POINTS * 2) {
+            val radius = if (k % 2 == 0) r else r * SEAL_INNER
+            val angle = k * PI / SEAL_POINTS
+            val p = c + Offset((cos(angle) * radius).toFloat(), (sin(angle) * radius).toFloat())
+            if (k == 0) seal.moveTo(p.x, p.y) else seal.lineTo(p.x, p.y)
+        }
+        seal.close()
+        drawPath(seal, Gold)
+        drawPath(seal, ComicTheme.ink, style = Stroke(SEAL_INK))
+        drawCircle(ComicTheme.red, r * SEAL_CENTER, c)
+    }
+}
+
+/** Die Abschiedsrede: Bilanz, Blitzer, Presse und Achievements – Hauptsache, es klingt gut. */
+internal fun farewellSpeech(state: GameState): List<String> {
+    val lines = ArrayList<String>()
+    lines += "„${state.city.greeting}"
+    lines +=
+        if (state.score.earnings > 0) {
+            tr(
+                "in meiner Amtszeit habe ich {earnings} für die Stadtkasse erwirtschaftet – " +
+                    "jeder Euro floss in die Sicherheit unserer Kinder.",
+                "earnings" to formatEuro(state.score.earnings),
+            )
+        } else {
+            tr("die Kasse ist leer, aber die Straßen sind sicher. Sehr sicher. Sie stehen still.")
+        }
+    if (state.cameras.size >= MANY_CAMERAS) {
+        lines +=
+            tr(
+                "{cameras} Blitzer wachen heute über Ihre Geschwindigkeit. Gern geschehen.",
+                "cameras" to state.cameras.size,
+            )
+    }
+    if (state.licenseRevocations > 0) {
+        lines +=
+            tr(
+                "{licenseRevocations} Mitbürger haben dank mir das Radfahren für sich entdeckt.",
+                "licenseRevocations" to state.licenseRevocations,
+            )
+    }
+    lines +=
+        when {
+            state.reputation >= PRESS_DARLING -> tr("Die Presse hat mich stets fair und begeistert begleitet.")
+            state.reputation <= PRESS_HATED -> tr("Die Presse war nicht immer fair. Eigentlich nie.")
+            else -> tr("Mit der Presse hatte ich ein professionelles Verhältnis.")
+        }
+    state.achievements.firstOrNull()?.let {
+        lines +=
+            tr("Und vergessen Sie nie: „{value}“ – das war ich.", "value" to it)
+    }
+    lines += tr("Ich hinterlasse diese Stadt besser, als ich sie vorgefunden habe.“")
+    return lines
+}

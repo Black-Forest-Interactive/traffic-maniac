@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Traffic Maniac – Fenster</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E3E8ED}
+a{color:#2257B8}a:hover{color:#1A4691}
+button:focus-visible{outline:3px solid #FFC21A;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1260px; box-sizing: border-box; padding: 40px; background: #E3E8ED; font-family: Inter, system-ui, sans-serif; color: #15202B; display: flex; gap: 28px; align-items: flex-start">
+
+  <!-- Column 1 -->
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+
+    <!-- Bauamt -->
+    <section aria-label="Bauamt" style="background: #FFFFFF; border: 1px solid #C3CCD5; border-radius: 14px; box-shadow: 0 6px 18px rgba(21,32,43,.14); overflow: hidden">
+      <div style="padding: 18px 20px 14px; border-bottom: 1px solid #E3E8ED; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Amt</span>
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 22px">Bauamt</h2>
+      </div>
+      <div style="padding: 16px 20px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <div style="padding: 10px 12px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Zustand Ø</span><b style="font-family: 'JetBrains Mono', monospace; font-size: 17px">90 %</b></div>
+        <div style="padding: 10px 12px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Repariert</span><b style="font-family: 'JetBrains Mono', monospace; font-size: 17px">0</b></div>
+        <div style="padding: 10px 12px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Klagen</span><b style="font-family: 'JetBrains Mono', monospace; font-size: 17px">0 · 0 €</b></div>
+      </div>
+      <div style="padding: 0 20px 16px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #E3E8ED">
+        <span id="budget" style="font-size: 13px; font-weight: 700">Erhaltungsbudget pro Woche</span>
+        <div role="radiogroup" aria-labelledby="budget" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 12px; background: #EEF1F4">
+          <button type="button" role="radio" aria-checked="true" style="min-height: 50px; border: none; border-radius: 8px; background: #15202B; color: #FFFFFF; font: 700 13px Inter, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer">keins<span style="font: 500 11px 'JetBrains Mono', monospace; color: #A3B0BD">0 €</span></button>
+          <button type="button" role="radio" aria-checked="false" style="min-height: 50px; border: none; border-radius: 8px; background: transparent; color: #15202B; font: 600 13px Inter, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer">das Nötigste<span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">20.000 €</span></button>
+          <button type="button" role="radio" aria-checked="false" style="min-height: 50px; border: none; border-radius: 8px; background: transparent; color: #15202B; font: 600 13px Inter, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer">vorbildlich<span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">45.000 €</span></button>
+        </div>
+      </div>
+      <div style="padding: 14px 20px 6px; display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 13px; font-weight: 700">Offene Schäden</span>
+        <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #FBE3E5; color: #A3202E">4</span>
+      </div>
+      <!-- expanded damage -->
+      <div style="margin: 6px 12px; padding: 14px; border: 2px solid #15202B; border-radius: 12px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; gap: 8px; align-items: flex-start">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 14px; font-weight: 700">Schlaglöcher</span>
+            <span style="font-size: 12px; color: #586674">Östliche Friedrichstraße · Zustand 60 %</span>
+          </div>
+          <span style="flex: none; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #FFF3CC; color: #6B4A00">noch 47 Std.</span>
+        </div>
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #586674">Reparieren</span>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+          <button type="button" style="min-height: 48px; border: 1px solid #C3CCD5; border-radius: 8px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #15202B; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px">Ausschreibung<span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">25.000 €</span></button>
+          <button type="button" style="min-height: 48px; border: 1px solid #C3CCD5; border-radius: 8px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #15202B; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px">Turbo<span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">75.000 €</span></button>
+          <button type="button" style="min-height: 48px; border: 1px solid #C3CCD5; border-radius: 8px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #15202B; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px">Planfeststellung<span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">4.000 €</span></button>
+        </div>
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #586674">Oder absichern</span>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap">
+          <button type="button" style="min-height: 40px; padding: 0 12px; border: 1px solid #C3CCD5; border-radius: 8px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #15202B; cursor: pointer">Schild 30</button>
+          <button type="button" style="min-height: 40px; padding: 0 12px; border: 1px solid #C3CCD5; border-radius: 8px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #15202B; cursor: pointer">Schild 10</button>
+          <button type="button" style="min-height: 40px; padding: 0 12px; border: none; background: transparent; font: 600 12px Inter, sans-serif; color: #586674; text-decoration: underline; cursor: pointer">Nichts tun</button>
+          <button type="button" style="margin-left: auto; min-height: 40px; padding: 0 12px; border: none; background: transparent; font: 600 12px Inter, sans-serif; color: #2257B8; cursor: pointer">Auf Karte zeigen</button>
+        </div>
+      </div>
+      <sc-for list="{{damages}}" as="d" hint-placeholder-count="3">
+        <button type="button" style="display: flex; width: calc(100% - 24px); margin: 6px 12px; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #D5DCE3; border-radius: 12px; background: #FFFFFF; text-align: left; cursor: pointer; font-family: Inter, sans-serif; color: #15202B">
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 13px; font-weight: 700">Schlaglöcher · {{d.street}}</span><span style="font-size: 12px; color: #586674">Zustand 60 %</span></span>
+          <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #FFF3CC; color: #6B4A00">{{d.frist}}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#586674" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+      </sc-for>
+      <div style="height: 10px"></div>
+    </section>
+
+    <!-- Blitzer-Statistik -->
+    <section aria-label="Blitzer-Statistik" style="background: #FFFFFF; border: 1px solid #C3CCD5; border-radius: 14px; box-shadow: 0 6px 18px rgba(21,32,43,.14); padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Bericht</span>
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 22px">Blitzer-Statistik</h2>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 11px; color: #586674">Einnahmen gesamt</span><b style="font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #1E7A44">30 €</b></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; color: #586674">Wie viel zu schnell? (km/h)</span>
+        <div role="img" aria-label="Verteilung: bis 10 km/h 100 Prozent, sonst 0" style="display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: #EEF1F4">
+          <span style="width: 100%; background: #8DB8F2"></span>
+        </div>
+        <div style="display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px">
+          <span style="display: inline-flex; align-items: center; gap: 5px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #8DB8F2"></span>≤ 10 · 100 %</span>
+          <span style="display: inline-flex; align-items: center; gap: 5px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #2257B8"></span>11–20 · 0 %</span>
+          <span style="display: inline-flex; align-items: center; gap: 5px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #F28C28"></span>21–30 · 0 %</span>
+          <span style="display: inline-flex; align-items: center; gap: 5px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #A3202E"></span>&gt; 30 · 0 %</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; font-size: 13px; padding-top: 10px; border-top: 1px solid #E3E8ED">
+        <span style="font-size: 11px; font-weight: 700; color: #586674">Standort</span><span style="font-size: 11px; font-weight: 700; color: #586674; text-align: right">Fotos</span><span style="font-size: 11px; font-weight: 700; color: #586674; text-align: right">Einnahmen</span>
+        <span style="font-weight: 600">Altstädter Brücke</span><span style="font-family: 'JetBrains Mono', monospace; text-align: right">1</span><span style="font-family: 'JetBrains Mono', monospace; text-align: right">30 €</span>
+      </div>
+      <span style="font-size: 12px; color: #586674">Rekord: 40 km/h bei Tempo 29</span>
+    </section>
+  </div>
+
+  <!-- Column 2 -->
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+
+    <!-- Parken -->
+    <section aria-label="Parken und Politessen" style="background: #FFFFFF; border: 1px solid #C3CCD5; border-radius: 14px; box-shadow: 0 6px 18px rgba(21,32,43,.14); overflow: hidden">
+      <div style="padding: 18px 20px 14px; border-bottom: 1px solid #E3E8ED; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Amt</span>
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 22px">Parken &amp; Politessen</h2>
+      </div>
+      <div style="padding: 16px 20px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <div style="padding: 10px 12px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Parkplätze</span><b style="font-family: 'JetBrains Mono', monospace; font-size: 15px">2/14.581</b></div>
+        <div style="padding: 10px 12px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Straßenrand</span><b style="font-family: 'JetBrains Mono', monospace; font-size: 15px">4.014/5.918</b></div>
+        <div style="padding: 10px 12px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Knöllchen</span><b style="font-family: 'JetBrains Mono', monospace; font-size: 15px">70 € <span style="font-weight: 500; color: #586674">(2)</span></b></div>
+      </div>
+      <div style="padding: 0 20px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #E3E8ED">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 14px; font-weight: 700">Politessen</span>
+          <span style="font-size: 11px; color: #586674">2.200 €/Woche je Kopf · 7–20 Uhr</span>
+        </div>
+        <div style="display: flex; align-items: center; border: 1px solid #C3CCD5; border-radius: 10px; overflow: hidden">
+          <button type="button" aria-label="Eine weniger" style="width: 40px; height: 40px; border: none; background: #FFFFFF; font: 600 18px Inter, sans-serif; color: #15202B; cursor: pointer">−</button>
+          <span style="min-width: 36px; text-align: center; font: 700 15px 'JetBrains Mono', monospace">2</span>
+          <button type="button" aria-label="Eine mehr" style="width: 40px; height: 40px; border: none; background: #FFFFFF; font: 600 18px Inter, sans-serif; color: #15202B; cursor: pointer">+</button>
+          <button type="button" aria-label="Fünf mehr" style="height: 40px; padding: 0 10px; border: none; border-left: 1px solid #C3CCD5; background: #EEF1F4; font: 700 12px 'JetBrains Mono', monospace; color: #15202B; cursor: pointer">+5</button>
+        </div>
+      </div>
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #E3E8ED">
+        <span style="font-size: 14px; font-weight: 700">Regel für die Innenstadt</span>
+        <div role="radiogroup" aria-label="Parkregel" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 12px; background: #EEF1F4">
+          <button type="button" role="radio" aria-checked="true" style="min-height: 40px; border: none; border-radius: 8px; background: #15202B; color: #FFFFFF; font: 700 13px Inter, sans-serif; cursor: pointer">Brötchentaste</button>
+          <button type="button" role="radio" aria-checked="false" style="min-height: 40px; border: none; border-radius: 8px; background: transparent; color: #15202B; font: 600 13px Inter, sans-serif; cursor: pointer">Anwohnerparken</button>
+        </div>
+        <button type="button" style="min-height: 44px; border: 1px dashed #586674; border-radius: 10px; background: #FFFFFF; font: 600 13px Inter, sans-serif; color: #15202B; cursor: pointer">Parkplätze → Blumenkübel · <span style="font-family: 'JetBrains Mono', monospace">15.000 €</span></button>
+      </div>
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #E3E8ED">
+        <sc-for list="{{fees}}" as="fe" hint-placeholder-count="2">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 13px; font-weight: 700">{{fe.label}} <span style="font-weight: 500; color: #586674">€/Std.</span></span>
+            <div role="radiogroup" aria-label="{{fe.label}}" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px">
+              <sc-for list="{{fe.opts}}" as="o" hint-placeholder-count="6">
+                <button type="button" role="radio" aria-checked="{{o.checked}}" style="{{o.style}}">{{o.v}}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding: 14px 20px 18px; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 13px; font-weight: 700; padding-bottom: 6px">Größte Parkhäuser</span>
+        <sc-for list="{{garages}}" as="g" hint-placeholder-count="6">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid #EEF1F4">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 600">{{g.name}}</span><span style="font-size: 11px; color: #586674">{{g.occ}} belegt</span></span>
+            <div style="display: flex; align-items: center; border: 1px solid #C3CCD5; border-radius: 8px; overflow: hidden">
+              <button type="button" aria-label="Preis senken" style="width: 32px; height: 32px; border: none; background: #FFFFFF; font: 600 15px Inter, sans-serif; color: #15202B; cursor: pointer">−</button>
+              <span style="min-width: 52px; text-align: center; font: 700 12px 'JetBrains Mono', monospace">{{g.price}}</span>
+              <button type="button" aria-label="Preis erhöhen" style="width: 32px; height: 32px; border: none; background: #FFFFFF; font: 600 15px Inter, sans-serif; color: #15202B; cursor: pointer">+</button>
+            </div>
+            <button type="button" aria-label="Plätze entfernen" style="width: 32px; height: 32px; border: none; border-radius: 8px; background: transparent; color: #A3202E; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Einsätze -->
+    <section aria-label="Einsätze" style="background: #FFFFFF; border: 1px solid #C3CCD5; border-radius: 14px; box-shadow: 0 6px 18px rgba(21,32,43,.14); padding: 18px 20px 12px; display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px">
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 22px">Einsätze</h2>
+        <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #FBE3E5; color: #A3202E">3 laufend</span>
+      </div>
+      <sc-for list="{{ops}}" as="op" hint-placeholder-count="3">
+        <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid #EEF1F4">
+          <span style="{{op.bar}}"></span>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+            <div style="display: flex; justify-content: space-between"><span style="font-size: 14px; font-weight: 700">{{op.title}}</span><span style="font: 500 12px 'JetBrains Mono', monospace; color: #586674">seit {{op.since}}</span></div>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap">
+              <sc-for list="{{op.units}}" as="u" hint-placeholder-count="2">
+                <span style="{{u.style}}">{{u.label}}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </section>
+  </div>
+
+  <!-- Column 3 -->
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+
+    <!-- Bürger -->
+    <section aria-label="Bürger" style="background: #FFFFFF; border: 1px solid #C3CCD5; border-radius: 14px; box-shadow: 0 6px 18px rgba(21,32,43,.14); padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Bericht</span>
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 22px">Bürger</h2>
+      </div>
+      <div style="padding: 12px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 13px; font-weight: 600">Unzufrieden</span><b style="font-family: 'JetBrains Mono', monospace; font-size: 18px">13 %</b></div>
+        <div style="position: relative; height: 10px; border-radius: 5px; background: #D5DCE3">
+          <span style="position: absolute; left: 0; top: 0; bottom: 0; width: 13%; border-radius: 5px; background: #F28C28"></span>
+          <span style="position: absolute; left: 35%; top: -4px; bottom: -4px; width: 2px; background: #A3202E"></span>
+        </div>
+        <span style="font-size: 11px; color: #586674">Ab 35 % kippt es in Bürgerzorn</span>
+      </div>
+      <sc-for list="{{groups}}" as="gr" hint-placeholder-count="2">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 13px; font-weight: 700">{{gr.title}}</span>
+          <sc-for list="{{gr.rows}}" as="r" hint-placeholder-count="3">
+            <div style="display: grid; grid-template-columns: 130px minmax(0, 1fr) 44px; gap: 10px; align-items: center; font-size: 13px">
+              <span>{{r.label}}</span>
+              <span style="height: 8px; border-radius: 4px; background: #E3E8ED; overflow: hidden; display: block"><span style="{{r.fill}}"></span></span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right">{{r.v}} %</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid #E3E8ED">
+        <span style="font-size: 13px; font-weight: 700">Hier brodelt es am meisten</span>
+        <sc-for list="{{hotspots}}" as="h" hint-placeholder-count="3">
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 13px">
+            <span style="flex: 1">Gebiet {{h.id}}</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #586674">{{h.v}} % zufrieden</span>
+            <button type="button" style="min-height: 32px; padding: 0 10px; border: 1px solid #C3CCD5; border-radius: 8px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #2257B8; cursor: pointer">Zeigen</button>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Erfolge -->
+    <section aria-label="Erfolge" style="background: #FFFFFF; border: 1px solid #C3CCD5; border-radius: 14px; box-shadow: 0 6px 18px rgba(21,32,43,.14); padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 22px">Erfolge</h2>
+          <span style="font-size: 12px; color: #586674">zählen nicht für die Wertung</span>
+        </div>
+        <b style="font-family: 'JetBrains Mono', monospace; font-size: 16px">0/15</b>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{achievements}}" as="a" hint-placeholder-count="8">
+          <div style="display: flex; gap: 10px; padding: 10px; border-radius: 10px; background: #EEF1F4">
+            <span style="flex: none; width: 30px; height: 30px; border-radius: 50%; border: 2px dashed #93A1AE; display: flex; align-items: center; justify-content: center; color: #586674">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </span>
+            <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+              <span style="font-size: 12px; font-weight: 700">{{a.t}}</span>
+              <span style="font-size: 11px; line-height: 1.35; color: #586674">{{a.d}}</span>
+            </span>
+          </div>
+        </sc-for>
+      </div>
+      <button type="button" style="align-self: flex-start; min-height: 36px; padding: 0 4px; border: none; background: transparent; font: 600 13px Inter, sans-serif; color: #2257B8; cursor: pointer">Alle 15 anzeigen</button>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var feeOpt = function (sel) {
+      return ['0 €', '1 €', '1,50', '2 €', '3 €', '5 €'].map(function (v) {
+        var on = v === sel;
+        return { v: v, checked: on ? 'true' : 'false', style: 'min-height: 36px; border-radius: 8px; cursor: pointer; font: 600 12px "JetBrains Mono", monospace; ' + (on ? 'border: none; background: #15202B; color: #FFFFFF;' : 'border: 1px solid #C3CCD5; background: #FFFFFF; color: #15202B;') };
+      });
+    };
+    var bar = function (v) { return 'display: block; height: 100%; width: ' + v + '%; background: #2257B8; border-radius: 4px;'; };
+    var unit = function (label, state) {
+      var here = state === 'vor Ort';
+      return { label: label + ' · ' + state, style: 'font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; ' + (here ? 'background: #DDF0E4; color: #14532D;' : 'background: #FFF3CC; color: #6B4A00;') };
+    };
+    var opBar = function (c) { return 'flex: none; width: 4px; border-radius: 2px; background: ' + c + ';'; };
+    return {
+      damages: [
+        { street: 'Kelterstraße', frist: 'noch 47 Std.' },
+        { street: 'Blücherstraße', frist: 'noch 47 Std.' },
+        { street: 'Karlsruher Straße', frist: 'noch 48 Std.' }
+      ],
+      fees: [
+        { label: 'Parkscheinautomat am Straßenrand', opts: feeOpt('0 €') },
+        { label: 'Gebühr für alle Parkplätze', opts: feeOpt('0 €') }
+      ],
+      garages: [
+        { name: 'Messplatz', occ: '0/500', price: '0 €' },
+        { name: 'Parkhaus Sparkasse', occ: '0/485', price: '1,50 €' },
+        { name: 'Central-Parkhaus Schober', occ: '0/395', price: '1,50 €' },
+        { name: 'Parkhaus Schlössle Galerie', occ: '0/374', price: '1,50 €' },
+        { name: 'Goethe Parkhaus', occ: '0/318', price: '1,50 €' },
+        { name: 'Parkplatz 52', occ: '0/318', price: '0 €' }
+      ],
+      ops: [
+        { title: 'Unfall', since: '64 min', bar: opBar('#C62B3B'), units: [unit('Polizei', 'vor Ort'), unit('Feuerwehr', 'vor Ort'), unit('Abschleppdienst', 'vor Ort'), unit('Rettungswagen', 'unterwegs')] },
+        { title: 'Softwarepanne', since: '4 min', bar: opBar('#F28C28'), units: [unit('Abschleppdienst', 'vor Ort')] },
+        { title: 'Softwarepanne', since: '24 min', bar: opBar('#F28C28'), units: [unit('Abschleppdienst', 'unterwegs')] }
+      ],
+      groups: [
+        { title: 'Bedürfnisse im Mittel', rows: [
+          { label: 'Schnell am Ziel', v: 65, fill: bar(65) },
+          { label: 'Mobilität (Bußgelder)', v: 100, fill: bar(100) },
+          { label: 'Ruhe', v: 93, fill: bar(93) },
+          { label: 'Frische Luft', v: 77, fill: bar(77) }
+        ] },
+        { title: 'Zufriedenheit je Haushaltstyp', rows: [
+          { label: 'Pendler', v: 79, fill: bar(79) },
+          { label: 'Familien', v: 82, fill: bar(82) },
+          { label: 'Rentner', v: 87, fill: bar(87) }
+        ] }
+      ],
+      hotspots: [{ id: 0, v: 42 }, { id: 122, v: 51 }, { id: 157, v: 55 }],
+      achievements: [
+        { t: 'Totalstillstand', d: 'Mind. 300 Autos unterwegs, im Schnitt keine 3 km/h' },
+        { t: 'Alle Brücken gesperrt', d: 'Keine Brücke über Enz und Nagold mehr befahrbar' },
+        { t: 'Die halbe Stadt kam zu spät', d: 'Die Hälfte der Pendler eines Tages zu spät' },
+        { t: 'Schilderwald', d: 'Fünf Schilder und zwei Blitzer auf engstem Raum' },
+        { t: 'Bescheid-Welle', d: '1.500 Bußgeldbescheide an einem Tag' },
+        { t: 'Blitzer-Hauptstadt', d: 'Zehn Blitzer gleichzeitig im Einsatz' },
+        { t: 'Ingenieurskunst', d: 'Eine Brücke ist eingestürzt' },
+        { t: 'Liebling der Presse', d: 'Reputation über 90' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

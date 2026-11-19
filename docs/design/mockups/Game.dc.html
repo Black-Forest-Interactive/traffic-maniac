@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Traffic Maniac – Im Spiel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#EEF1F4}
+a{color:#15202B}a:hover{color:#2257B8}
+.tm-rail:hover{background:#243444}
+.tm-tool:hover{background:#243444}
+button:focus-visible,a:focus-visible{outline:3px solid #FFC21A;outline-offset:2px}
+</style>
+</helmet>
+<div style="height: 900px; width: 100%; box-sizing: border-box; background: #EEF1F4; font-family: Inter, system-ui, sans-serif; color: #15202B; display: flex; flex-direction: column; overflow: hidden">
+
+  <!-- Top bar -->
+  <header style="flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 10px 16px; background: #15202B; color: #EEF1F4">
+    <div style="display: flex; align-items: center; gap: 12px; padding-right: 16px; border-right: 1px solid #3B4C5D">
+      <svg width="28" height="28" viewBox="0 0 40 40" aria-hidden="true"><rect x="11" y="2" width="18" height="36" rx="6" fill="#243444" stroke="#EEF1F4" stroke-width="2"></rect><circle cx="20" cy="11" r="4.5" fill="#E5484D"></circle><circle cx="20" cy="20" r="4.5" fill="#FFC21A"></circle><circle cx="20" cy="29" r="4.5" fill="#3B4C5D"></circle></svg>
+      <div style="display: flex; flex-direction: column; gap: 1px">
+        <span style="font-size: 12px; color: #A3B0BD">Montag · Tag 1 von 3</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 20px; line-height: 1">10:04</span>
+      </div>
+    </div>
+
+    <div role="group" aria-label="Tempo" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #243444">
+      <sc-for list="{{speeds}}" as="sp" hint-placeholder-count="5">
+        <button type="button" onClick="{{sp.pick}}" aria-pressed="{{sp.pressed}}" aria-label="{{sp.aria}}" title="{{sp.aria}}" style="{{sp.style}}">
+          <sc-if value="{{sp.isPause}}" hint-placeholder-val="{{false}}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
+          </sc-if>
+          <sc-if value="{{sp.isNum}}" hint-placeholder-val="{{true}}">{{sp.label}}</sc-if>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 10px; background: #243444">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFC21A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2"></rect><circle cx="12" cy="12.5" r="2.5"></circle></svg>
+        <div style="display: flex; flex-direction: column">
+          <span style="font-size: 11px; color: #A3B0BD">Kasse</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px">281.070 €</span>
+        </div>
+        <span style="font-size: 12px; color: #A3B0BD; padding-left: 8px; border-left: 1px solid #3B4C5D">Bußgelder <b style="color: #EEF1F4; font-family: 'JetBrains Mono', monospace">30 €</b></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 10px; background: #243444">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8DB8F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h12a2 2 0 0 1 2 2v12a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z"></path><path d="M8 8h6M8 12h6M8 16h3"></path></svg>
+        <div style="display: flex; flex-direction: column">
+          <span style="font-size: 11px; color: #A3B0BD">Reputation</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px">50<span style="color: #A3B0BD; font-weight: 500">/100</span></span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 10px; background: #243444">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF8A8F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 16s1.5-2 4-2 4 2 4 2M8 9l2 1M16 9l-2 1"></path></svg>
+        <div style="display: flex; flex-direction: column">
+          <span style="font-size: 11px; color: #A3B0BD">Bürgerzorn</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px">0</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 10px; background: #243444; min-width: 170px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF8A8F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14v4l-7 4-7-4z"></path><path d="M12 12v8M8 20h8"></path></svg>
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
+          <span style="font-size: 11px; color: #A3B0BD; display: flex; justify-content: space-between">Abwahlindex <b style="color: #EEF1F4; font-family: 'JetBrains Mono', monospace">0/100</b></span>
+          <span role="meter" aria-label="Abwahlindex" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="display: block; height: 6px; border-radius: 3px; background: #3B4C5D; overflow: hidden"><span style="display: block; width: 2%; height: 100%; background: #FF8A8F"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px">
+      <button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #3B4C5D; background: transparent; color: #EEF1F4; font: 600 14px Inter, sans-serif; cursor: pointer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg>
+        Speichern
+      </button>
+      <a href="Main.dc.html" aria-label="Menü" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; border: 1px solid #3B4C5D; color: #EEF1F4; box-sizing: border-box">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </a>
+    </div>
+  </header>
+
+  <div style="flex: 1; min-height: 0; display: flex">
+
+    <!-- Left rail -->
+    <nav aria-label="Ämter und Berichte" style="flex: none; width: 92px; box-sizing: border-box; padding: 12px 8px; background: #1E2B38; color: #EEF1F4; display: flex; flex-direction: column; gap: 2px; overflow-y: auto">
+      <span style="font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #A3B0BD; text-align: center; padding: 4px 0">Ämter</span>
+      <sc-for list="{{railA}}" as="r" hint-placeholder-count="3">
+        <button type="button" class="tm-rail" style="{{r.style}}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg>
+          {{r.label}}
+        </button>
+      </sc-for>
+      <span style="display: block; height: 1px; background: #3B4C5D; margin: 6px 8px"></span>
+      <span style="font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #A3B0BD; text-align: center; padding: 4px 0">Berichte</span>
+      <sc-for list="{{railB}}" as="r" hint-placeholder-count="6">
+        <button type="button" class="tm-rail" style="{{r.style}}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg>
+          {{r.label}}
+          <sc-if value="{{r.badge}}" hint-placeholder-val="{{false}}">
+            <span style="position: absolute; top: 4px; right: 14px; min-width: 18px; height: 18px; border-radius: 9px; background: #C62B3B; color: #FFFFFF; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{r.badge}}</span>
+          </sc-if>
+        </button>
+      </sc-for>
+    </nav>
+
+    <!-- Map -->
+    <main style="flex: 1; min-width: 0; position: relative; background: #F6EBD0; overflow: hidden">
+      <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%" aria-hidden="true">
+        <path d="M0 80 Q120 40 220 110 T420 90 L420 0 L0 0Z" fill="#B9DC8E"></path>
+        <path d="M600 0 Q700 90 820 60 T1000 120 L1000 0Z" fill="#B9DC8E"></path>
+        <path d="M0 420 Q90 380 160 460 T260 560 L180 700 L0 700Z" fill="#B9DC8E"></path>
+        <path d="M760 460 Q860 420 930 500 L1000 520 L1000 700 L720 700 Q700 600 760 460Z" fill="#B9DC8E"></path>
+        <path d="M330 520 Q400 480 460 540 Q500 600 440 640 Q360 660 330 600Z" fill="#B9DC8E"></path>
+        <ellipse cx="520" cy="300" rx="190" ry="90" fill="#EED3B4"></ellipse>
+        <ellipse cx="700" cy="250" rx="110" ry="60" fill="#EED3B4"></ellipse>
+        <ellipse cx="300" cy="300" rx="90" ry="55" fill="#EED3B4"></ellipse>
+        <path d="M0 360 Q160 330 300 350 T560 330 T780 300 T1000 240" fill="none" stroke="#6FA8DC" stroke-width="7"></path>
+        <path d="M470 700 Q480 560 520 470 T560 330" fill="none" stroke="#6FA8DC" stroke-width="5"></path>
+        <path d="M20 200 Q300 230 520 300 T1000 330" fill="none" stroke="#15202B" stroke-width="9" stroke-linecap="round"></path>
+        <path d="M20 200 Q300 230 520 300 T1000 330" fill="none" stroke="#5DAE4B" stroke-width="5" stroke-linecap="round"></path>
+        <path d="M400 300 Q460 300 520 300 T700 280" fill="none" stroke="#E05A3A" stroke-width="5" stroke-linecap="round"></path>
+        <path d="M300 0 Q330 160 410 270 T520 470 T560 700" fill="none" stroke="#15202B" stroke-width="8" stroke-linecap="round"></path>
+        <path d="M300 0 Q330 160 410 270 T520 470 T560 700" fill="none" stroke="#E8A93A" stroke-width="4.5" stroke-linecap="round"></path>
+        <path d="M720 0 Q700 150 640 260 T620 500 T700 700" fill="none" stroke="#15202B" stroke-width="8" stroke-linecap="round"></path>
+        <path d="M720 0 Q700 150 640 260 T620 500 T700 700" fill="none" stroke="#5DAE4B" stroke-width="4.5" stroke-linecap="round"></path>
+        <path d="M0 520 Q200 480 340 420 T520 300" fill="none" stroke="#15202B" stroke-width="7" stroke-linecap="round"></path>
+        <path d="M0 520 Q200 480 340 420 T520 300" fill="none" stroke="#E8A93A" stroke-width="4" stroke-linecap="round"></path>
+        <path d="M880 0 Q900 200 940 400 T1000 700" fill="none" stroke="#C9A7B4" stroke-width="5"></path>
+        <g fill="#2A2A35"><circle cx="410" cy="268" r="14"></circle><circle cx="400" cy="262" r="10"></circle><circle cx="422" cy="262" r="10"></circle></g>
+        <g fill="#2A2A35"><circle cx="520" cy="470" r="14"></circle><circle cx="510" cy="464" r="10"></circle><circle cx="532" cy="464" r="10"></circle></g>
+      </svg>
+
+      <!-- Layer switcher -->
+      <div role="group" aria-label="Kartenansicht" style="position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; padding: 4px; border-radius: 12px; background: #15202B; box-shadow: 0 6px 18px rgba(21,32,43,.28)">
+        <sc-for list="{{layers}}" as="l" hint-placeholder-count="4">
+          <button type="button" onClick="{{l.pick}}" aria-pressed="{{l.pressed}}" style="{{l.style}}">{{l.label}}</button>
+        </sc-for>
+      </div>
+
+      <!-- Left column: status + feed -->
+      <div style="position: absolute; top: 14px; left: 14px; width: 270px; display: flex; flex-direction: column; gap: 10px">
+        <details style="border-radius: 12px; background: #FFFFFF; border: 1px solid #C3CCD5; box-shadow: 0 6px 18px rgba(21,32,43,.18); font-size: 13px">
+          <summary style="cursor: pointer; padding: 10px 14px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px">Verkehrslage <span style="font-weight: 500; color: #586674">1.001 Kfz · Ø 27 km/h</span></summary>
+          <div style="padding: 0 14px 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px">
+            <div style="display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Wartend</span><b style="font-family: 'JetBrains Mono', monospace">187</b></div>
+            <div style="display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Angekommen</span><b style="font-family: 'JetBrains Mono', monospace">9.181</b></div>
+          </div>
+        </details>
+
+        <section aria-label="Meldungen" style="border-radius: 12px; background: #FFFFFF; border: 1px solid #C3CCD5; box-shadow: 0 6px 18px rgba(21,32,43,.18); overflow: hidden">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #E3E8ED">
+            <span style="font-weight: 700; font-size: 13px">Meldungen</span>
+            <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #FBE3E5; color: #A3202E">3 Schäden offen</span>
+          </div>
+          <sc-for list="{{feed}}" as="f" hint-placeholder-count="4">
+            <button type="button" style="display: flex; width: 100%; align-items: flex-start; gap: 10px; padding: 9px 14px; border: none; border-top: 1px solid #EEF1F4; background: transparent; text-align: left; cursor: pointer; font-family: Inter, sans-serif; color: #15202B">
+              <span style="{{f.dot}}"></span>
+              <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+                <span style="font-size: 13px; font-weight: 600">{{f.title}}</span>
+                <span style="font-size: 11px; color: #586674">{{f.time}} · {{f.sub}}</span>
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#586674" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 3px"><path d="m9 18 6-6-6-6"></path></svg>
+            </button>
+          </sc-for>
+        </section>
+      </div>
+
+      <!-- Zoom -->
+      <div style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; border-radius: 12px; background: #15202B; overflow: hidden; box-shadow: 0 6px 18px rgba(21,32,43,.28)">
+        <button type="button" aria-label="Hineinzoomen" style="width: 44px; height: 44px; border: none; background: transparent; font: 600 20px Inter, sans-serif; color: #EEF1F4; cursor: pointer">+</button>
+        <span style="height: 1px; background: #3B4C5D"></span>
+        <button type="button" aria-label="Herauszoomen" style="width: 44px; height: 44px; border: none; background: transparent; font: 600 20px Inter, sans-serif; color: #EEF1F4; cursor: pointer">−</button>
+      </div>
+
+      <!-- Tool options popover -->
+      <sc-if value="{{showTempo}}" hint-placeholder-val="{{true}}">
+        <div role="group" aria-label="Tempolimit wählen" style="position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: #FFFFFF; border: 1px solid #C3CCD5; box-shadow: 0 8px 24px rgba(21,32,43,.25); white-space: nowrap">
+          <span style="font-size: 12px; font-weight: 700; color: #586674; padding: 0 4px">Tempolimit</span>
+          <div style="display: flex; gap: 4px">
+            <sc-for list="{{limits}}" as="lm" hint-placeholder-count="7">
+              <button type="button" onClick="{{lm.pick}}" aria-pressed="{{lm.pressed}}" style="{{lm.style}}">{{lm.label}}</button>
+            </sc-for>
+          </div>
+          <span style="width: 1px; height: 28px; background: #D5DCE3"></span>
+          <button type="button" style="min-height: 36px; padding: 0 10px; border: 1px solid #C3CCD5; border-radius: 8px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #15202B; cursor: pointer">Original</button>
+          <button type="button" style="min-height: 36px; padding: 0 10px; border: 1px solid #C3CCD5; border-radius: 8px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #15202B; cursor: pointer">nur nachts</button>
+        </div>
+      </sc-if>
+
+      <!-- Tool dock -->
+      <div role="toolbar" aria-label="Werkzeuge" style="position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 2px; padding: 6px; border-radius: 16px; background: #15202B; box-shadow: 0 10px 28px rgba(21,32,43,.35)">
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="10">
+          <button type="button" class="tm-tool" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}" aria-label="{{t.aria}}" style="{{t.style}}">
+            <span style="position: absolute; top: 4px; left: 6px; font: 600 9px 'JetBrains Mono', monospace; opacity: .6">{{t.key}}</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg>
+            <span style="font-size: 11px; font-weight: 600; line-height: 1.1">{{t.label}}</span>
+            <span style="{{t.priceStyle}}">{{t.price}}</span>
+          </button>
+        </sc-for>
+      </div>
+      <span style="position: absolute; right: 8px; bottom: 6px; font-size: 10px; color: #243444; background: rgba(246,235,208,.85); padding: 1px 5px; border-radius: 4px">© OpenStreetMap-Mitwirkende (ODbL)</span>
+    </main>
+
+    <!-- Right drawer: Ordnungsamt -->
+    <aside aria-label="Ordnungsamt und Bußgeldstelle" style="flex: none; width: 372px; box-sizing: border-box; background: #FFFFFF; border-left: 1px solid #C3CCD5; display: flex; flex-direction: column; overflow-y: auto">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid #E3E8ED">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Amt</span>
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 22px; line-height: 1.15">Ordnungsamt &amp; Bußgeldstelle</h2>
+        </div>
+        <button type="button" aria-label="Schließen" style="flex: none; width: 40px; height: 40px; border: none; border-radius: 8px; background: transparent; color: #15202B; cursor: pointer; display: flex; align-items: center; justify-content: center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div style="padding: 16px 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <div style="padding: 12px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 11px; color: #586674">Aufklärungsquote</span>
+          <b style="font-family: 'JetBrains Mono', monospace; font-size: 18px">71 %</b>
+          <span role="meter" aria-label="Aufklärungsquote" aria-valuenow="71" aria-valuemin="0" aria-valuemax="100" style="display: block; height: 6px; border-radius: 3px; background: #D5DCE3; overflow: hidden"><span style="display: block; width: 71%; height: 100%; background: #2257B8"></span></span>
+        </div>
+        <div style="padding: 12px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 11px; color: #586674">Aktenstapel</span>
+          <b style="font-family: 'JetBrains Mono', monospace; font-size: 18px">0 Fotos</b>
+          <span style="font-size: 11px; color: #586674; line-height: 1.4">0 bearbeitet · 0 bezahlt · 0 verjährt · 0 eingestellt</span>
+        </div>
+      </div>
+
+      <div style="padding: 4px 20px 16px; display: flex; flex-direction: column; gap: 14px; border-bottom: 1px solid #E3E8ED">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 14px; font-weight: 700">Sachbearbeiter</span>
+            <span style="font-size: 11px; color: #586674">2.500 €/Woche je Kopf · 15 Fälle/Std.</span>
+          </div>
+          <div style="display: flex; align-items: center; border: 1px solid #C3CCD5; border-radius: 10px; overflow: hidden">
+            <button type="button" aria-label="Einen weniger" style="width: 40px; height: 40px; border: none; background: #FFFFFF; font: 600 18px Inter, sans-serif; color: #15202B; cursor: pointer">−</button>
+            <span style="min-width: 36px; text-align: center; font: 700 15px 'JetBrains Mono', monospace">4</span>
+            <button type="button" aria-label="Einen mehr" style="width: 40px; height: 40px; border: none; background: #FFFFFF; font: 600 18px Inter, sans-serif; color: #15202B; cursor: pointer">+</button>
+            <button type="button" aria-label="Fünf mehr" style="height: 40px; padding: 0 10px; border: none; border-left: 1px solid #C3CCD5; background: #EEF1F4; font: 700 12px 'JetBrains Mono', monospace; color: #15202B; cursor: pointer">+5</button>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 14px; font-weight: 700">Bearbeitungsfrist</span>
+            <span style="font-size: 11px; color: #586674">höchstens 10 Tage</span>
+          </div>
+          <div style="display: flex; align-items: center; border: 1px solid #C3CCD5; border-radius: 10px; overflow: hidden">
+            <button type="button" aria-label="Kürzer" style="width: 40px; height: 40px; border: none; background: #FFFFFF; font: 600 18px Inter, sans-serif; color: #15202B; cursor: pointer">−</button>
+            <span style="min-width: 64px; text-align: center; font: 700 14px 'JetBrains Mono', monospace">3 Tage</span>
+            <button type="button" aria-label="Länger" style="width: 40px; height: 40px; border: none; background: #FFFFFF; font: 600 18px Inter, sans-serif; color: #15202B; cursor: pointer">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #E3E8ED">
+        <span id="schaerfe" style="font-size: 14px; font-weight: 700">Schärfe der Blitzer</span>
+        <div role="radiogroup" aria-labelledby="schaerfe" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 12px; background: #EEF1F4">
+          <button type="button" role="radio" aria-checked="false" style="min-height: 52px; border: none; border-radius: 8px; background: transparent; color: #15202B; font: 600 13px Inter, sans-serif; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">kulant<span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">±5 km/h</span></button>
+          <button type="button" role="radio" aria-checked="true" style="min-height: 52px; border: none; border-radius: 8px; background: #15202B; color: #FFFFFF; font: 700 13px Inter, sans-serif; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">normal<span style="font: 500 11px 'JetBrains Mono', monospace; color: #A3B0BD">±3 km/h</span></button>
+          <button type="button" role="radio" aria-checked="false" style="min-height: 52px; border: none; border-radius: 8px; background: transparent; color: #15202B; font: 600 13px Inter, sans-serif; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">gnadenlos<span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">±1 km/h</span></button>
+        </div>
+      </div>
+
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #E3E8ED">
+        <span id="fahrer" style="font-size: 14px; font-weight: 700">Wenn der Fahrer nicht ermittelbar ist</span>
+        <div role="radiogroup" aria-labelledby="fahrer" style="display: flex; flex-direction: column; gap: 6px">
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 2px solid #2257B8; border-radius: 10px; background: #EAF1FC; font-size: 13px; font-weight: 600; cursor: pointer"><input type="radio" name="fahrer" checked="checked" style="width: 18px; height: 18px; accent-color: #2257B8">Verfahren einstellen</label>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 1px solid #C3CCD5; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer"><input type="radio" name="fahrer" style="width: 18px; height: 18px; accent-color: #2257B8">Zeugenfragebogen schicken</label>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 1px solid #C3CCD5; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer"><input type="radio" name="fahrer" style="width: 18px; height: 18px; accent-color: #2257B8">Fahrtenbuch androhen</label>
+        </div>
+      </div>
+
+      <div style="padding: 14px 20px 20px; display: flex; justify-content: space-between; font-size: 13px">
+        <span style="color: #586674">Fahrverbote &amp; entzogene Führerscheine</span>
+        <b style="font-family: 'JetBrains Mono', monospace">0</b>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { speed: '8', layer: 'verkehr', tool: 'tempo', limit: '30' };
+  }
+  renderVals() {
+    var self = this;
+    var sp = [
+      { id: '0', label: '', aria: 'Pause (Leertaste)' },
+      { id: '1', label: '1×', aria: 'Tempo 1× (Taste 1)' },
+      { id: '2', label: '2×', aria: 'Tempo 2× (Taste 2)' },
+      { id: '4', label: '4×', aria: 'Tempo 4× (Taste 3)' },
+      { id: '8', label: '8×', aria: 'Tempo 8× (Taste 4)' }
+    ];
+    var speeds = sp.map(function (s) {
+      var on = s.id === self.state.speed;
+      return Object.assign({}, s, {
+        isPause: s.id === '0', isNum: s.id !== '0',
+        pressed: on ? 'true' : 'false',
+        style: 'min-width: 40px; height: 38px; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font: 700 13px "JetBrains Mono", monospace; ' + (on ? 'background: #FFC21A; color: #15202B;' : 'background: transparent; color: #EEF1F4;'),
+        pick: function () { self.setState({ speed: s.id }); }
+      });
+    });
+    var layers = [
+      { id: 'verkehr', label: 'Verkehr' },
+      { id: 'luft', label: 'Umwelt: Luft' },
+      { id: 'zufrieden', label: 'Zufriedenheit' },
+      { id: 'zustand', label: 'Straßenzustand' }
+    ].map(function (l) {
+      var on = l.id === self.state.layer;
+      return Object.assign({}, l, {
+        pressed: on ? 'true' : 'false',
+        style: 'min-height: 38px; padding: 0 14px; border: none; border-radius: 8px; cursor: pointer; font: 600 13px Inter, sans-serif; ' + (on ? 'background: #FFFFFF; color: #15202B;' : 'background: transparent; color: #EEF1F4;'),
+        pick: function () { self.setState({ layer: l.id }); }
+      });
+    });
+    var railStyle = function (active) {
+      return 'position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 58px; padding: 8px 4px; border: none; border-radius: 10px; cursor: pointer; font: 600 11px Inter, sans-serif; text-align: center; ' + (active ? 'background: #FFC21A; color: #15202B;' : 'background: transparent; color: #EEF1F4;');
+    };
+    var railA = [
+      { label: 'Ordnungs­amt', icon: 'M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z', active: true },
+      { label: 'Bauamt', icon: 'M2 20h20M5 20V10l7-6 7 6v10M9 20v-6h6v6' },
+      { label: 'Parken', icon: 'M5 3h14v18H5zM9 17V7h4a3 3 0 0 1 0 6H9' }
+    ].map(function (r) { return Object.assign({}, r, { style: railStyle(r.active) }); });
+    var railB = [
+      { label: 'Blitzer', icon: 'M3 8h4l2-3h6l2 3h4v12H3zM12 10a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z', badge: '' },
+      { label: 'Haushalt & PR', icon: 'M3 3v18h18M7 15l4-4 3 3 5-6', badge: '' },
+      { label: 'Bürger', icon: 'M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', badge: '' },
+      { label: 'Kalender', icon: 'M3 5h18v16H3zM16 3v4M8 3v4M3 11h18', badge: '' },
+      { label: 'Einsätze', icon: 'M12 22a7 7 0 0 0 7-7c0-4-7-12-7-12S5 11 5 15a7 7 0 0 0 7 7z', badge: '3' },
+      { label: 'Erfolge', icon: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.2 13.9 7 22l5-3 5 3-1.2-8.1', badge: '' },
+      { label: 'Hilfe', icon: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01', badge: '' }
+    ].map(function (r) { return Object.assign({}, r, { style: railStyle(false) }); });
+    var dot = function (c) { return 'flex: none; width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; background: ' + c + ';'; };
+    var feed = [
+      { time: '10:03', title: 'Blitzer scharf geschaltet', sub: 'Altstädter Brücke', c: '#1E7A44' },
+      { time: '10:03', title: 'Tempo 30', sub: 'Altstädter Kirchenweg', c: '#2257B8' },
+      { time: '10:00', title: 'Schlaglöcher', sub: 'Karlsruher Straße · Frist 48 Std.', c: '#C62B3B' },
+      { time: '09:00', title: 'Schlaglöcher', sub: 'Kelterstraße · Frist 48 Std.', c: '#C62B3B' }
+    ].map(function (f) { return Object.assign({}, f, { dot: dot(f.c) }); });
+    var tl = [
+      { id: 'look', key: '', label: 'Ansehen', price: '', icon: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5' },
+      { id: 'tempo', key: 'Q', label: 'Tempolimit', price: '2.000 €', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z' },
+      { id: 'ampel', key: 'W', label: 'Ampel', price: '60.000 €', icon: 'M9 2h6v20H9zM12 6h.01M12 12h.01M12 18h.01' },
+      { id: 'blitzer', key: 'E', label: 'Blitzer', price: '90.000 €', icon: 'M3 8h4l2-3h6l2 3h4v12H3zM12 10a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z' },
+      { id: 'laser', key: 'R', label: 'Laser', price: '1.500 €/Tag', icon: 'M3 15l7-3 2 4-7 3zM11 12l9-7M13 15l8-3' },
+      { id: 'anhaenger', key: 'T', label: 'Anhänger', price: '45.000 €', icon: 'M2 7h14v9H2zM16 13h6M6 16v3M12 16v3' },
+      { id: 'vorfahrt', key: 'A', label: 'Vorfahrt', price: '3.000 €', icon: 'M12 2l10 10-10 10L2 12zM12 7l5 5-5 5-5-5z' },
+      { id: 'rad', key: 'S', label: 'Radweg', price: '8.000 €', icon: 'M2 17.5a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0M15 17.5a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0M5.5 17.5 9 10h6l3.5 7.5M12 17.5 9 10M14 6h2' },
+      { id: 'umleitung', key: 'D', label: 'Umleitung', price: '', icon: 'M4 20V10a4 4 0 0 1 4-4h10M14 2l4 4-4 4' },
+      { id: 'abbauen', key: 'X', label: 'Abbauen', price: '', icon: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6' }
+    ];
+    var tools = tl.map(function (t) {
+      var on = t.id === self.state.tool;
+      return Object.assign({}, t, {
+        pressed: on ? 'true' : 'false',
+        aria: t.label + (t.price ? ', ' + t.price : ''),
+        style: 'position: relative; width: 78px; min-height: 68px; padding: 8px 4px 6px; border: none; border-radius: 11px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: Inter, sans-serif; ' + (on ? 'background: #FFC21A; color: #15202B;' : 'background: transparent; color: #EEF1F4;'),
+        priceStyle: 'font: 500 10px "JetBrains Mono", monospace; ' + (on ? 'color: #3B4C5D;' : 'color: #A3B0BD;'),
+        pick: function () { self.setState({ tool: t.id }); }
+      });
+    });
+    var limits = ['Schritt', '10', '20', '30', '40', '50', '70'].map(function (v) {
+      var on = v === self.state.limit;
+      return {
+        label: v, pressed: on ? 'true' : 'false',
+        style: 'min-width: 36px; min-height: 36px; padding: 0 8px; border-radius: 50px; cursor: pointer; font: 700 12px Inter, sans-serif; ' + (on ? 'background: #FFFFFF; color: #15202B; border: 3px solid #C62B3B;' : 'background: #FFFFFF; color: #15202B; border: 2px solid #D5DCE3;'),
+        pick: function () { self.setState({ limit: v }); }
+      };
+    });
+    return { speeds: speeds, layers: layers, railA: railA, railB: railB, feed: feed, tools: tools, limits: limits, showTempo: self.state.tool === 'tempo' };
+  }
+}
+</script>
+</body>
+</html>
