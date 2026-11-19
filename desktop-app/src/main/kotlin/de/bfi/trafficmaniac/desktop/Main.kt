@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -46,6 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Image
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -95,6 +98,7 @@ fun main(args: Array<String>) {
         Window(
             onCloseRequest = ::exitApplication,
             title = session.value?.let { "${GameInfo.TITLE} – ${it.pack.name}" } ?: GameInfo.TITLE,
+            icon = remember { appIcon() },
             state = rememberWindowState(size = DpSize(1280.dp, 800.dp)),
             onKeyEvent = { event ->
                 session.value?.let { current ->
@@ -421,6 +425,13 @@ private fun CoroutineScope.save(
         }
     }
 }
+
+/** Fenster- und Taskleisten-Symbol (sonst zeigt Windows die Java-Tasse); `assets/icon/`, siehe build.gradle.kts. */
+private fun appIcon(): BitmapPainter? =
+    runCatching {
+        val bytes = Session::class.java.getResourceAsStream("/traffic-maniac.png")?.use { it.readBytes() }
+        bytes?.let { BitmapPainter(Image.makeFromEncoded(it).toComposeImageBitmap()) }
+    }.getOrNull()
 
 /** Grafiken aus `assets/sprites/`; fehlende zeichnet das Spiel selbst. */
 private fun loadSprites(): SvgSprites =

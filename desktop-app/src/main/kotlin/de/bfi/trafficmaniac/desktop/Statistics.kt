@@ -58,8 +58,16 @@ class Statistics(
     /** Wartende Pakete im Postausgang. */
     fun pending(): List<File> = outbox.listFiles { file -> file.extension == "json" }?.sortedBy { it.name }.orEmpty()
 
-    /** Sendet alle wartenden Pakete; gesendete werden gelöscht. Liefert die Zahl der gesendeten. */
-    fun sendPending(): Int {
+    /**
+     * Sendet alle wartenden Pakete; gesendete werden gelöscht. Liefert die Zahl der gesendeten. Wirft nie: Die
+     * Statistik darf den Spielstart nicht verhindern, auch wenn z. B. der Laufzeit ein Modul fehlt.
+     */
+    fun sendPending(): Int =
+        runCatching { send() }
+            .onFailure { println("Statistik konnte nicht gesendet werden: $it") }
+            .getOrDefault(0)
+
+    private fun send(): Int {
         val target = url ?: return 0
         val client = HttpClient.newBuilder().connectTimeout(TIMEOUT).build()
         var sent = 0

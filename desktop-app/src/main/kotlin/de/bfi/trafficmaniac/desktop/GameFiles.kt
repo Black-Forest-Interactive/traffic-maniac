@@ -11,6 +11,9 @@ object GameFiles {
     private val installed: File? =
         System.getProperty("compose.application.resources.dir")?.let(::File)?.takeIf { it.isDirectory }
 
+    /** Ob das Spiel aus Installer oder ZIP läuft (mit eigener Java-Laufzeit) statt aus der Entwicklungsumgebung. */
+    val isInstalled: Boolean get() = installed != null
+
     /**
      * Der Ordner [name], z. B. `cities`. Startet die Entwicklungsumgebung im Modulordner `desktop-app/`, gilt der
      * Ordner eine Ebene höher – sonst entstünde dort eine zweite `balancing/` mit Standardwerten.

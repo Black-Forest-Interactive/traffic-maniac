@@ -49,11 +49,15 @@ GitHub Actions ein Release an (`.github/workflows/release.yml`): Windows-Install
 `pforzheim.city` und – wenn der Release-Schlüssel in den Secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
 `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` liegt – die signierte APK. Installer und APK enthalten die Karte; das MSI
 wird vor dem Veröffentlichen auf dem Windows-Runner installiert und mit `--smoke-test` gestartet (Exit 0 = ok,
-2 = keine Karte, 3 = Absturz). Fehlt einem installierten Spiel trotzdem eine Karte, lädt es sie per Knopf vom Release
+2 = keine Karte, 3 = Absturz, 4 = mitgelieferte Java-Laufzeit ist nicht Eclipse Temurin). Fehlt einem installierten
+Spiel trotzdem eine Karte, lädt es sie per Knopf vom Release
 seiner Version nach `~/.traffic-maniac/cities/`. Windows warnt beim unsignierten MSI („Windows hat den PC geschützt“):
 „Weitere Informationen“ → „Trotzdem ausführen“. Wer nicht installieren will oder darf, nimmt das ZIP
-(`traffic-maniac-<Version>-windows.zip`): entpacken, `traffic-maniac\traffic-maniac.exe` starten – es wird genauso
-per Smoke-Test geprüft. Die APK lokal bauen und von Hand anhängen, falls die Secrets fehlen:
+(`traffic-maniac-<Version>-windows.zip`): entpacken, `Traffic Maniac\Traffic Maniac.exe` starten – es wird genauso
+per Smoke-Test geprüft. Ein neues MSI installiert sich über das alte (vorher wird im Workflow genau das mit der
+letzten Release getestet). Dafür bekommt jede Release eine eigene MSI-Version, weil MSI nur MAJOR.MINOR.BUILD kennt:
+`0.2.0-preview.3` → `0.2.3`, `0.2.0` → `0.2.999` (siehe `msiVersion` in `desktop-app/build.gradle.kts`).
+Die APK lokal bauen und von Hand anhängen, falls die Secrets fehlen:
 
 ```bash
 set -a; . ~/.android/traffic-maniac-release.properties; set +a   # TM_KEYSTORE, TM_KEYSTORE_PASSWORD, …
@@ -101,5 +105,10 @@ eigenen, nicht öffentlichen Repository.
 ## Lizenz
 
 Apache License 2.0, siehe [LICENSE](LICENSE).
+
+Installer und ZIP bringen eine Java-Laufzeit mit: Eclipse Temurin (OpenJDK, GPL v2 mit Classpath Exception). Sie und
+die übrigen Drittanbieter-Komponenten (Bibliotheken, Schriften) stehen in
+[licenses/THIRD-PARTY.md](licenses/THIRD-PARTY.md); die Datei liegt auch dem Installer bei. Gebaut wird nur mit Temurin
+(`actions/setup-java` mit `distribution: temurin`); der Smoke-Test bricht ab, wenn eine andere Laufzeit drinsteckt.
 
 Kartendaten © OpenStreetMap-Mitwirkende, verfügbar unter der [Open Database License (ODbL)](https://www.openstreetmap.org/copyright).

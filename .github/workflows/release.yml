@@ -64,25 +64,42 @@ jobs:
         run: |
           $version = "$env:GITHUB_REF_NAME".TrimStart("v")
           $zip = "dist/traffic-maniac-$version-windows.zip"
-          Compress-Archive -Path desktop-app/build/compose/binaries/main/app/traffic-maniac -DestinationPath $zip
+          Compress-Archive -Path "desktop-app/build/compose/binaries/main/app/Traffic Maniac" -DestinationPath $zip
           Expand-Archive $zip -DestinationPath zip-test
-          $run = Start-Process zip-test/traffic-maniac/traffic-maniac.exe -ArgumentList "--smoke-test" -Wait -PassThru -RedirectStandardOutput zip.out -RedirectStandardError zip.err
+          $run = Start-Process "zip-test/Traffic Maniac/Traffic Maniac.exe" -ArgumentList "--smoke-test" -Wait -PassThru -RedirectStandardOutput zip.out -RedirectStandardError zip.err
           Get-Content zip.out, zip.err -ErrorAction SilentlyContinue
           if ($run.ExitCode -ne 0) { throw "Smoke-Test aus dem ZIP fehlgeschlagen (Exit $($run.ExitCode))" }
-      # Das MSI so prüfen, wie ein Spieler es bekommt: installieren und ohne Fenster starten.
-      # Fehlt die Karte oder startet das Spiel nicht, wird nichts veröffentlicht.
-      - name: Installer testen (Smoke-Test)
+      # Das MSI so prüfen, wie ein Spieler es bekommt: erst die letzte veröffentlichte Version installieren, dann das
+      # neue MSI drüber (Update muss ohne Deinstallieren klappen), dann ohne Fenster starten.
+      # Scheitert das Update, fehlt die Karte oder startet das Spiel nicht, wird nichts veröffentlicht.
+      - name: Installer testen (Update + Smoke-Test)
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          $previous = gh release list --limit 20 --json tagName --jq '.[].tagName' | Where-Object { $_ -ne "$env:GITHUB_REF_NAME" } | Select-Object -First 1
+          if ($previous) {
+            gh release download $previous --pattern "*.msi" --dir previous
+            $old = Get-ChildItem previous/*.msi -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($old) {
+              Write-Host "Vorversion $previous installieren"
+              $p = Start-Process msiexec.exe -ArgumentList "/i `"$($old.FullName)`" /qn /l*v msi-previous.log" -Wait -PassThru
+              if ($p.ExitCode -ne 0) { Get-Content msi-previous.log -Tail 50; throw "Vorversion ließ sich nicht installieren ($($p.ExitCode))" }
+            }
+          }
           $msi = (Get-ChildItem dist/*.msi).FullName
           $install = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /l*v msi-install.log" -Wait -PassThru
-          if ($install.ExitCode -ne 0) { Get-Content msi-install.log -Tail 50; throw "MSI-Installation fehlgeschlagen ($($install.ExitCode))" }
-          $exe = Get-ChildItem -Path $env:LOCALAPPDATA, $env:ProgramFiles -Recurse -Filter traffic-maniac.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $exe) { throw "traffic-maniac.exe nach der Installation nicht gefunden" }
+          if ($install.ExitCode -ne 0) { Get-Content msi-install.log -Tail 50; throw "MSI-Installation/Update fehlgeschlagen ($($install.ExitCode))" }
+          # Nach dem Update darf genau ein Eintrag in „Apps & Features“ stehen
+          $entries = Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*, HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like "*raffic*aniac*" }
+          $entries | ForEach-Object { Write-Host "Installiert: $($_.DisplayName) $($_.DisplayVersion)" }
+          if (@($entries).Count -ne 1) { throw "Erwartet genau eine Installation, gefunden: $(@($entries).Count)" }
+          $exe = Get-ChildItem -Path $env:LOCALAPPDATA, $env:ProgramFiles -Recurse -Filter "Traffic Maniac.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { throw "Traffic Maniac.exe nach der Installation nicht gefunden" }
           Write-Host "Installiert: $($exe.FullName)"
           $run = Start-Process $exe.FullName -ArgumentList "--smoke-test" -Wait -PassThru -RedirectStandardOutput smoke.out -RedirectStandardError smoke.err
           Get-Content smoke.out, smoke.err -ErrorAction SilentlyContinue
-          if ($run.ExitCode -ne 0) { throw "Smoke-Test fehlgeschlagen (Exit $($run.ExitCode): 2 = keine Karte, 3 = Absturz)" }
+          if ($run.ExitCode -ne 0) { throw "Smoke-Test fehlgeschlagen (Exit $($run.ExitCode): 2 = keine Karte, 3 = Absturz, 4 = falsche Java-Laufzeit)" }
       - uses: actions/upload-artifact@v7
         with:
           name: windows
