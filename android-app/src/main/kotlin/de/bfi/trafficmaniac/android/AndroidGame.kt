@@ -18,6 +18,8 @@ import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.CityChoice
 import de.bfi.trafficmaniac.ui.FitToDesign
 import de.bfi.trafficmaniac.ui.MainMenu
+import de.bfi.trafficmaniac.ui.SessionSlot
+import de.bfi.trafficmaniac.ui.StatisticsControls
 import de.bfi.trafficmaniac.ui.TouchCallbacks
 import de.bfi.trafficmaniac.ui.TouchGameApp
 import kotlinx.coroutines.Dispatchers
@@ -54,7 +56,7 @@ fun AndroidGame(
             loading = tr("{title}: {name} wird vorbereitet …", "title" to tr(scenario.title), "name" to chosen.name)
             scope.launch {
                 val started = withContext(Dispatchers.Default) { Session.start(content, chosen, scenario, settings) }
-                slot.replace(started)
+                slot.replace(started, report)
                 loading = null
             }
         }
@@ -65,6 +67,8 @@ fun AndroidGame(
         LaunchedEffect(live) {
             val entry = live.result()
             slot.finished = live
+            // Amtszeit vorbei oder abgewählt: Statistik jetzt, nicht erst beim Zurück ins Menü
+            report(live)
             entry?.let {
                 highscores = highscores.add(it)
                 data.save(highscores)
@@ -87,10 +91,7 @@ fun AndroidGame(
                 )
             }
         } else {
-            Playing(current, onMenu = { session = null }) {
-                highscores = highscores.add(it)
-                data.save(highscores)
-            }
+            Playing(current, onMenu = { slot.toMenu(report) })
         }
     }
 }
@@ -153,12 +154,9 @@ private fun Menu(
 private fun Playing(
     current: Session,
     onMenu: () -> Unit,
-    onHighscore: (HighscoreEntry) -> Unit,
 ) {
     // Zurück-Taste beendet die Partie nicht aus Versehen, sondern hält sie nur an
     BackHandler { current.runner.setSpeed(0) }
-    LaunchedEffect(current) { current.runner.run() }
-    LaunchedEffect(current) { current.result()?.let(onHighscore) }
     TouchGameApp(
         city = current.city.map,
         traffic = current.runner.frames,
