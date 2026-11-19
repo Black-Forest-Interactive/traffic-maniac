@@ -61,6 +61,21 @@ class Screenshots {
                     cityMap = city,
                 )
             }
+            // Mitten im Spiel auf „Menü“: die Partie wartet, „Weiterspielen“ führt zurück
+            shoot(File(out, "menu-paused-$suffix.png"), width, height) {
+                MainMenu(
+                    Scenario.DEFAULTS,
+                    Highscores(),
+                    GameSettings(),
+                    {},
+                    {},
+                    {},
+                    attribution = city.attribution,
+                    cities = CityChoice(listOf("Pforzheim"), 0, "Goldstadt an Enz und Nagold", nickname = "Goldstadt"),
+                    cityMap = city,
+                    onContinue = {},
+                )
+            }
             for (panel in listOf(SidePanel.NONE, SidePanel.EMERGENCIES, SidePanel.CAMERAS, SidePanel.TRANSIT)) {
                 val input =
                     HudInput().apply {

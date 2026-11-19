@@ -37,6 +37,7 @@ import de.bfi.trafficmaniac.ui.MainMenu
 import de.bfi.trafficmaniac.ui.NoSound
 import de.bfi.trafficmaniac.ui.SaveSlots
 import de.bfi.trafficmaniac.ui.ScaledUi
+import de.bfi.trafficmaniac.ui.SessionSlot
 import de.bfi.trafficmaniac.ui.SoundBoard
 import de.bfi.trafficmaniac.ui.StatisticsControls
 import de.bfi.trafficmaniac.ui.Tool
@@ -183,7 +184,11 @@ private fun MissingCityScreen(onLoaded: () -> Unit) {
     TrafficManiacApp(city = null, missingCityMessage = message, cityDownload = download)
 }
 
-/** Menü oder laufendes Spiel; nach der Wertung geht es zurück ins Menü. */
+/**
+ * Menü oder laufendes Spiel; nach der Wertung geht es zurück ins Menü. „Menü“ mitten im Spiel beendet die Partie nicht:
+ * Sie wird angehalten und wartet (mit laufendem Runner, also ohne neuen Vorlauf) auf „Weiterspielen“. Erst ein neues
+ * Spiel oder ein geladener Spielstand ersetzt sie.
+ */
 @Composable
 private fun Game(
     library: Library,
@@ -199,26 +204,27 @@ private fun Game(
     var pack by remember {
         mutableStateOf(library.packs.firstOrNull { it.id == options.city } ?: library.packs.first())
     }
-    var session by sessionState
+    val slot = remember { SessionSlot(sessionState, Session::runner) }
     var loading by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(settings) {
-        sound.muted = !settings.sound
-        sound.music = settings.music
-        userData.save(settings)
-    }
-    // Statistik-Postausgang beim Start leeren – nie während des Spiels
-    LaunchedEffect(settings.statistics) {
-        if (settings.statistics == true) withContext(Dispatchers.IO) { library.statistics.sendPending() }
-    }
-    val endSession: () -> Unit = {
-        if (settings.statistics == true) session?.report(library.statistics)
-        session = null
+    ApplySettings(settings, sound, userData, library.statistics)
+    val report: (Session) -> Unit = { if (settings.statistics == true) it.report(library.statistics) }
+    slot.live?.let { live ->
+        RunSession(live) { entry ->
+            slot.finished = live
+            // Amtszeit vorbei oder abgewählt: Statistik jetzt, nicht erst beim Zurück ins Menü
+            report(live)
+            entry?.let {
+                highscores = highscores.add(it)
+                userData.save(highscores)
+            }
+        }
     }
     val start: (Scenario) -> Unit = { scenario ->
         loading = tr("{title}: {name} wird vorbereitet …", "title" to tr(scenario.title), "name" to pack.name)
         scope.launch {
-            session = withContext(Dispatchers.Default) { Session.start(pack, scenario, settings, options) }
+            val started = withContext(Dispatchers.Default) { Session.start(pack, scenario, settings, options) }
+            slot.replace(started, report)
             loading = null
         }
     }
@@ -228,31 +234,55 @@ private fun Game(
         scope.launch {
             val loaded = resume(library, info)
             loading = if (loaded == null) tr("Dieser Spielstand passt nicht mehr zum Spiel.") else null
-            session = loaded
-            if (loaded == null) {
+            if (loaded != null) {
+                slot.replace(loaded, report)
+            } else {
                 delay(NOTICE_MILLIS)
                 loading = null
             }
         }
     }
-    val current = session
+    val current = slot.shown
     // Sprache wechseln: Tabelle laden und die Oberfläche neu aufbauen, damit jeder Text neu übersetzt wird
     val language = Translations.languageFor(settings.language)
     remember(language) { Translations.use(language) }
     key(language) {
         if (current == null) {
-            Menu(library, pack, { pack = it }, settings, { settings = it }, highscores, start, load, loading, onQuit)
+            val actions = MenuActions(start, load, onQuit, slot.parked?.let { slot::resume })
+            Menu(library, pack, { pack = it }, settings, { settings = it }, highscores, actions, loading)
         } else {
             val shown = if (settings.sprites) sprites else NoSprites
-            Playing(current, sound, shown, library.saves, settings.uiScale, endSession, {
-                if (settings.statistics == true) current.report(library.statistics)
-            }) {
-                highscores = highscores.add(it)
-                userData.save(highscores)
-            }
+            Playing(current, sound, shown, library.saves, settings.uiScale) { slot.toMenu(report) }
         }
     }
 }
+
+/** Einstellungen wirken lassen und speichern; mit Zustimmung den Statistik-Postausgang leeren. */
+@Composable
+private fun ApplySettings(
+    settings: GameSettings,
+    sound: SoundBoard,
+    userData: UserData,
+    statistics: Statistics,
+) {
+    LaunchedEffect(settings) {
+        sound.muted = !settings.sound
+        sound.music = settings.music
+        userData.save(settings)
+    }
+    // Statistik-Postausgang beim Start leeren – nie während des Spiels
+    LaunchedEffect(settings.statistics) {
+        if (settings.statistics == true) withContext(Dispatchers.IO) { statistics.sendPending() }
+    }
+}
+
+/** Was man im Startmenü auslösen kann; [onContinue] nur, wenn eine angehaltene Partie wartet. */
+private class MenuActions(
+    val onStart: (Scenario) -> Unit,
+    val onLoad: (SaveInfo) -> Unit,
+    val onQuit: () -> Unit,
+    val onContinue: (() -> Unit)?,
+)
 
 /** Startmenü mit Stadtauswahl und Spielständen. */
 @Composable
@@ -263,10 +293,8 @@ private fun Menu(
     settings: GameSettings,
     onSettings: (GameSettings) -> Unit,
     highscores: Highscores,
-    onStart: (Scenario) -> Unit,
-    onLoad: (SaveInfo) -> Unit,
+    actions: MenuActions,
     loading: String?,
-    onQuit: () -> Unit,
 ) {
     val saves = library.saves
     var saveList by remember { mutableStateOf(saves.list()) }
@@ -276,14 +304,15 @@ private fun Menu(
             highscores = highscores,
             settings = settings,
             onSettings = onSettings,
-            onStart = onStart,
-            onQuit = onQuit,
+            onStart = actions.onStart,
+            onQuit = actions.onQuit,
+            onContinue = actions.onContinue,
             attribution = pack.map.attribution,
             loading = loading,
             saves =
                 SaveSlots(
                     saveList,
-                    onLoad,
+                    actions.onLoad,
                     onDelete = {
                         saves.delete(it)
                         saveList = saves.list()
@@ -334,7 +363,7 @@ private fun describeSaveTime(save: SaveInfo): String {
     }
 }
 
-/** Die laufende Partie: Takt, Bestenliste am Ende und die Spieloberfläche. */
+/** Die Spieloberfläche der laufenden Partie (Takt und Spielende steuert [Game]). */
 @Composable
 private fun Playing(
     current: Session,
@@ -343,17 +372,8 @@ private fun Playing(
     saves: SaveGames,
     uiScale: Int,
     onMenu: () -> Unit,
-    onFinished: () -> Unit,
-    onHighscore: (HighscoreEntry) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    LaunchedEffect(current) { current.runner.run() }
-    LaunchedEffect(current) {
-        val entry = current.result()
-        // Amtszeit vorbei oder abgewählt: Statistik jetzt, nicht erst beim Zurück ins Menü
-        onFinished()
-        entry?.let(onHighscore)
-    }
     ScaledUi(uiScale) {
         TrafficManiacApp(
             city = current.pack.map,

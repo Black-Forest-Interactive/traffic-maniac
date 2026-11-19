@@ -74,6 +74,7 @@ class SaveSlots(
 /**
  * Startmenü im Design „Leitstelle“: dunkle Seitenleiste mit Logo, Claim und Navigation, rechts der gewählte
  * Bildschirm – neues Spiel, Spielstände, Bestenliste, Einstellungen, Credits. [loading] zeigt eine Ladeanzeige.
+ * Mit [onContinue] steht über allem „Weiterspielen“: zurück zur angehaltenen Partie.
  */
 @Composable
 fun MainMenu(
@@ -94,12 +95,14 @@ fun MainMenu(
     cityMap: CityMap? = null,
     /** Anonyme Statistiken; `null`, wenn die Plattform keine sendet (dann gibt es weder Frage noch Einstellung). */
     statistics: StatisticsControls? = null,
+    /** Zurück zur laufenden, im Menü angehaltenen Partie; `null`, wenn keine läuft. */
+    onContinue: (() -> Unit)? = null,
 ) {
     var tab by remember { mutableStateOf(MenuTab.PLAY) }
     TmTheme {
         Box(Modifier.fillMaxSize().background(TmColors.Ground)) {
             Row(Modifier.fillMaxSize()) {
-                Sidebar(tab, { tab = it }, saves.saves.size, tagline, attribution, onQuit)
+                Sidebar(tab, { tab = it }, saves.saves.size, tagline, attribution, onQuit, onContinue)
                 Box(Modifier.weight(1f).fillMaxHeight()) {
                     when (tab) {
                         MenuTab.PLAY -> PlayScreen(scenarios, highscores, settings, onSettings, onStart, cities)
@@ -126,6 +129,7 @@ private fun Sidebar(
     tagline: String,
     attribution: String,
     onQuit: () -> Unit,
+    onContinue: (() -> Unit)?,
 ) {
     Column(
         Modifier
@@ -140,6 +144,17 @@ private fun Sidebar(
             BasicText(tr("TRAFFIC\nMANIAC"), style = TmType.display(24.sp, TmColors.OnDark).copy(lineHeight = 24.sp))
         }
         BasicText(tagline, style = TmType.text(13.sp, color = TmColors.OnDarkMuted).copy(lineHeight = 20.sp))
+        // Grün statt Blau: hebt sich vom gewählten Reiter ab
+        onContinue?.let {
+            NavButton(
+                tr("Weiterspielen"),
+                Icons.Play,
+                active = true,
+                count = null,
+                fill = TmColors.Success,
+                onClick = it,
+            )
+        }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             for (option in MenuTab.entries) {
                 val count = if (option == MenuTab.LOAD && saveCount > 0) "$saveCount" else null
@@ -164,6 +179,7 @@ private fun NavButton(
     active: Boolean,
     count: String?,
     outlined: Boolean = false,
+    fill: Color = TmColors.Primary,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -173,7 +189,7 @@ private fun NavButton(
             .fillMaxWidth()
             .heightIn(min = NAV_HEIGHT.dp)
             .clip(shape)
-            .background(if (active) TmColors.Primary else Color.Transparent)
+            .background(if (active) fill else Color.Transparent)
             .then(if (outlined) Modifier.border(1.5.dp, TmColors.LineDark, shape) else Modifier)
             .clickable(role = Role.Tab, onClick = onClick)
             .padding(horizontal = 14.dp),
