@@ -7,6 +7,9 @@ plugins {
 val appVersion = providers.gradleProperty("appVersion").getOrElse("0.1.0-dev")
 val appVersionCode = providers.gradleProperty("appVersionCode").getOrElse("1").toInt()
 
+// Adresse des Statistik-Servers (-PstatsUrl=…, im Release aus der Repository-Variable STATS_URL); leer = sendet nichts
+val statsUrl = providers.gradleProperty("statsUrl").getOrElse("")
+
 // Release-Schlüssel aus Umgebungsvariablen (CI-Secrets bzw. ~/.android/traffic-maniac-release.properties);
 // ohne sie wird auch das Release mit dem Debug-Schlüssel signiert – installierbar, aber nicht updatefähig
 val keystore =
@@ -22,6 +25,10 @@ android {
         applicationId = "de.bfi.trafficmaniac"
         versionCode = appVersionCode
         versionName = appVersion
+        buildConfigField("String", "STATS_URL", "\"$statsUrl\"")
+    }
+    buildFeatures {
+        buildConfig = true
     }
     signingConfigs {
         if (keystore != null) {
@@ -43,6 +50,7 @@ android {
 dependencies {
     implementation(project(":ui"))
     implementation(libs.androidx.activity.compose)
+    testImplementation(kotlin("test-junit"))
 }
 
 /** Stadtpakete, Übersetzungen und Balancing aus dem Repo als Assets in die APK (`cities/`, `lang/`, `balancing/`). */

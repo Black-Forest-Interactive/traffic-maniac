@@ -6,9 +6,13 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.io.File
 
-/** Einstellungen und Bestenliste als JSON im privaten App-Speicher; beschädigt oder fehlend = Standardwerte. */
+/**
+ * Einstellungen und Bestenliste als JSON im privaten App-Speicher; beschädigt oder fehlend = Standardwerte.
+ * Dazu der Postausgang der anonymen Statistiken.
+ */
 class AppData(
     private val directory: File,
+    val statistics: Statistics,
 ) {
     private val json =
         Json {

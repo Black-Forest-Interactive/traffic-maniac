@@ -18,7 +18,6 @@ import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.CityChoice
 import de.bfi.trafficmaniac.ui.FitToDesign
 import de.bfi.trafficmaniac.ui.MainMenu
-import de.bfi.trafficmaniac.ui.SessionSlot
 import de.bfi.trafficmaniac.ui.TouchCallbacks
 import de.bfi.trafficmaniac.ui.TouchGameApp
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +42,11 @@ fun AndroidGame(
     var loading by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(settings) { data.save(settings) }
+    // Statistik-Postausgang beim Start (bzw. nach der Zustimmung) leeren – nie während des Spiels
+    LaunchedEffect(settings.statistics) {
+        if (settings.statistics == true) withContext(Dispatchers.IO) { data.statistics.sendPending() }
+    }
+    val report: (Session) -> Unit = { if (settings.statistics == true) it.report(data.statistics) }
     val language = content.languageFor(settings.language)
     remember(language) { language.also(content::use) }
     val start: (Scenario) -> Unit = { scenario ->
@@ -74,7 +78,7 @@ fun AndroidGame(
             FitToDesign {
                 Menu(
                     content,
-                    MenuState(settings, { settings = it }, highscores, loading),
+                    MenuState(settings, { settings = it }, highscores, loading, data.statistics),
                     city,
                     { city = it },
                     start,
@@ -83,7 +87,10 @@ fun AndroidGame(
                 )
             }
         } else {
-            Playing(current, onMenu = { slot.toMenu() })
+            Playing(current, onMenu = { session = null }) {
+                highscores = highscores.add(it)
+                data.save(highscores)
+            }
         }
     }
 }
@@ -94,6 +101,7 @@ private class MenuState(
     val onSettings: (GameSettings) -> Unit,
     val highscores: Highscores,
     val loading: String?,
+    val statistics: Statistics,
 )
 
 /** Das gemeinsame Startmenü mit den Städten aus den Assets. */
@@ -131,6 +139,12 @@ private fun Menu(
                 onSelect = { onCity(content.cities[it]) },
             ),
         cityMap = city?.map,
+        statistics =
+            StatisticsControls(
+                lastPacket = state.statistics::lastPacket,
+                onNewInstallation = { state.statistics.newInstallation() },
+                onWithdraw = state.statistics::clear,
+            ),
     )
 }
 
@@ -139,9 +153,12 @@ private fun Menu(
 private fun Playing(
     current: Session,
     onMenu: () -> Unit,
+    onHighscore: (HighscoreEntry) -> Unit,
 ) {
     // Zurück-Taste beendet die Partie nicht aus Versehen, sondern hält sie nur an
     BackHandler { current.runner.setSpeed(0) }
+    LaunchedEffect(current) { current.runner.run() }
+    LaunchedEffect(current) { current.result()?.let(onHighscore) }
     TouchGameApp(
         city = current.city.map,
         traffic = current.runner.frames,
