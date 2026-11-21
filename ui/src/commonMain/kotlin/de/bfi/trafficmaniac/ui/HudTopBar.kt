@@ -2,16 +2,14 @@ package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,24 +17,27 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameRunner
 import de.bfi.trafficmaniac.game.TrafficFrame
-import de.bfi.trafficmaniac.game.formatEuro
+import de.bfi.trafficmaniac.i18n.formatNumber
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.components.Icon
 import de.bfi.trafficmaniac.ui.components.Icons
 import de.bfi.trafficmaniac.ui.components.Meter
-import de.bfi.trafficmaniac.ui.components.MinTouch
 import de.bfi.trafficmaniac.ui.components.TmIcon
 import kotlin.math.roundToInt
 
@@ -64,7 +65,10 @@ internal class TopBarActions(
     val onFastForward: (() -> Unit)? = null,
 )
 
-/** Dunkle Kopfleiste: Tag und Uhrzeit, Zeitraffer, Kennzahlen (Kasse, Reputation, Zorn, Abwahl), Speichern, Menü. */
+/**
+ * Dunkle Kopfleiste (56 dp): Logo, Tag und Uhrzeit, Tempo, rechts die Kennzahlen (Kasse, Reputation, Bürgerzorn,
+ * Abwahlindex), Speichern und Menü. Alle Elemente sind 40 dp hoch.
+ */
 @Composable
 internal fun HudTopBar(
     frame: TrafficFrame,
@@ -72,20 +76,31 @@ internal fun HudTopBar(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier.fillMaxWidth().background(TmColors.Ink).padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier
+            .fillMaxWidth()
+            .height(
+                DESKTOP_BAR_HEIGHT.dp,
+            ).background(TmColors.Ink)
+            .padding(start = 20.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Clock(frame)
         actions.onSpeed?.let { SpeedSegments(frame.speed, it) }
         SpeedStatus(frame, actions)
-        Row(
-            Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) { KpiChips(frame) }
-        actions.onSave?.let { DarkButton(it, tr("Speichern")) }
-        actions.onMenu?.let { DarkButton(it, null) }
+        Spacer(Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            KpiChips(frame)
+        }
+        Box(
+            Modifier
+                .padding(horizontal = 4.dp)
+                .width(1.dp)
+                .height(32.dp)
+                .background(TmColors.LineDark),
+        )
+        actions.onSave?.let { IconButton(Icons.Save, tr("Speichern (F5)"), it) }
+        actions.onMenu?.let { IconButton(Icons.Menu, tr("Menü"), it) }
     }
 }
 
@@ -94,7 +109,7 @@ private fun Clock(frame: TrafficFrame) {
     val time = frame.current.gameTime
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Logo()
-        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Column(Modifier.widthIn(min = CLOCK_MIN_WIDTH.dp)) {
             BasicText(
                 tr(
                     "{weekday} · Tag {day} von {termDays}",
@@ -102,11 +117,11 @@ private fun Clock(frame: TrafficFrame) {
                     "day" to frame.game.termDay(time.day),
                     "termDays" to frame.game.termDays,
                 ),
-                style = TmType.text(12.sp, color = TmColors.OnDarkMuted),
+                style = TmType.text(11.sp, color = TmColors.OnDarkMuted),
+                maxLines = 1,
             )
-            BasicText(time.clockText, style = TmType.mono(20.sp, color = TmColors.OnDark))
+            BasicText(time.clockText, style = TmType.mono(18.sp, color = TmColors.OnDark))
         }
-        Box(Modifier.width(1.dp).height(36.dp).background(TmColors.LineDark))
     }
 }
 
@@ -138,17 +153,15 @@ internal fun SpeedStatus(
         val braked = frame.brakedFrom
         val resume = actions.onResume
         val forward = actions.onFastForward
+        // Immer an derselben Stelle, nur ausgegraut, wenn es gerade nicht geht – die Kopfleiste springt nicht
+        if (forward != null && !compact) ForwardButton(forward, enabled = frame.speed > 0 && !frame.fastForward)
         when {
             braked != null && resume != null -> {
-                StatusChip(tr("Gebremst · weiter mit {speed}×", "speed" to braked), TmColors.Active, resume)
+                StatusChip(tr("gebremst · zurück auf {speed}×", "speed" to braked), TmColors.Active, resume)
             }
 
             frame.fastForward -> {
                 StatusChip(tr("Spult vor …"), TmColors.OnDarkMuted, null)
-            }
-
-            forward != null && frame.speed > 0 && !compact -> {
-                ForwardButton(forward)
             }
         }
         if (frame.lagging) {
@@ -160,18 +173,28 @@ internal fun SpeedStatus(
     }
 }
 
-/** Vorspulen bis zum nächsten Ereignis – nur das Symbol, damit die Kopfleiste auch bei 1440 Pixeln passt. */
+/** Vorspulen bis zum nächsten Ereignis – mit kurzer Beschriftung, das Symbol allein war unklar. */
 @Composable
-private fun ForwardButton(onClick: () -> Unit) {
-    Box(
+private fun ForwardButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+) {
+    // Mit Beschriftung: das Symbol allein war unklar
+    Row(
         Modifier
-            .size(30.dp)
+            .height(36.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(TmColors.Ink3)
-            .clickable(role = Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center,
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .alpha(if (enabled) 1f else DISABLED_ALPHA)
+            .semantics { contentDescription = tr("Vorspulen bis zum nächsten Ereignis (V)") }
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(Icons.FastForward, tr("Vorspulen bis zum nächsten Ereignis (V)"), tint = TmColors.OnDark, size = 16.dp)
+        Icon(Icons.FastForward, null, tint = TmColors.OnDark, size = 16.dp)
+        BasicText(tr("bis Ereignis"), style = TmType.text(12.sp, FontWeight.SemiBold, TmColors.OnDark))
+        BasicText("V", style = TmType.mono(10.sp, bold = false, color = TmColors.OnDarkMuted))
     }
 }
 
@@ -197,7 +220,7 @@ private fun StatusChip(
     }
 }
 
-/** Pause und Zeitraffer 1× bis 64× – das gewählte Tempo ist Ampelgelb. */
+/** Pause und die Tempo-Knöpfe 1× bis 64× (Tasten 1–5) – das gewählte Tempo ist Ampelgelb. */
 @Composable
 private fun SpeedSegments(
     speed: Int,
@@ -207,20 +230,30 @@ private fun SpeedSegments(
         Modifier.background(TmColors.Ink3, ChipShape).padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        for (option in listOf(0) + GameRunner.SPEEDS) {
+        for ((index, option) in (listOf(0) + GameRunner.TOP_SPEEDS).withIndex()) {
             val chosen = option == speed
             val color = if (chosen) TmColors.Ink else TmColors.OnDark
+            val description =
+                if (option ==
+                    0
+                ) {
+                    tr("Pause (Leertaste)")
+                } else {
+                    tr("Tempo {speed}× ({key})", "speed" to option, "key" to index)
+                }
             Box(
                 Modifier
-                    .widthIn(min = 34.dp)
-                    .height(38.dp)
+                    .widthIn(min = 40.dp)
+                    .height(36.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(if (chosen) TmColors.Active else Color.Transparent)
-                    .clickable(role = Role.Button) { onSpeed(option) },
+                    .clickable(role = Role.Button) { onSpeed(option) }
+                    .semantics { contentDescription = description }
+                    .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 if (option == 0) {
-                    Icon(Icons.Pause, tr("Pause"), tint = color, size = 16.dp)
+                    Icon(Icons.Pause, null, tint = color, size = 16.dp)
                 } else {
                     BasicText("$option×", style = TmType.mono(13.sp, color = color))
                 }
@@ -229,109 +262,119 @@ private fun SpeedSegments(
     }
 }
 
+/** Kasse (im Minus rot, daneben „heute ±x“), Reputation, Bürgerzorn und Abwahlindex mit Meter in fester Breite. */
 @Composable
-private fun RowScope.KpiChips(frame: TrafficFrame) {
+private fun KpiChips(frame: TrafficFrame) {
     val game = frame.game
-    KpiChip(Icons.Wallet, MoneyIcon) {
-        Column {
-            BasicText(tr("Kasse"), style = TmType.text(11.sp, color = TmColors.OnDarkMuted))
-            CountingEuro(game.balance, TmType.mono(15.sp, color = TmColors.OnDark))
-        }
-        Box(Modifier.width(1.dp).height(28.dp).background(TmColors.LineDark))
-        BasicText(tr("Bußgelder"), style = TmType.text(12.sp, color = TmColors.OnDarkMuted))
-        BasicText(formatEuro(game.fineIncome), style = TmType.mono(12.sp, color = TmColors.OnDark))
-    }
-    KpiChip(Icons.Award, ReputationIcon) {
-        KpiValue(tr("Reputation"), "${game.reputation.roundToInt()}", "/100")
-        DeltaArrow(game.reputation.roundToInt(), upIsGood = true, TmType.mono(11.sp))
-    }
-    KpiChip(Icons.Siren, AlarmIcon) {
-        KpiValue(tr("Bürgerzorn"), "${game.anger.roundToInt()}")
-        DeltaArrow(game.anger.roundToInt(), upIsGood = false, TmType.mono(11.sp))
-    }
-    // Feste Breite: der Meter bleibt im Chip, statt die Kopfleiste zu füllen; ab 50 rot hinterlegt
-    val danger = game.recallIndex > RECALL_DANGER
-    KpiChip(
-        Icons.Users,
-        AlarmIcon,
-        Modifier.width(RECALL_CHIP_WIDTH.dp),
-        background = if (danger) TmColors.Danger.copy(alpha = DANGER_ALPHA) else TmColors.Ink3,
+    // Saldo heute aus dem Journal der Kämmerei – dieselbe Quelle wie dort „Saldo heute“
+    val today =
+        game.journal.today.values
+            .sum()
+    val minus = game.balance < 0
+    Row(
+        Modifier
+            .height(
+                CHIP_HEIGHT.dp,
+            ).background(if (minus) MinusChip else TmColors.Ink3, ChipShape)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                BasicText(tr("Abwahlindex"), style = TmType.text(11.sp, color = TmColors.OnDarkMuted))
-                BasicText("${game.recallIndex.roundToInt()}/100", style = TmType.mono(11.sp, color = TmColors.OnDark))
-            }
-            Meter(
-                (game.recallIndex / MAX_INDEX).toFloat(),
-                Modifier.fillMaxWidth(),
-                height = 6.dp,
-                color = RecallFill,
-                track = TmColors.LineDark,
+        Column {
+            BasicText(tr("Kasse"), style = TmType.text(10.sp, color = if (minus) MinusLabel else TmColors.OnDarkMuted))
+            CountingEuro(game.balance, TmType.mono(15.sp, color = if (minus) MinusValue else TmColors.OnDark))
+        }
+        BasicText(
+            tr("heute {delta}", "delta" to signedNumber(today)),
+            style = TmType.mono(11.sp, bold = false, color = if (minus) MinusLabel else TmColors.OnDarkMuted),
+        )
+    }
+    KpiValue(tr("Reputation"), "${game.reputation.roundToInt()}")
+    KpiValue(tr("Bürgerzorn"), "${game.anger.roundToInt()}")
+    // Feste Breite: das Label bricht nie um, der Meter bleibt im Chip; ab 50 rot hinterlegt
+    val danger = game.recallIndex > RECALL_DANGER
+    Column(
+        Modifier
+            .width(RECALL_CHIP_WIDTH.dp)
+            .height(CHIP_HEIGHT.dp)
+            .background(if (danger) TmColors.Danger.copy(alpha = DANGER_ALPHA) else TmColors.Ink3, ChipShape)
+            .padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BasicText(
+                tr("Abwahlindex"),
+                style = TmType.text(10.sp, color = TmColors.OnDarkMuted),
+                maxLines = 1,
+                softWrap = false,
+            )
+            BasicText(
+                "${game.recallIndex.roundToInt()}/100",
+                style = TmType.mono(11.sp, color = TmColors.OnDark),
+                maxLines = 1,
             )
         }
+        Meter(
+            (game.recallIndex / MAX_INDEX).toFloat(),
+            Modifier.fillMaxWidth(),
+            height = 6.dp,
+            color = RecallFill,
+            track = TmColors.LineDark,
+        )
     }
 }
 
-@Composable
-private fun KpiChip(
-    icon: de.bfi.trafficmaniac.ui.components.TmIcon,
-    iconTint: Color,
-    modifier: Modifier = Modifier,
-    background: Color = TmColors.Ink3,
-    content: @Composable RowScope.() -> Unit,
-) {
-    Row(
-        modifier.background(background, ChipShape).padding(horizontal = 14.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(icon, null, tint = iconTint, size = 18.dp)
-        content()
+/** „+1.234“ bzw. „−1.234“ (echtes Minuszeichen). */
+private fun signedNumber(value: Long): String =
+    when {
+        value > 0 -> "+" + formatNumber(value)
+        value < 0 -> "−" + formatNumber(-value)
+        else -> "±0"
     }
-}
 
 @Composable
 private fun KpiValue(
     label: String,
     value: String,
-    suffix: String = "",
 ) {
-    Column {
-        BasicText(label, style = TmType.text(11.sp, color = TmColors.OnDarkMuted))
-        Row(verticalAlignment = Alignment.Bottom) {
-            BasicText(value, style = TmType.mono(15.sp, color = TmColors.OnDark))
-            if (suffix.isNotEmpty()) {
-                BasicText(suffix, style = TmType.mono(15.sp, bold = false, color = TmColors.OnDarkMuted))
-            }
-        }
-    }
-}
-
-/** Umrandeter Knopf auf dunklem Grund; ohne [label] ein quadratischer Menü-Knopf. */
-@Composable
-private fun DarkButton(
-    onClick: () -> Unit,
-    label: String?,
-) {
-    Row(
-        Modifier
-            .heightIn(min = MinTouch)
-            .widthIn(min = MinTouch)
-            .clip(ChipShape)
-            .border(1.dp, TmColors.LineDark, ChipShape)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = if (label != null) 14.dp else 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    Column(
+        Modifier.height(CHIP_HEIGHT.dp).background(TmColors.Ink3, ChipShape).padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.Center,
     ) {
-        Icon(if (label != null) Icons.Save else Icons.Menu, label ?: tr("Menü"), tint = TmColors.OnDark, size = 20.dp)
-        label?.let { BasicText(it, style = TmType.text(13.sp, FontWeight.SemiBold, TmColors.OnDark)) }
+        BasicText(label, style = TmType.text(10.sp, color = TmColors.OnDarkMuted), maxLines = 1)
+        BasicText(value, style = TmType.mono(15.sp, color = TmColors.OnDark))
     }
 }
 
+/** Quadratischer Knopf (40 dp) auf dunklem Grund. */
+@Composable
+private fun IconButton(
+    icon: TmIcon,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier
+            .size(CHIP_HEIGHT.dp)
+            .clip(ChipShape)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, description, tint = TmColors.OnDark, size = 20.dp)
+    }
+}
+
+/** Kasse im Minus: dunkelroter Chip, helle Rottöne für Beschriftung und Wert. */
+private val MinusChip = Color(0xFF3A1F28)
+private val MinusLabel = Color(0xFFF3B7BD)
+private val MinusValue = Color(0xFFFF9AA2)
+
+private const val DESKTOP_BAR_HEIGHT = 56
+private const val CHIP_HEIGHT = 40
+private const val DISABLED_ALPHA = 0.4f
+private const val CLOCK_MIN_WIDTH = 118
 private const val MAX_INDEX = 100.0
-private const val RECALL_CHIP_WIDTH = 180
+private const val RECALL_CHIP_WIDTH = 150
 private const val DANGER_ALPHA = 0.55f
 private const val LOGO_HEIGHT = 34
 private const val LOGO_ASPECT = 0.5f

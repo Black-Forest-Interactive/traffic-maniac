@@ -28,6 +28,8 @@ import de.bfi.trafficmaniac.ui.components.Divider
 import de.bfi.trafficmaniac.ui.components.Meter
 import de.bfi.trafficmaniac.ui.components.PanelScaffold
 import de.bfi.trafficmaniac.ui.components.PanelSection
+import de.bfi.trafficmaniac.ui.map.delayColor
+import de.bfi.trafficmaniac.ui.map.lineColor
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -132,7 +134,7 @@ private fun LineBlock(
     directions: List<TransitLineStatus>,
 ) {
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        LineBadge(ref, Color(directions.first().color))
+        LineBadge(ref, lineColor(directions.first()))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for (direction in directions) DirectionRow(direction)
         }
@@ -140,7 +142,7 @@ private fun LineBlock(
 }
 
 @Composable
-private fun LineBadge(
+internal fun LineBadge(
     ref: String,
     color: Color,
 ) {
@@ -156,7 +158,7 @@ private fun LineBadge(
 }
 
 @Composable
-private fun DirectionRow(line: TransitLineStatus) {
+internal fun DirectionRow(line: TransitLineStatus) {
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BasicText(
@@ -171,25 +173,30 @@ private fun DirectionRow(line: TransitLineStatus) {
                 style = TmType.mono(12.sp, bold = false, color = TmColors.Muted),
             )
         }
-        if (line.stopsServed > 0) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Meter(
-                    line.punctualShare.toFloat(),
-                    Modifier.weight(1f),
-                    height = 6.dp,
-                    color = shareColor(line.punctualShare),
-                )
-                BasicText(percent(line.punctualShare), style = TmType.mono(11.sp), modifier = Modifier.width(36.dp))
-            }
+        // Ohne Fahrt heute: grauer Balken statt keinem
+        val served = line.stopsServed > 0
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Meter(
+                if (served) line.punctualShare.toFloat() else 0f,
+                Modifier.weight(1f),
+                height = 6.dp,
+                // Farbe nach der mittleren Verspätung – dieselben Schwellen wie bei den Halten und auf der Karte
+                color = delayColor(line.averageDelaySeconds.takeIf { served }),
+            )
+            BasicText(
+                if (served) percent(line.punctualShare) else tr("noch keine Fahrt"),
+                style = if (served) TmType.mono(11.sp) else TmType.caption,
+                modifier = Modifier.widthIn(min = 36.dp),
+            )
         }
     }
 }
 
 /** „Bus 1: Arlinger => Eutingen“ → „Arlinger → Eutingen“. */
-private fun destination(name: String): String = name.substringAfter(": ").replace("=>", "→")
+internal fun destination(name: String): String = name.substringAfter(": ").replace("=>", "→")
 
 /** „+2:30“ bzw. „−0:40“ (Minuten:Sekunden). */
-private fun delayText(seconds: Double): String {
+internal fun delayText(seconds: Double): String {
     val total = abs(seconds).roundToInt()
     val sign = if (seconds < 0) "−" else "+"
     return "$sign${total / SECONDS}:${(total % SECONDS).toString().padStart(2, '0')}"

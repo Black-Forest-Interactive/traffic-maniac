@@ -52,34 +52,46 @@ fun BudgetPanel(
                 style = TmType.caption,
             )
         }
-        PanelSection(title = tr("PR-Agentur")) {
-            BasicText(tr("Solange bezahlt wird, schreibt die Lokalzeitung Jubel-Stories."), style = TmType.small)
-            SegmentedControl(
-                PrContract.entries,
-                state.prContract,
-                { it.label },
-                onContract,
-                Modifier.fillMaxWidth(),
-                detail = { if (it.weeklyCost > 0) tr("{cost}/Woche", "cost" to formatEuro(it.weeklyCost)) else "–" },
-            )
-        }
-        PanelSection(title = tr("Kampagne „Totschlagargumente“")) {
-            BasicText(
-                tr("„Wer sich an die Geschwindigkeit hält, muss sich um Blitzer keine Sorgen machen.“"),
-                style = TmType.small.copy(fontStyle = FontStyle.Italic),
-            )
-            SegmentedControl(
-                listOf(false, true),
-                state.argumentsCampaign,
-                { if (it) tr("An") else tr("Aus") },
-                onArguments,
-                Modifier.fillMaxWidth(),
-                detail = { if (it) tr("{cost}/Woche", "cost" to formatEuro(rules.argumentsWeeklyCost)) else "–" },
-            )
-        }
-        PressSection(state, rules, onCeremony)
+        PrSections(state, rules, onContract, onArguments, onCeremony)
         IncomeSection(state)
     }
+}
+
+/** PR-Agentur, Kampagne und Presse – im Haushaltsfenster und auf der Seite „Presse & PR“. */
+@Composable
+internal fun PrSections(
+    state: GameState,
+    rules: GameRules,
+    onContract: (PrContract) -> Unit,
+    onArguments: (Boolean) -> Unit,
+    onCeremony: () -> Unit,
+) {
+    PanelSection(title = tr("PR-Agentur")) {
+        BasicText(tr("Solange bezahlt wird, schreibt die Lokalzeitung Jubel-Stories."), style = TmType.small)
+        SegmentedControl(
+            PrContract.entries,
+            state.prContract,
+            { it.label },
+            onContract,
+            Modifier.fillMaxWidth(),
+            detail = { if (it.weeklyCost > 0) tr("{cost}/Woche", "cost" to formatEuro(it.weeklyCost)) else "–" },
+        )
+    }
+    PanelSection(title = tr("Kampagne „Totschlagargumente“")) {
+        BasicText(
+            tr("„Wer sich an die Geschwindigkeit hält, muss sich um Blitzer keine Sorgen machen.“"),
+            style = TmType.small.copy(fontStyle = FontStyle.Italic),
+        )
+        SegmentedControl(
+            listOf(false, true),
+            state.argumentsCampaign,
+            { if (it) tr("An") else tr("Aus") },
+            onArguments,
+            Modifier.fillMaxWidth(),
+            detail = { if (it) tr("{cost}/Woche", "cost" to formatEuro(rules.argumentsWeeklyCost)) else "–" },
+        )
+    }
+    PressSection(state, rules, onCeremony)
 }
 
 /** Wie gut die Story wirkt, was die Lücke zur Wirklichkeit kostet, Spatenstich. */
@@ -161,7 +173,7 @@ private fun IncomeSection(state: GameState) {
 }
 
 @Composable
-private fun BudgetRoundLines(round: BudgetRound) {
+internal fun BudgetRoundLines(round: BudgetRound) {
     BasicText(
         tr("Letzte Haushaltsrunde ({weekday})", "weekday" to round.time.weekday.germanName),
         style = TmType.label,

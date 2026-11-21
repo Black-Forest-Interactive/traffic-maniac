@@ -34,6 +34,16 @@ class DamageEvent(
     val victims: Int = 0,
 )
 
+/**
+ * Wodurch die Straßen verschleißen: Zustandsverluste seit Spielbeginn je Fahrzeugart, durch Alterung (Wetter, Zeit)
+ * und je Straßenabschnitt.
+ */
+class WearStats(
+    val byVehicle: Map<VehicleType, Double> = emptyMap(),
+    val aging: Double = 0.0,
+    val bySegment: FloatArray = FloatArray(0),
+)
+
 /** Zustand von Straßen, Ampeln und Brücken für die Darstellung (wird nur gelegentlich erneuert). */
 class InfrastructureSnapshot(
     /** Zustand 0..1 je Straßenabschnitt (passive Nebenstraßen: 1). */
@@ -102,6 +112,20 @@ class Infrastructure internal constructor(
     /** Brücken, die gerade nachgeben – sie stürzen beim nächsten [update] ein (nicht mitten in der Bewegung). */
     private val collapsing = ArrayList<Int>()
     private var cached: InfrastructureSnapshot? = null
+
+    /** Verschleiß seit Spielbeginn (Summe der Zustandsverluste): je Fahrzeugart, durch Alterung und je Abschnitt. */
+    private val wearByType = DoubleArray(VehicleType.entries.size)
+    private var agingWear = 0.0
+    private val segmentWear by lazy { DoubleArray(graph.segmentCount) }
+
+    /** Verschleiß für das Bauamt – live, nicht aus dem zwischengespeicherten Snapshot. */
+    fun wear(): WearStats =
+        WearStats(
+            VehicleType.entries.associateWith { wearByType[it.ordinal] },
+            agingWear,
+            FloatArray(segmentCount) { segmentWear[it].toFloat() },
+        )
+
     private var time = 0.0
 
     /** Zustand der Ampeln. */
@@ -143,7 +167,8 @@ class Infrastructure internal constructor(
         val segment = graph.linkSegment[link]
         if (passive[segment] || closures.collapsed[segment]) return
         val load = vehicle.type.equivalentAxleLoads * config.wearPerAxleLoad / graph.linkLanes[link]
-        degrade(segment, load * (if (bridge[segment]) config.bridgeWearFactor else 1.0) * quality[segment])
+        wearByType[vehicle.type.ordinal] +=
+            degrade(segment, load * (if (bridge[segment]) config.bridgeWearFactor else 1.0) * quality[segment])
         trafficLights.vehiclePassed(graph.linkTo[link], time)
     }
 
@@ -159,7 +184,8 @@ class Infrastructure internal constructor(
         val aging = config.agingPerDay * days
         for (segment in 0 until segmentCount) {
             if (passive[segment] || closures.collapsed[segment]) continue
-            degrade(segment, aging * (if (bridge[segment]) config.bridgeWearFactor else 1.0) * quality[segment])
+            agingWear +=
+                degrade(segment, aging * (if (bridge[segment]) config.bridgeWearFactor else 1.0) * quality[segment])
         }
         trafficLights.age(config.signalAgingPerDay * days, time)
     }
@@ -204,13 +230,15 @@ class Infrastructure internal constructor(
         potholeAccidents += graph.linkSegment[link]
     }
 
+    /** Zieht Zustand ab und liefert, wie viel es tatsächlich war (für die Verschleiß-Statistik). */
     private fun degrade(
         segment: Int,
         amount: Double,
-    ) {
+    ): Double {
         val before = condition[segment]
         val after = (before - amount * maintenanceFactor).coerceAtLeast(0.0)
         condition[segment] = after
+        segmentWear[segment] += before - after
         val kind =
             if (bridge[segment]) {
                 when {
@@ -230,6 +258,7 @@ class Infrastructure internal constructor(
         if (crossed(before, after, CRATER) || crossed(before, after, POTHOLES)) applyEffects(segment)
         // Die Kartenfarbe ändert sich in 5-%-Schritten – nur dann wird der Snapshot neu gebaut
         if (crossed(before, after, SNAPSHOT_STEP * (before / SNAPSHOT_STEP).toInt())) cached = null
+        return before - after
     }
 
     /** Die Brücke stürzt ein: Wer gerade darauf ist, fällt mit (zählt weder als angekommen noch als aufgegeben). */

@@ -41,6 +41,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.city.Bounds
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.game.TrafficFrame
 import kotlinx.coroutines.Dispatchers
@@ -89,6 +90,8 @@ fun MapView(
     onZoom: (Float) -> Unit = {},
     /** Ausschnitt beim Start; ohne Angabe die ganze Stadt. */
     initialCamera: Camera? = null,
+    /** Ausschnitt beim Start als Bereich, der ganz zu sehen sein soll (statt [initialCamera]). */
+    initialBounds: Bounds? = null,
     /** "Zeig mir das": Die Karte fliegt zu diesem Ort und markiert ihn kurz. */
     focus: MapFocus? = null,
     /** Fertige Grafiken (z. B. aus `assets/sprites/`); fehlende werden gezeichnet. */
@@ -101,12 +104,15 @@ fun MapView(
     networkPick: NetworkPick? = null,
     /** Geplante, noch nicht gebaute Maßnahmen als Vorschau. */
     plan: PlanPreview? = null,
+    /** Weitere Ebenen (Dichte, Buslinien, Geld) und was eingeblendet ist. */
+    extras: MapExtras = MapExtras(),
 ) {
     val layers = remember(city) { MapLayers(city) }
     val picker = remember(city) { MapPicker(city) }
     val segmentPaths = remember(city) { SegmentPaths(city) }
     val environmentCache = remember(city) { EnvironmentCache() }
     val effects = remember(city, sprites) { TrafficEffects(FlowLayer(segmentPaths), sprites) }
+    val transitLines = remember(city) { TransitLines(city) }
     val textMeasurer = rememberTextMeasurer()
     val clickHandler by rememberUpdatedState(onMapClick)
     val frameTick = rememberFrameTick(onFps)
@@ -127,7 +133,7 @@ fun MapView(
                 view.width = it.width.toFloat()
                 view.height = it.height.toFloat()
                 if (view.camera == null && it.width > 0) {
-                    view.camera = initialCamera ?: Camera.fit(city.bounds, view.width, view.height)
+                    view.camera = initialCamera ?: Camera.fit(initialBounds ?: city.bounds, view.width, view.height)
                 }
             }.mapGestures(city, view) { x, y, metersPerPixel -> clickHandler(x, y, metersPerPixel) },
     ) {
@@ -138,22 +144,21 @@ fun MapView(
         }
         // Verkehr: in jedem Bildschirm-Frame neu, damit die Fahrzeuge flüssig interpoliert werden
         if (traffic != null) {
-            Canvas(Modifier.fillMaxSize()) {
-                val nanos = frameTick.value
-                val frame = traffic()
-                val drawStart = TimeSource.Monotonic.markNow()
-                if (currentCamera != null && frame != null) {
-                    val overlays = Overlays(environmentLayer, environmentCache, showMoods, showCondition, sprites)
-                    drawOverlays(currentCamera, frame, segmentPaths, overlays)
-                    val viewport = currentCamera.viewport(size.width, size.height)
-                    val seconds = nanos / NANOS_PER_SECOND.toDouble()
-                    effects.update(frame, picker, seconds)
-                    drawTraffic(currentCamera, frame, picker, textMeasurer, viewport, seconds, effects)
-                    inWorld(currentCamera) { effects.drawPops(this, textMeasurer, currentCamera.scale, seconds) }
-                    focus?.let { drawPing(currentCamera, it, (nanos - ping[0]) / NANOS_PER_SECOND.toDouble()) }
-                    MapDrawTime.record(drawStart.elapsedNow().inWholeMicroseconds)
-                }
-            }
+            TrafficCanvas(
+                traffic,
+                currentCamera,
+                TrafficDraw(
+                    Overlays(environmentLayer, environmentCache, showMoods, showCondition, sprites, extras),
+                    segmentPaths,
+                    picker,
+                    effects,
+                    transitLines,
+                    textMeasurer,
+                ),
+                frameTick,
+                focus,
+                ping,
+            )
             SnowfallCanvas(traffic, frameTick)
         }
         if (plan != null && currentCamera != null) {
@@ -161,6 +166,62 @@ fun MapView(
         }
         if (network != null) NetworkCanvas(network, currentCamera, textMeasurer, networkPick, traffic)
         Attribution(city.attribution, Modifier.align(Alignment.BottomEnd))
+    }
+}
+
+/** Was der Verkehrs-Layer zum Zeichnen braucht. */
+private class TrafficDraw(
+    val overlays: Overlays,
+    val segmentPaths: SegmentPaths,
+    val picker: MapPicker,
+    val effects: TrafficEffects,
+    val transitLines: TransitLines,
+    val textMeasurer: TextMeasurer,
+)
+
+/** Verkehr: in jedem Bildschirm-Frame neu, damit die Fahrzeuge flüssig interpoliert werden. */
+@Composable
+private fun TrafficCanvas(
+    traffic: () -> TrafficFrame?,
+    currentCamera: Camera?,
+    draw: TrafficDraw,
+    frameTick: State<Long>,
+    focus: MapFocus?,
+    ping: LongArray,
+) {
+    Canvas(Modifier.fillMaxSize()) {
+        val nanos = frameTick.value
+        val frame = traffic()
+        val drawStart = TimeSource.Monotonic.markNow()
+        if (currentCamera != null && frame != null) {
+            val overlays = draw.overlays
+            val extras = overlays.extras
+            // Buslinien: Grundkarte dämpfen, damit die Linien lesbar sind
+            if (extras.transit) drawVeil()
+            val segmentPaths = draw.segmentPaths
+            val picker = draw.picker
+            val effects = draw.effects
+            val textMeasurer = draw.textMeasurer
+            drawOverlays(currentCamera, frame, segmentPaths, overlays)
+            val viewport = currentCamera.viewport(size.width, size.height)
+            val seconds = nanos / NANOS_PER_SECOND.toDouble()
+            effects.update(frame, picker, seconds)
+            drawTraffic(currentCamera, frame, picker, textMeasurer, viewport, seconds, effects, extras)
+            if (extras.transit) {
+                inWorld(currentCamera) {
+                    draw.transitLines.draw(
+                        this,
+                        frame.current.transit.lines,
+                        currentCamera.scale,
+                        extras.transitStyle,
+                        textMeasurer,
+                    )
+                }
+            }
+            inWorld(currentCamera) { effects.drawPops(this, textMeasurer, currentCamera.scale, seconds) }
+            focus?.let { drawPing(currentCamera, it, (nanos - ping[0]) / NANOS_PER_SECOND.toDouble()) }
+            MapDrawTime.record(drawStart.elapsedNow().inWholeMicroseconds)
+        }
     }
 }
 
@@ -428,6 +489,7 @@ private class Overlays(
     val showMoods: Boolean,
     val showCondition: Boolean,
     val sprites: SpriteSource,
+    val extras: MapExtras,
 )
 
 /** Ebenen unter dem Verkehr: Umwelt, Zufriedenheit, Zustand, Baustellen, Umleitungen und Ereignisse. */
@@ -442,6 +504,8 @@ private fun DrawScope.drawOverlays(
     if (overlays.showMoods) drawMoods(frame.game.zoneMoods, camera.scale, overlays.sprites)
     val infrastructure = frame.current.infrastructure
     if (overlays.showCondition) drawCondition(segmentPaths, infrastructure, camera.scale)
+    val extras = overlays.extras
+    if (extras.density) drawDensity(segmentPaths, frame.current.segmentVolume, camera.scale)
     drawGreenWaves(segmentPaths, frame.game.greenWaves, camera.scale)
     drawBikeStreets(segmentPaths, frame.game.bikeStreets, camera.scale)
     drawBusLanes(segmentPaths, frame.game.busLanes, camera.scale)
@@ -458,13 +522,16 @@ private fun DrawScope.drawTraffic(
     viewport: Rect,
     seconds: Double,
     effects: TrafficEffects,
+    extras: MapExtras,
 ) = inWorld(camera) {
-    effects.flow.draw(this, traffic.current.segmentFlow, camera.scale)
+    if (!extras.hidesFlow) effects.flow.draw(this, traffic.current.segmentFlow, camera.scale)
     // Schnee über den Staufarben – sonst sähe man in der Gesamtansicht nichts davon
     drawSnow(effects.flow.paths, traffic.current.weather, camera.scale)
-    drawIncidents(traffic.current.incidents, camera.scale, effects.sprites)
-    drawDamage(traffic.game.maintenance.reports, picker, camera.scale, effects.sprites)
-    drawAssignments(traffic.game.assignments, camera.scale, effects.sprites)
+    if (extras.incidents) {
+        drawIncidents(traffic.current.incidents, camera.scale, effects.sprites)
+        drawDamage(traffic.game.maintenance.reports, picker, camera.scale, effects.sprites)
+    }
+    if (extras.assignments) drawAssignments(traffic.game.assignments, camera.scale, effects.sprites)
     drawInfrastructureIcons(traffic.current.infrastructure, picker, camera.scale, effects.sprites)
     drawExcavators(
         traffic.current.infrastructure.worksSegments
@@ -474,11 +541,12 @@ private fun DrawScope.drawTraffic(
     if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
         drawChargingStations(traffic.current.chargingStations, camera.scale, effects.sprites)
         drawParkingLots(traffic.current.parkingLots, camera.scale, effects.sprites)
-        drawTransitStops(picker.city.transitStops, camera.scale, viewport)
+        if (!extras.transit) drawTransitStops(picker.city.transitStops, camera.scale, viewport)
         drawBusPriority(traffic.game.busPriorityNodes.map { picker.city.roads.nodes[it] }, camera.scale)
     }
     drawVehicles(traffic, camera.scale, viewport, seconds, effects.sprites)
-    if (camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
+    // In der Ebene „Buslinien“ keine Ampelpunkte – dort gibt es nur einen Punkt-Stil: die Haltestelle
+    if (extras.signs && !extras.transit && camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
         val blink = (traffic.current.time * SIGNAL_BLINKS_PER_SECOND).toInt() % 2 == 0
         drawSignals(
             traffic.current.signalMarkers,
@@ -489,15 +557,25 @@ private fun DrawScope.drawTraffic(
             effects.sprites,
         )
     }
-    drawCameras(traffic.current.cameras, camera.scale, effects.sprites)
-    drawCameraFlashes(traffic.current.cameras, effects.flashes, camera.scale, seconds, effects.sprites)
+    if (extras.cameras) {
+        drawCameras(traffic.current.cameras, camera.scale, effects.sprites)
+        drawCameraFlashes(traffic.current.cameras, effects.flashes, camera.scale, seconds, effects.sprites)
+    }
     effects.clouds.draw(this, traffic.current, camera.scale, seconds, effects.sprites)
-    val signs = speedSigns(traffic.game.speedLimits, traffic.game.nightLimits, picker, camera.scale)
-    drawSpeedSigns(signs, camera.scale, textMeasurer, effects.sprites)
-    drawDisplays(traffic.current.cameras, camera.scale, textMeasurer)
-    val priority = traffic.game.priorityRoads.map { picker.midpoint(it) }
-    val crossings = traffic.game.bikeCrossings.map { picker.midpoint(it) }
-    drawRoadMarkers(priority, crossings, camera.scale, effects.sprites)
+    if (extras.signs) {
+        val signs =
+            avoidDisplays(
+                speedSigns(traffic.game.speedLimits, traffic.game.nightLimits, picker, camera.scale),
+                traffic.current.cameras,
+                camera.scale,
+            )
+        drawSpeedSigns(signs, camera.scale, textMeasurer, effects.sprites)
+        val priority = traffic.game.priorityRoads.map { picker.midpoint(it) }
+        val crossings = traffic.game.bikeCrossings.map { picker.midpoint(it) }
+        drawRoadMarkers(priority, crossings, camera.scale, effects.sprites)
+    }
+    if (extras.cameras) drawDisplays(traffic.current.cameras, camera.scale, textMeasurer)
+    if (extras.money) drawMoney(traffic.game.cameras, picker, camera.scale)
 }
 
 /**

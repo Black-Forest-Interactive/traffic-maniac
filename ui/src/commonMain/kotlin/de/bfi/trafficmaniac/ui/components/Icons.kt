@@ -260,6 +260,11 @@ object Icons {
             "M19.1 4.9C23 8.8 23 15.1 19.1 19",
         )
 
+    val Map = TmIcon("M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z", "M9 3v15", "M15 6v15")
+    val Inbox = TmIcon("M22 12h-6l-2 3h-4l-2-3H2", "M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z")
+    val Euro = TmIcon("M4 10h11", "M4 14h11", "M18.5 6.5A7 7 0 1 0 18.5 17.5")
+    val Newspaper = TmIcon("M4 4h13v16H6a2 2 0 0 1-2-2z", "M17 8h3v10a2 2 0 0 1-2 2", "M8 8h5", "M8 12h5", "M8 16h5")
+    val Undo = TmIcon("M9 14 4 9l5-5", "M4 9h10.5a5.5 5.5 0 0 1 0 11H11")
     val Calendar =
         TmIcon(
             "M8 2v4",

@@ -1,14 +1,13 @@
 package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,24 +22,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.game.CameraBalance
 import de.bfi.trafficmaniac.game.GameCommand
-import de.bfi.trafficmaniac.game.GameMessage
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.i18n.tr
-import de.bfi.trafficmaniac.sim.SpeedCamera
 import de.bfi.trafficmaniac.ui.components.ButtonKind
 import de.bfi.trafficmaniac.ui.components.TmButton
-import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
 import de.bfi.trafficmaniac.ui.map.MapFocus
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.MapView
@@ -53,7 +47,6 @@ import de.bfi.trafficmaniac.ui.map.SpriteSource
 import de.bfi.trafficmaniac.ui.map.StreetRoute
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
-import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
@@ -97,6 +90,19 @@ internal class HudState(
 
     /** Geplante, noch nicht gebaute Maßnahmen. */
     val plan = Plan()
+
+    /** Posteingang: Einträge, die schon einmal auf der Seite zu sehen waren (für das Badge „ungelesen“). */
+    var seenInbox by mutableStateOf(emptySet<String>())
+
+    /** Ebene „Buslinien“: Liniennummern am zuletzt angeklickten Abschnitt. */
+    var transitPick by mutableStateOf<List<String>?>(null)
+
+    /** Stand zu Beginn jedes Tags (so weit gesehen) – für die Tagesbilanz im Abschluss. */
+    val dayStarts = HashMap<Int, DayStart>()
+
+    /** Tag des offenen Tagesabschlusses bzw. der, dessen Abschluss weggeklickt wurde. */
+    var reportDay by mutableStateOf<Int?>(null)
+    var hiddenReport by mutableStateOf<Int?>(null)
 
     /** Im Straßennetz-Modus (F4) angeklickter Knoten bzw. Abschnitt. */
     var networkPick by mutableStateOf<NetworkPick?>(null)
@@ -197,6 +203,11 @@ internal fun InputRequests(
     hud: HudState,
 ) {
     LaunchedEffect(input.toolRequest) {
+        // Esc: Tagesabschluss schließen, auf einer Seite zurück zur Karte
+        if (input.toolRequest == Tool.LOOK) {
+            hud.reportDay?.let { hud.hiddenReport = it }
+            hud.panel = SidePanel.NONE
+        }
         input.toolRequest?.takeIf { it in hud.availableTools }?.let { tool ->
             val selection = hud.selection
             // Gruppentaste noch einmal: die nächste Art; sonst die Gruppe wählen (Liste zu)
@@ -268,7 +279,9 @@ fun TrafficManiacApp(
         onCommand(it)
     }
     InputRequests(input, hud)
+    PlanKeys(input, hud.plan, command)
     val hudFrame by rememberHudFrame(traffic, sound, hud.zoomLevel)
+    // Feste Zonen: Kopfleiste oben, Leiste links, rechts daneben die Karte oder eine Seite – nie beides
     TmTheme {
         Box(Modifier.fillMaxSize().background(TmColors.Ground)) {
             Column(Modifier.fillMaxSize()) {
@@ -285,55 +298,108 @@ fun TrafficManiacApp(
                     )
                 }
                 Row(Modifier.weight(1f)) {
-                    HudRail(
-                        hud.panel,
-                        hud::togglePanel,
-                        hudFrame?.current?.incidents?.size ?: 0,
-                        hud.newAchievements(hudFrame?.game),
-                    )
-                    MapArea(
-                        city,
-                        traffic,
-                        hudFrame,
-                        hud,
-                        picker,
-                        rules,
-                        command,
-                        sprites,
-                        input,
-                        Modifier.weight(1f),
-                    )
-                    hudFrame?.takeIf { hud.panel != SidePanel.NONE }?.let { frame ->
-                        val close = { hud.panel = SidePanel.NONE }
-                        SidePanelSlot(hud.panel, PanelContext(frame, rules, command, picker, hud::show, sprites, close))
+                    HudRail(hud.panel, { hud.panel = it }, railBadges(hudFrame, hud))
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        MapArea(city, traffic, hudFrame, hud, picker, rules, command, sprites, input)
+                        hudFrame?.takeIf { hud.panel != SidePanel.NONE }?.let { frame ->
+                            Page(frame, hud, rules, command, picker, sprites)
+                        }
                     }
                 }
             }
-            hudFrame?.let { EndOfDayOverlays(it, onContinueDay, onMenu, sprites) }
+            hudFrame?.let { frame ->
+                DayStarts(frame, hud)
+                EndOfDayOverlays(frame, onContinueDay, onMenu, sprites, hud)
+            }
         }
     }
 }
 
-/** Kartenansichten und Zähler-Chips (Schäden, Vorfälle, Aufträge) oben über der Karte. */
+/** Merkt sich den Stand zu Beginn jedes Tags und welcher Tagesabschluss gerade offen ist. */
 @Composable
-private fun MapTopControls(
-    city: CityMap,
-    hudFrame: TrafficFrame?,
+private fun DayStarts(
+    frame: TrafficFrame,
     hud: HudState,
-    picker: MapPicker,
 ) {
-    // Mittig über dem Teil der Karte rechts neben Verkehrslage und Meldungen – sonst überlappen sie
-    Column(
-        Modifier.fillMaxWidth().padding(start = (FEED_WIDTH + FEED_GAP).dp, top = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        MapViewSwitcher(hud.toggles)
-        hudFrame?.let { frame ->
-            InspectChips(frame, { damage ->
-                hud.showNext(inspectTargets(frame.game, frame.current.incidents, picker, city), damage)
-            })
-        }
+    val day = frame.current.gameTime.day
+    LaunchedEffect(day) { hud.dayStarts.getOrPut(day) { DayStart.of(frame.game) } }
+    hud.reportDay = frame.pendingReport?.day
+}
+
+/** Die Seite anstelle der Karte; „Auf Karte zeigen“ und „Hin“ wechseln zurück zur Karte. */
+@Composable
+private fun Page(
+    frame: TrafficFrame,
+    hud: HudState,
+    rules: GameRules,
+    command: (GameCommand) -> Unit,
+    picker: MapPicker,
+    sprites: SpriteSource,
+) {
+    val toMap = { hud.panel = SidePanel.NONE }
+    val showOnMap = { place: MapPlace ->
+        toMap()
+        hud.show(place)
+    }
+    val base = hud.assignmentActions(command)
+    val assignments =
+        AssignmentActions(
+            onGo = {
+                toMap()
+                base.onGo(it)
+            },
+            onDecline = base.onDecline,
+        )
+    // Was auf der Posteingang-Seite zu sehen ist, gilt als gelesen
+    LaunchedEffect(hud.panel, frame) {
+        if (hud.panel == SidePanel.INBOX) hud.seenInbox = hud.seenInbox + inboxKeys(frame)
+    }
+    HudPage(
+        hud.panel,
+        PanelContext(frame, rules, command, picker, showOnMap, sprites, toMap, onEnvironment = {
+            hud.toggles.layer = MapLayerKind.ENVIRONMENT
+            hud.toggles.environment = it
+            toMap()
+        }) { hud.panel = it },
+        InboxActions(showOnMap, assignments, { hud.panel = SidePanel.MAINTENANCE }, toMap) { hud.panel = it },
+    )
+}
+
+/** Zähler der Leiste: Posteingang (Aufträge, Einsätze, ungesicherte Schäden), Bauamt, Einsätze, neue Erfolge. */
+@Composable
+private fun railBadges(
+    frame: TrafficFrame?,
+    hud: HudState,
+): RailBadges {
+    val achievements = hud.newAchievements(frame?.game)
+    frame ?: return RailBadges()
+    val unsecured =
+        frame.game.maintenance.reports
+            .count { it.status in UNSECURED_DAMAGE }
+    val incidents = frame.current.incidents.size
+    return RailBadges(
+        // Ungelesen: was seit dem letzten Blick in den Posteingang neu ist
+        inbox = (inboxKeys(frame) - hud.seenInbox).size,
+        unsecured = unsecured,
+        emergencies = incidents,
+        achievements = achievements,
+    )
+}
+
+/** Enter baut den Bauplan, Strg+Z nimmt die letzte geplante Maßnahme zurück. */
+@Composable
+private fun PlanKeys(
+    input: HudInput,
+    plan: Plan,
+    command: (GameCommand) -> Unit,
+) {
+    LaunchedEffect(input.buildRequest) {
+        if (input.buildRequest) plan.take().forEach(command)
+        input.buildRequest = false
+    }
+    LaunchedEffect(input.undoRequest) {
+        if (input.undoRequest) plan.undo()
+        input.undoRequest = false
     }
 }
 
@@ -349,44 +415,54 @@ private fun MapArea(
     command: (GameCommand) -> Unit,
     sprites: SpriteSource,
     input: HudInput,
-    modifier: Modifier = Modifier,
 ) {
     val networkData = remember(city) { lazy { NetworkDebug(city) } }
     val network = if (input.network) networkData.value else null
-    Box(modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
         MapLayer(city, traffic, hud, picker, rules, sprites, network)
-        MapTopControls(city, hudFrame, hud, picker)
-        ZoomControls({ hud.zoom = MapZoom(it) }, Modifier.align(Alignment.CenterEnd).padding(end = 14.dp))
+        // Oben links die Kartenansicht, oben rechts Lage und Posteingang, rechts mittig der Zoom, unten links Meldungen
+        MapViewPanel(
+            hud.toggles,
+            Modifier.align(Alignment.TopStart).padding(16.dp),
+            hudFrame
+                ?.current
+                ?.transit
+                ?.lines
+                .orEmpty(),
+        )
+        ZoomControls({ hud.zoom = MapZoom(it) }, Modifier.align(Alignment.CenterEnd).padding(end = 16.dp))
         hudFrame?.let { frame ->
-            HudFeed(frame, hud::show, Modifier.align(Alignment.TopStart).padding(14.dp), hud.assignmentActions(command))
             val game = frame.game
+            StatusColumn(frame, hud, Modifier.align(Alignment.TopEnd).padding(16.dp))
             val income = game.fineIncome + game.parkingOffice.feeIncome + game.parkingOffice.ticketIncome
             MoneyRain(
                 income,
                 Modifier.align(Alignment.TopCenter).size(MONEY_RAIN_WIDTH.dp, MONEY_RAIN_HEIGHT.dp),
                 sprites,
             )
-            hud.step?.let { s ->
-                TutorialPanel(s, game, { hud.step = it }, Modifier.align(Alignment.BottomStart).padding(bottom = 14.dp))
-            }
             frame.warmup?.let {
-                WarmupBanner(it, Modifier.align(Alignment.TopCenter).padding(top = WARMUP_TOP.dp))
+                WarmupBanner(it, Modifier.align(Alignment.TopCenter).padding(top = 16.dp))
             }
             HighlightToasts(
                 game.highlights,
                 hud::show,
-                Modifier.align(Alignment.TopCenter).padding(start = (FEED_WIDTH + FEED_GAP).dp, top = TOAST_TOP.dp),
+                Modifier.align(Alignment.BottomStart).padding(16.dp),
+                onInbox = { hud.panel = SidePanel.INBOX },
             )
             DeveloperOverlays(frame, hud, network, input)
-            hud.inspected?.let { inspected ->
-                InspectCard(
-                    frame,
-                    inspected,
-                    rules,
-                    command,
-                    { hud.inspected = null },
-                    Modifier.align(Alignment.BottomEnd).padding(end = 14.dp, bottom = 24.dp),
-                )
+            // Rechts unten: Aktionskarte des angeklickten Objekts über dem Bauplan – nichts überlappt
+            Column(
+                Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                hud.inspected?.let { inspected ->
+                    InspectCard(frame, inspected, rules, command, { hud.inspected = null })
+                }
+                hud.transitPick?.takeIf { hud.toggles.layer == MapLayerKind.TRANSIT }?.let { refs ->
+                    LinesHere(refs, frame.current.transit.lines, hud.toggles) { hud.transitPick = null }
+                }
+                BuildPlan(hud.plan, game.balance, picker, command)
             }
             val dock =
                 ToolDockState(
@@ -396,10 +472,22 @@ private fun MapArea(
                     hud.openGroup,
                     hud::tile,
                     hud::pick,
-                    planBar(hud.plan, game.balance, command),
                 )
-            ToolDock(dock, rules, Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
+            ToolDock(dock, rules, Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp))
         }
+    }
+}
+
+/** Oben rechts: Lage und Posteingang-Hinweis, im Tutorial darunter der aktuelle Schritt. */
+@Composable
+private fun StatusColumn(
+    frame: TrafficFrame,
+    hud: HudState,
+    modifier: Modifier,
+) {
+    Column(modifier, horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        MapStatus(frame, { hud.panel = SidePanel.INBOX })
+        hud.step?.let { s -> TutorialPanel(s, frame.game, { hud.step = it }) }
     }
 }
 
@@ -446,6 +534,9 @@ internal fun MapLayer(
                     // Ansehen: Schaden oder Vorfall unter dem Klick öffnen, daneben schließt die Karte
                     val targets = inspectTargets(frame.game, frame.current.incidents, picker, city)
                     hud.inspected = inspectAt(targets, x, y, radius * INSPECT_RADIUS_FACTOR)
+                    // Ebene „Buslinien“: welche Linien fahren hier?
+                    hud.transitPick =
+                        if (hud.toggles.layer == MapLayerKind.TRANSIT) linesAt(frame, picker, x, y, radius) else null
                 } else {
                     hud.plan.click(
                         hud.selection,
@@ -459,6 +550,7 @@ internal fun MapLayer(
             network = network,
             networkPick = hud.networkPick,
             plan = PlanPreview(hud.plan.actions.map { it.marker }, hud.plan.routeStart, tr("Anfang")),
+            extras = hud.toggles.extras,
         )
     }
 }
@@ -538,12 +630,18 @@ internal fun EndOfDayOverlays(
     onContinueDay: () -> Unit,
     onMenu: (() -> Unit)?,
     sprites: SpriteSource,
+    /** Am Desktop: Tagesbilanz und Schließen; per Finger `null`. */
+    hud: HudState? = null,
 ) {
     val edition = frame.game.latestEdition
     val report = frame.pendingReport
     when {
         frame.game.isGameOver || frame.game.isTermOver -> {
             ResultOverlay(frame.game, onMenu = onMenu, sprites = sprites)
+        }
+
+        report != null && hud != null && hud.hiddenReport == report.day -> {
+            ReportWaiting(report.day - frame.game.firstDay + 1, onContinueDay) { hud.hiddenReport = null }
         }
 
         report != null -> {
@@ -560,6 +658,17 @@ internal fun EndOfDayOverlays(
                     frame.game.achievementList
                         .filter { it.unlockedDay == report.day }
                         .map { it.achievement.title },
+                balance = hud?.dayStarts?.get(report.day)?.balance(frame.game),
+                actions =
+                    hud?.let {
+                        DayReportActions(
+                            onClose = { it.hiddenReport = report.day },
+                            onTreasury = {
+                                it.hiddenReport = report.day
+                                it.panel = SidePanel.TREASURY
+                            },
+                        )
+                    } ?: DayReportActions(),
             )
         }
     }

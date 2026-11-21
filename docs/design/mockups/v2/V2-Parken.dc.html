@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Traffic Maniac – Parken</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#15202B}
+a{color:#2257B8}
+.tm-rail:hover{background:#243444}
+.tm-row:hover{background:#F5F7F9}
+button:focus-visible,a:focus-visible{outline:3px solid #FFC21A;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; display: grid; grid-template-columns: 80px 1fr; grid-template-rows: 56px 1fr; font-family: Inter, system-ui, sans-serif; color: #15202B; background: #EEF1F4; overflow: hidden">
+
+  <header style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; background: #15202B; color: #EEF1F4">
+    <svg width="18" height="34" viewBox="0 0 18 34" aria-hidden="true"><rect x="1" y="1" width="16" height="32" rx="5" fill="#243444" stroke="#3B4C5D"></rect><circle cx="9" cy="9" r="4" fill="#E5484D"></circle><circle cx="9" cy="17" r="4" fill="#FFC21A"></circle><circle cx="9" cy="25" r="4" fill="#3B4C5D"></circle></svg>
+    <div style="display: flex; flex-direction: column; min-width: 118px"><span style="font-size: 11px; color: #A3B0BD; line-height: 1.2">Dienstag · Tag 2 von 5</span><span style="font: 700 18px 'JetBrains Mono', monospace; line-height: 1.2">14:20</span></div>
+    <div style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #243444; font: 700 13px 'JetBrains Mono', monospace">
+      <span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">⏸</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">1×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">2×</span><span style="min-width: 40px; height: 36px; border-radius: 8px; background: #FFC21A; color: #15202B; display: flex; align-items: center; justify-content: center">4×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">8×</span><span style="min-width: 48px; height: 36px; display: flex; align-items: center; justify-content: center">64×</span>
+    </div>
+    <span style="flex: 1"></span>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <div style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><div style="display: flex; flex-direction: column"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Kasse</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">18.240 €</b></div><span style="font: 600 11px 'JetBrains Mono', monospace; color: #8FE0A8">heute +23.835</span></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Reputation</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">43<span style="color: #8193A5; font-weight: 500">/100</span></b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Bürgerzorn</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">14</b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 150px; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="display: flex; justify-content: space-between; font-size: 10px; color: #A3B0BD; line-height: 1.2">Abwahlindex <b style="font: 700 11px 'JetBrains Mono', monospace; color: #EEF1F4">15/100</b></span><span style="display: block; height: 6px; border-radius: 3px; background: #3B4C5D; overflow: hidden"><span style="display: block; width: 15%; height: 100%; background: #FF8A8F"></span></span></div>
+    </div>
+    <span style="width: 1px; height: 32px; background: #3B4C5D; margin: 0 4px"></span>
+    <button type="button" aria-label="Speichern" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8"></path></svg></button>
+    <button type="button" aria-label="Menü" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+  </header>
+
+  <nav aria-label="Navigation" style="background: #1E2B38; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; overflow: hidden">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="13">
+      <sc-if value="{{r.isHead}}" hint-placeholder-val="{{false}}"><span style="display: block; margin: 8px 0 2px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8193A5; text-align: center">{{r.label}}</span></sc-if>
+      <sc-if value="{{r.isGap}}" hint-placeholder-val="{{false}}"><span style="flex: 1"></span></sc-if>
+      <sc-if value="{{r.isItem}}" hint-placeholder-val="{{true}}">
+        <a href="{{r.href}}" class="tm-rail" style="{{r.style}}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg>
+          <span style="font-size: 11px; font-weight: 600; line-height: 1.1">{{r.label}}</span>
+          <sc-if value="{{r.badge}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 4px; right: 8px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: #C62B3B; color: #FFFFFF; font: 700 10px Inter, sans-serif; display: flex; align-items: center; justify-content: center">{{r.badge}}</span></sc-if>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <main style="min-height: 0; overflow: hidden; padding: 24px 32px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: auto auto auto minmax(0, 1fr); gap: 16px">
+
+    <div style="grid-column: 1 / -1; display: flex; align-items: flex-end; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Rathaus</span>
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 32px; line-height: 1.1">Parken &amp; Politessen</h1>
+      </div>
+      <a href="V2-Karte.dc.html" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; background: #15202B; color: #FFFFFF; text-decoration: none; font-size: 13px; font-weight: 700">Zur Karte <span style="font: 500 11px 'JetBrains Mono', monospace; opacity: .7">M</span></a>
+    </div>
+
+    <!-- KPIs -->
+    <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px">
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 2px solid #E9A2AA; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Parkhäuser &amp; -plätze belegt</span>
+        <b style="font: 700 24px 'JetBrains Mono', monospace; color: #A3202E">0 %</b>
+        <span style="font-size: 12px; color: #586674">0 von 14.581 · gestern 61 %</span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Straßenrand belegt</span>
+        <b style="font: 700 24px 'JetBrains Mono', monospace">2 %</b>
+        <span style="font-size: 12px; color: #586674">70 von 3.514 Plätzen</span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Falschparker gerade</span>
+        <b style="font: 700 24px 'JetBrains Mono', monospace">12.478</b>
+        <span style="font-size: 12px; color: #586674">davon erwischt <b style="color: #15202B">327</b> (2,6 %)</span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Suchverkehr</span>
+        <b style="font: 700 24px 'JetBrains Mono', monospace">36 Kfz</b>
+        <span style="font-size: 12px; color: #586674">kreisen Ø 11 min · +0,4 t CO₂</span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Einnahmen Amtszeit</span>
+        <b style="font: 700 24px 'JetBrains Mono', monospace; color: #1E5BB8">15.332 €</b>
+        <span style="font-size: 12px; color: #586674">Knöllchen 11.505 · Gebühren 3.827</span>
+      </div>
+    </div>
+
+    <!-- Auslastung über die Zeit -->
+    <section aria-label="Auslastung über die Zeit" style="grid-column: span 6; padding: 16px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Belegung über die Zeit</h2>
+        <div style="display: flex; gap: 14px; font-size: 12px; color: #3D4B59">
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 3px; border-radius: 2px; background: #2F6BD0"></span>Parkhäuser</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 3px; border-radius: 2px; background: #D9701F"></span>Straßenrand</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 0; border-top: 2px dashed #A3202E"></span>Falschparker (Tsd.)</span>
+        </div>
+      </div>
+      <svg viewBox="0 0 760 190" width="100%" height="190" role="img" aria-label="Bis gestern Abend 50 bis 70 Prozent Belegung. Nach der Gebührenerhöhung auf 5 Euro heute 6 Uhr fällt beides auf fast null, Falschparker steigen auf 12.478.">
+        <g font-family="JetBrains Mono" font-size="10" fill="#586674"><text x="0" y="14">100 %</text><text x="0" y="89">50 %</text><text x="0" y="164">0</text><text x="40" y="184">Tag 1 · 06</text><text x="210" y="184">18</text><text x="370" y="184">Tag 2 · 06</text><text x="560" y="184">12</text><text x="700" y="184">jetzt</text></g>
+        <line x1="40" y1="10" x2="740" y2="10" stroke="#E3E8ED" stroke-dasharray="3 3"></line>
+        <line x1="40" y1="85" x2="740" y2="85" stroke="#E3E8ED" stroke-dasharray="3 3"></line>
+        <line x1="40" y1="160" x2="740" y2="160" stroke="#93A1AE"></line>
+        <line x1="388" y1="10" x2="388" y2="160" stroke="#15202B"></line>
+        <rect x="394" y="12" width="150" height="20" rx="4" fill="#15202B"></rect>
+        <text x="400" y="26" font-family="Inter" font-size="11" font-weight="700" fill="#FFFFFF">Gebühr 1,50 € → 5 €</text>
+        <polyline points="40,130 80,95 120,70 160,62 200,60 240,72 280,100 320,128 360,140 388,138 420,150 460,157 520,159 600,160 680,160 740,160" fill="none" stroke="#2F6BD0" stroke-width="2.5" stroke-linejoin="round"></polyline>
+        <polyline points="40,100 80,60 120,42 160,38 200,40 240,50 280,70 320,92 360,110 388,104 420,140 460,152 520,155 600,156 680,157 740,157" fill="none" stroke="#D9701F" stroke-width="2.5" stroke-linejoin="round"></polyline>
+        <polyline points="40,156 120,154 200,153 280,154 360,156 388,155 420,120 460,80 520,50 600,36 680,30 740,28" fill="none" stroke="#A3202E" stroke-width="2" stroke-dasharray="5 4"></polyline>
+        <text x="744" y="31" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#A3202E">12,5</text>
+      </svg>
+      <span style="font-size: 12px; color: #586674">Niemand zahlt 5 € – die Autos stehen jetzt auf Gehwegen und in zweiter Reihe. Gut für Knöllchen, schlecht für Zorn und Verkehrsfluss.</span>
+    </section>
+
+    <!-- Preis-Wirkung -->
+    <section aria-label="Preis und Wirkung" style="grid-column: span 3; padding: 16px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 16px; font-weight: 700">Welcher Preis bringt was?</h2><span style="font-size: 11px; color: #586674">Schätzung</span></div>
+      <div style="display: grid; grid-template-columns: 52px minmax(0, 1fr) 84px; gap: 6px 10px; align-items: center; font-size: 11px; font-weight: 700; color: #586674; padding-bottom: 4px; border-bottom: 1px solid #E3E8ED">
+        <span>€/Std.</span><span>Belegung</span><span style="text-align: right">Gebühren/Tag</span>
+      </div>
+      <sc-for list="{{prices}}" as="p" hint-placeholder-count="6">
+        <div style="{{p.rowStyle}}">
+          <span style="font: 700 12px 'JetBrains Mono', monospace">{{p.price}}</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="flex: 1; display: block; height: 8px; border-radius: 4px; background: #EEF1F4"><span style="{{p.bar}}"></span></span><span style="font: 500 11px 'JetBrains Mono', monospace; width: 32px; text-align: right">{{p.occ}}</span></span>
+          <span style="font: 700 12px 'JetBrains Mono', monospace; text-align: right">{{p.money}}</span>
+        </div>
+      </sc-for>
+    </section>
+
+    <!-- Politessen -->
+    <section aria-label="Politessen" style="grid-column: span 3; padding: 16px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <div style="display: flex; flex-direction: column"><h2 style="margin: 0; font-size: 16px; font-weight: 700">Politessen</h2><span style="font-size: 11px; color: #586674">2.200 €/Woche · 7–20 Uhr</span></div>
+        <div style="display: flex; align-items: center; border: 1px solid #C3CCD5; border-radius: 10px; overflow: hidden">
+          <button type="button" aria-label="Eine weniger" style="width: 34px; height: 36px; border: none; background: #FFFFFF; font: 600 16px Inter, sans-serif; color: #15202B">−</button>
+          <span style="min-width: 30px; text-align: center; font: 700 14px 'JetBrains Mono', monospace">12</span>
+          <button type="button" aria-label="Eine mehr" style="width: 34px; height: 36px; border: none; background: #FFFFFF; font: 600 16px Inter, sans-serif; color: #15202B">+</button>
+          <button type="button" aria-label="Fünf mehr" style="height: 36px; padding: 0 8px; border: none; border-left: 1px solid #C3CCD5; background: #EEF1F4; font: 700 11px 'JetBrains Mono', monospace; color: #15202B">+5</button>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+        <div style="padding: 10px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Knöllchen je Kopf/Tag</span><b style="font: 700 16px 'JetBrains Mono', monospace">14</b></div>
+        <div style="padding: 10px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Ø je Knöllchen</span><b style="font: 700 16px 'JetBrains Mono', monospace">35 €</b></div>
+        <div style="padding: 10px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Kosten/Woche</span><b style="font: 700 16px 'JetBrains Mono', monospace; color: #A84F0E">26.400 €</b></div>
+        <div style="padding: 10px; border-radius: 10px; background: #EEF1F4; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Ertrag/Woche</span><b style="font: 700 16px 'JetBrains Mono', monospace; color: #1E5BB8">≈ 41.000 €</b></div>
+      </div>
+      <span style="font-size: 12px; color: #586674; line-height: 1.4">Jede weitere Politesse lohnt sich, solange &gt; 63 Knöllchen/Woche drin sind – bei 12.478 Falschparkern: ja.</span>
+    </section>
+
+    <!-- Parkhäuser -->
+    <section aria-label="Parkhäuser und Parkplätze" style="grid-column: span 8; min-height: 0; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; overflow: hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px 10px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Parkhäuser &amp; große Parkplätze</h2>
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 13px">
+          <span style="color: #586674">Alle auf</span>
+          <div role="radiogroup" aria-label="Preis für alle Parkhäuser" style="display: flex; gap: 2px; padding: 3px; border-radius: 8px; background: #EEF1F4">
+            <sc-for list="{{allFees}}" as="f" hint-placeholder-count="6">
+              <button type="button" role="radio" aria-checked="{{f.checked}}" style="{{f.style}}">{{f.v}}</button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) 90px minmax(0, 1fr) 150px 100px 36px; gap: 14px; padding: 8px 18px; font-size: 11px; font-weight: 700; color: #586674; border-top: 1px solid #E3E8ED; border-bottom: 1px solid #E3E8ED">
+        <span>Name</span><span style="text-align: right">Plätze</span><span>Belegung jetzt (gestern)</span><span>Preis €/Std.</span><span style="text-align: right">Gebühren 24 h</span><span></span>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow-y: auto">
+        <sc-for list="{{garages}}" as="g" hint-placeholder-count="6">
+          <div class="tm-row" style="display: grid; grid-template-columns: minmax(0, 1.4fr) 90px minmax(0, 1fr) 150px 100px 36px; gap: 14px; align-items: center; min-height: 50px; padding: 0 18px; border-bottom: 1px solid #F0F3F6">
+            <span style="font-size: 14px; font-weight: 600">{{g.name}}</span>
+            <span style="font: 600 12px 'JetBrains Mono', monospace; text-align: right">{{g.cap}}</span>
+            <span style="display: flex; align-items: center; gap: 8px"><span style="position: relative; flex: 1; display: block; height: 8px; border-radius: 4px; background: #E3E8ED"><span style="{{g.nowBar}}"></span><span style="{{g.yMark}}"></span></span><span style="font: 600 12px 'JetBrains Mono', monospace; width: 74px; text-align: right">{{g.occ}}</span></span>
+            <span style="display: flex; align-items: center; border: 1px solid #C3CCD5; border-radius: 8px; overflow: hidden; width: 132px">
+              <button type="button" aria-label="Preis senken" style="width: 34px; height: 34px; border: none; background: #FFFFFF; font: 600 15px Inter, sans-serif; color: #15202B">−</button>
+              <span style="flex: 1; text-align: center; font: 700 12px 'JetBrains Mono', monospace">{{g.price}}</span>
+              <button type="button" aria-label="Preis erhöhen" style="width: 34px; height: 34px; border: none; background: #FFFFFF; font: 600 15px Inter, sans-serif; color: #C3CCD5">+</button>
+            </span>
+            <span style="font: 700 12px 'JetBrains Mono', monospace; text-align: right; color: #1E5BB8">{{g.money}}</span>
+            <button type="button" aria-label="{{g.delAria}}" title="In Blumenkübel umwandeln" style="width: 32px; height: 32px; border: none; border-radius: 8px; background: transparent; color: #A3202E; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Straßenrand -->
+    <section aria-label="Straßenrand" style="grid-column: span 4; min-height: 0; padding: 16px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 12px; overflow-y: auto">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 700">Straßenrand</h2>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 13px; font-weight: 600">Parkscheinautomat €/Std.</span>
+        <div role="radiogroup" aria-label="Parkscheinautomat" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; padding: 3px; border-radius: 10px; background: #EEF1F4">
+          <sc-for list="{{streetFees}}" as="f" hint-placeholder-count="6">
+            <button type="button" role="radio" aria-checked="{{f.checked}}" style="{{f.style}}">{{f.v}}</button>
+          </sc-for>
+        </div>
+      </div>
+      <label style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #C3CCD5; border-radius: 10px; cursor: pointer">
+        <input type="checkbox" checked="checked" style="width: 18px; height: 18px; accent-color: #2257B8">
+        <span style="flex: 1; display: flex; flex-direction: column"><b style="font-size: 13px">Brötchentaste</b><span style="font-size: 11px; color: #586674">erste 30 min gratis · Kurzparker freuen sich</span></span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #C3CCD5; border-radius: 10px; cursor: pointer">
+        <input type="checkbox" checked="checked" style="width: 18px; height: 18px; accent-color: #2257B8">
+        <span style="flex: 1; display: flex; flex-direction: column"><b style="font-size: 13px">Anwohnerparken</b><span style="font-size: 11px; color: #586674">Anwohner gratis · Pendler müssen suchen</span></span>
+      </label>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid #E3E8ED">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Parkplätze am Straßenrand</span><b style="font-family: 'JetBrains Mono', monospace">60 %</b></div>
+        <span style="display: block; height: 8px; border-radius: 4px; background: #E3E8ED"><span style="display: block; width: 60%; height: 100%; border-radius: 4px; background: #2257B8"></span></span>
+        <button type="button" style="height: 42px; margin-top: 4px; border: 1px dashed #586674; border-radius: 10px; background: #FFFFFF; color: #15202B; font: 600 13px Inter, sans-serif">10 % → Blumenkübel · <span style="font-family: 'JetBrains Mono', monospace">15.000 €</span></button>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var item = function (label, icon, href, active, badge) {
+      return { isItem: true, isHead: false, isGap: false, label: label, icon: icon, href: href, badge: badge || false,
+        style: 'position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 62px; padding: 0 2px; border-radius: 10px; text-decoration: none; text-align: center; ' + (active ? 'background: #FFC21A; color: #15202B;' : 'background: transparent; color: #EEF1F4;') };
+    };
+    var rail = [
+      item('Karte', 'M9 3 3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15', 'V2-Karte.dc.html'),
+      item('Posteingang', 'M22 12h-6l-2 3h-4l-2-3H2M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z', 'V2-Posteingang.dc.html', false, '31'),
+      { isHead: true, isItem: false, isGap: false, label: 'Rathaus' },
+      item('Kämmerei', 'M4 10h11M4 14h11M18.5 6.5A7 7 0 1 0 18.5 17.5', 'V2-Kaemmerei.dc.html'),
+      item('Ordnung', 'M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z', 'V2-Ordnungsamt.dc.html'),
+      item('Bauamt', 'M2 20h20M5 20V10l7-6 7 6v10M9 20v-6h6v6', 'V2-Bauamt.dc.html', false, '7'),
+      item('Parken', 'M5 3h14v18H5zM9 17V7h4a3 3 0 0 1 0 6H9', 'V2-Parken.dc.html', true),
+      item('ÖPNV', 'M6 17h12M5 4h14v12H5zM5 11h14M8 20v-3M16 20v-3', '#'),
+      item('Presse', 'M4 4h13v16H6a2 2 0 0 1-2-2zM17 8h3v10a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h5', 'V2-Zeitung.dc.html'),
+      item('Bürger', 'M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', '#'),
+      item('Kalender', 'M3 5h18v16H3zM16 3v4M8 3v4M3 11h18', '#'),
+      { isGap: true, isHead: false, isItem: false },
+      item('Erfolge', 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.2 13.9 7 22l5-3 5 3-1.2-8.1', '#'),
+      item('Hilfe', 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01', '#')
+    ];
+    var pr = [['0 €', 92, '0 €'], ['1 €', 80, '9.300 €'], ['1,50 €', 71, '12.400 €'], ['2 €', 58, '13.500 €', 'best'], ['3 €', 31, '10.800 €'], ['5 €', 0, '0 €', 'now']];
+    var prices = pr.map(function (p) {
+      var best = p[3] === 'best', now = p[3] === 'now';
+      return { price: p[0], occ: p[1] + ' %', money: p[2],
+        bar: 'display: block; height: 100%; width: ' + Math.max(p[1], 1) + '%; border-radius: 4px; background: ' + (now ? '#A3202E' : '#2F6BD0') + ';',
+        rowStyle: 'display: grid; grid-template-columns: 52px minmax(0, 1fr) 84px; gap: 10px; align-items: center; padding: 4px 6px; margin: 0 -6px; border-radius: 6px; ' + (best ? 'background: #DDF0E4; box-shadow: inset 0 0 0 1px #8FCBA2;' : (now ? 'background: #FBE3E5;' : '')) };
+    });
+    var feeRow = function (sel) {
+      return ['0 €', '1 €', '1,50', '2 €', '3 €', '5 €'].map(function (v) {
+        var on = v === sel;
+        return { v: v, checked: on ? 'true' : 'false', style: 'height: 32px; min-width: 40px; padding: 0 6px; border: none; border-radius: 6px; cursor: pointer; font: 600 12px "JetBrains Mono", monospace; ' + (on ? 'background: #15202B; color: #FFFFFF;' : 'background: transparent; color: #15202B;') };
+      });
+    };
+    var g = function (name, cap, y) {
+      return { name: name, cap: cap, occ: '0 % (' + y + ' %)', price: '5 €', money: '0 €', delAria: name + ' entfernen',
+        nowBar: 'position: absolute; left: 0; top: 0; bottom: 0; width: 1%; border-radius: 4px; background: #2F6BD0;',
+        yMark: 'position: absolute; left: ' + y + '%; top: -3px; bottom: -3px; width: 2px; background: #586674;' };
+    };
+    var garages = [
+      g('Messplatz', '500', 48), g('Parkhaus Sparkasse', '485', 72), g('Central-Parkhaus Schober', '395', 69),
+      g('Parkhaus Schlössle Galerie', '374', 81), g('Goethe Parkhaus', '318', 55), g('Parkplatz 52', '318', 40)
+    ];
+    return { rail: rail, prices: prices, allFees: feeRow('5 €'), streetFees: feeRow('5 €'), garages: garages };
+  }
+}
+</script>
+</body>
+</html>

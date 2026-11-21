@@ -15,6 +15,8 @@ data class PressState(
     /** Anlass für den nächsten Spatenstich bzw. die nächste Eröffnung; `null`, wenn heute schon gefeiert wurde. */
     val nextCeremony: String? = null,
     val ceremonies: Int = 0,
+    /** Spieltag (seit Spielbeginn) des letzten Spatenstichs; `null` = noch keiner. */
+    val lastCeremonyDay: Int? = null,
 )
 
 /**
@@ -50,6 +52,7 @@ internal class Press(
     private var hours = 0
     private var ceremoniesThisWeek = 0
     private var ceremonies = 0
+    private var lastCeremonyDay: Int? = null
     private var celebratedToday = false
 
     /** Schlagzeilen der heutigen Feierlichkeiten für die morgige Zeitung. */
@@ -66,6 +69,7 @@ internal class Press(
         prGapSurcharge = gapSurcharge(),
         nextCeremony = if (celebratedToday) null else ceremonyTopic(maintenance).first,
         ceremonies = ceremonies,
+        lastCeremonyDay = lastCeremonyDay,
     )
 
     fun hourPassed(unhappyShare: Double) {
@@ -120,11 +124,12 @@ internal class Press(
             message(tr("Heute wurde schon gefeiert – morgen gibt es den nächsten Spatenstich"))
             return 0.0
         }
-        if (!treasury.pay(rules.ceremonyCost, tr("Spatenstich"))) return 0.0
+        if (!treasury.pay(rules.ceremonyCost, tr("Spatenstich"), BookingCategory.PR)) return 0.0
         val (headline, reopening) = ceremonyTopic(maintenance)
         if (reopening) onReopened()
         celebratedToday = true
         ceremonies++
+        lastCeremonyDay = (treasury.now / SECONDS_PER_DAY).toInt()
         // Die dritte Schaufel in einer Woche interessiert keinen mehr; bei Verriss lacht die Zeitung darüber
         val gain = rules.ceremonyReputation / (1 + ceremoniesThisWeek) * if (tone < MOCKING_TONE) HALF else 1.0
         ceremoniesThisWeek++
@@ -164,10 +169,12 @@ internal class Press(
         fun toneLabel(tone: Double): String =
             when {
                 tone >= JUBILANT -> tr("Jubelpresse")
-                tone >= FRIENDLY -> "wohlwollend"
-                tone > CRITICAL_BELOW -> "neutral"
-                tone > -JUBILANT -> "kritisch"
+                tone >= FRIENDLY -> tr("wohlwollend")
+                tone > CRITICAL_BELOW -> tr("neutral")
+                tone > -JUBILANT -> tr("bissig")
                 else -> tr("Verriss")
             }
     }
 }
+
+private const val SECONDS_PER_DAY = 86_400.0

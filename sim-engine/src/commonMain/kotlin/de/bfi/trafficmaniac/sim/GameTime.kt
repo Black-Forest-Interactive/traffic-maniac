@@ -29,6 +29,9 @@ data class GameTime(
 ) {
     val weekday: Weekday get() = Weekday.entries[day % Weekday.entries.size]
     val hour: Int get() = (secondOfDay / SECONDS_PER_HOUR).toInt()
+
+    /** Stunde seit Tag 0 (Tag × 24 + Stunde) – für Zeitachsen. */
+    val absoluteHour: Int get() = day * HOURS_PER_DAY + hour
     val minute: Int get() = (secondOfDay / SECONDS_PER_MINUTE).toInt() % MINUTES_PER_HOUR
 
     /** Nachts (22–5 Uhr) ist kaum Verkehr – die Zeit darf dann schneller laufen. */

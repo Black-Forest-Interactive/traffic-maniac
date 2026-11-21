@@ -46,7 +46,7 @@ internal class Surveillance(
 
     private fun placeDisplay(segment: Int) {
         if (works.cameraCounters.values.any { it.segment == segment }) return message(tr("Hier blitzt es schon"))
-        if (!treasury.pay(rules.displayCost, tr("Anzeigetafel"))) return
+        if (!treasury.pay(rules.displayCost, tr("Anzeigetafel"), place = city.placeOf(segment))) return
         val camera = simulation.speedControl.placeMidSegment(segment, MidSegmentCamera.DISPLAY)
         works.cameraCounters[camera.id] = CameraCounter(camera.id, segment, streetName(segment), camera = camera)
         message(tr("Anzeigetafel aufgestellt: {street}", "street" to streetName(segment)))
@@ -65,7 +65,15 @@ internal class Surveillance(
             )
         }
         if (works.cameraCounters.values.any { it.segment == segment }) return message(tr("Hier blitzt es schon"))
-        if (!treasury.pay(rules.policeCheckCost, tr("Polizeikontrolle"))) return
+        if (!treasury.pay(
+                rules.policeCheckCost,
+                tr("Polizeikontrolle"),
+                BookingCategory.POLICE,
+                city.placeOf(segment),
+            )
+        ) {
+            return
+        }
         val camera = simulation.speedControl.placeMidSegment(segment, MidSegmentCamera.POLICE_CHECK)
         works.cameraCounters[camera.id] = CameraCounter(camera.id, segment, streetName(segment), camera = camera)
         checks[camera.id] = simulation.time + rules.policeCheckHours * SECONDS_PER_HOUR

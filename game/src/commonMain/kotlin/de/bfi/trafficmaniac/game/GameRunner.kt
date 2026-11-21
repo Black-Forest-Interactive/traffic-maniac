@@ -325,6 +325,9 @@ class GameRunner(
     companion object {
         /** Die wählbaren Stufen (Desktop); das Handy bietet nur bis [TOUCH_MAX_SPEED]. */
         val SPEEDS = listOf(1, 2, 4, 8, 16, 32, 64)
+
+        /** Die Knöpfe der Kopfleiste (Tasten 1–5); 16× und 32× nur mit +/−. */
+        val TOP_SPEEDS = listOf(1, 2, 4, 8, 64)
         const val MAX_SPEED = 64
         const val TOUCH_MAX_SPEED = 16
         const val NIGHT_BOOST = 8

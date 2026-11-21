@@ -1,22 +1,27 @@
 package de.bfi.trafficmaniac.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -176,7 +181,14 @@ internal fun InspectCard(
             is Inspected.Damage -> {
                 frame.game.maintenance.reports.firstOrNull { it.id == inspected.id }?.let { report ->
                     {
-                        ExpandedDamage(report, rules, { onCommand(GameCommand.RespondToDamage(report.id, it)) }, null)
+                        ExpandedDamage(
+                            report,
+                            rules,
+                            { onCommand(GameCommand.RespondToDamage(report.id, it)) },
+                            null,
+                            framed = false,
+                            balance = frame.game.balance,
+                        )
                     }
                 }
             }
@@ -191,26 +203,40 @@ internal fun InspectCard(
         LaunchedEffect(inspected) { onClose() }
         return
     }
-    Column(
+    // Ein Rahmen, Höhe nach Inhalt; reicht der Platz nicht, scrollt der Inhalt statt abgeschnitten zu werden
+    Box(
         modifier
             .width(CARD_WIDTH.dp)
-            .background(TmColors.Surface, RoundedCornerShape(14.dp))
-            .border(1.dp, TmColors.Line, RoundedCornerShape(14.dp))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .heightIn(max = MAX_HEIGHT.dp)
+            .shadow(10.dp, CardShape, spotColor = CardShadow)
+            .clip(CardShape)
+            .background(TmColors.Surface),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Icon(
-                Icons.Close,
-                tr("Schließen"),
-                tint = TmColors.Muted,
-                size = 16.dp,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClick = onClose),
-            )
+        Column(
+            Modifier
+                .verticalScroll(
+                    rememberScrollState(),
+                ).padding(start = 16.dp, end = 40.dp, top = 14.dp, bottom = 14.dp),
+        ) {
+            content()
         }
-        content()
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(6.dp)
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(role = Role.Button, onClick = onClose),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Close, tr("Schließen"), tint = TmColors.Muted, size = 16.dp)
+        }
     }
 }
+
+private val CardShape = RoundedCornerShape(14.dp)
+private val CardShadow = TmColors.Ink.copy(alpha = 0.25f)
+private const val MAX_HEIGHT = 520
 
 @Composable
 private fun IncidentDetails(incident: IncidentMarker) {

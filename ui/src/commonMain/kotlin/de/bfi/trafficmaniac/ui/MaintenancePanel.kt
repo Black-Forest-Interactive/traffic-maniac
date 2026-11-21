@@ -5,8 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -15,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,16 +27,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.DamageResponse
 import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.GameState
 import de.bfi.trafficmaniac.game.MaintenanceBudget
 import de.bfi.trafficmaniac.game.MaintenanceState
 import de.bfi.trafficmaniac.game.RepairMethod
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.sim.SimulationSnapshot
 import de.bfi.trafficmaniac.ui.components.Badge
 import de.bfi.trafficmaniac.ui.components.BadgeTone
 import de.bfi.trafficmaniac.ui.components.ButtonKind
@@ -149,9 +156,12 @@ private fun DamageList(
         if (reports.isEmpty()) BasicText(tr("Keine Schadensmeldungen – noch."), style = TmType.small)
         for (report in reports.take(MAX_REPORTS)) {
             if (report == open) {
-                ExpandedDamage(report, rules, { onCommand(GameCommand.RespondToDamage(report.id, it)) }) {
-                    onShow(report)
-                }
+                ExpandedDamage(
+                    report,
+                    rules,
+                    { onCommand(GameCommand.RespondToDamage(report.id, it)) },
+                    { onShow(report) },
+                )
             } else {
                 CollapsedDamage(report) { expanded = report.id }
             }
@@ -193,9 +203,15 @@ internal fun ExpandedDamage(
     rules: GameRules,
     respond: (DamageResponse) -> Unit,
     onShow: (() -> Unit)?,
+    /** Mit eigenem Rahmen (in der Liste des Bauamts); im Inspektor ohne – der hat schon einen. */
+    framed: Boolean = true,
+    /** Kassenstand: Was mehr kostet, ist aus und nennt, was fehlt. */
+    balance: Long = Long.MAX_VALUE,
 ) {
     Column(
-        Modifier.fillMaxWidth().border(2.dp, TmColors.Ink, CardShape).padding(14.dp),
+        Modifier.fillMaxWidth().then(
+            if (framed) Modifier.border(2.dp, TmColors.Ink, CardShape).padding(14.dp) else Modifier,
+        ),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -211,7 +227,7 @@ internal fun ExpandedDamage(
                 report.status != DamageStatus.CONSTRUCTION
         if (actionable) {
             GroupLabel(tr("Reparieren"))
-            RepairActions(report, rules, respond)
+            RepairActions(report, rules, respond, balance)
             GroupLabel(tr("Oder absichern"))
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -273,38 +289,86 @@ private fun RepairActions(
     report: DamageReport,
     rules: GameRules,
     respond: (DamageResponse) -> Unit,
+    balance: Long,
 ) {
     val base = report.repairCost
-    if (report.canPatch) {
-        OptionButton(
-            tr("Flicken (Kaltasphalt, sofort)"),
-            { respond(DamageResponse.Patch) },
-            Modifier.fillMaxWidth(),
-            formatEuro(rules.patchCost),
+    // Der Preis wächst mit der Länge – das soll man sehen
+    if (report.segments.size > 1) {
+        BasicText(
+            tr(
+                "Preise für {count} Abschnitte (+{percent} % je weiterem)",
+                "count" to report.segments.size,
+                "percent" to (rules.repairCostPerExtraSegment * PERCENT).roundToInt(),
+            ),
+            style = TmType.caption,
         )
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        OptionButton(
-            tr("Ausschreibung"),
-            { respond(DamageResponse.Repair(RepairMethod.TENDER)) },
-            Modifier.weight(1f),
-            formatEuro(base),
-        )
-        OptionButton(
-            tr("Turbo"),
-            { respond(DamageResponse.Repair(RepairMethod.TURBO)) },
-            Modifier.weight(1f),
-            formatEuro((base * rules.turboCostFactor).toLong()),
-        )
-        if (report.status != DamageStatus.PLANNING) {
-            OptionButton(
-                tr("Planfeststellung"),
-                { respond(DamageResponse.Repair(RepairMethod.PLANNING)) },
-                Modifier.weight(1f),
-                formatEuro(rules.planningCost),
-            )
+    if (report.canPatch) {
+        Option(
+            tr("Flicken (Kaltasphalt, sofort)"),
+            rules.patchCost,
+            balance,
+            tr("sofort · hält kurz (doppelter Verschleiß)"),
+            Modifier.fillMaxWidth(),
+        ) {
+            respond(DamageResponse.Patch)
         }
     }
+    // Gleich hohe Karten nebeneinander, kurze Zusätze
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        val days = (rules.tenderDays + rules.constructionDays).roundToInt()
+        Option(
+            tr("Ausschreibung"),
+            base,
+            balance,
+            tr("{days} Tage · wie neu", "days" to days),
+            Modifier.weight(1f).fillMaxHeight(),
+        ) {
+            respond(DamageResponse.Repair(RepairMethod.TENDER))
+        }
+        Option(
+            tr("Turbo"),
+            (base * rules.turboCostFactor).toLong(),
+            balance,
+            tr("schnell · kurzlebig"),
+            Modifier.weight(1f).fillMaxHeight(),
+        ) {
+            respond(DamageResponse.Repair(RepairMethod.TURBO))
+        }
+        if (report.status != DamageStatus.PLANNING) {
+            val year = tr("fertig {year}", "year" to rules.planningStartYear)
+            Option(tr("Planfeststellung"), rules.planningCost, balance, year, Modifier.weight(1f).fillMaxHeight()) {
+                respond(DamageResponse.Repair(RepairMethod.PLANNING))
+            }
+        }
+    }
+}
+
+/** Option mit Preis; reicht die Kasse nicht, ist sie aus und sagt, wie viel fehlt. */
+@Composable
+private fun Option(
+    label: String,
+    cost: Long,
+    balance: Long,
+    detail: String,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    val missing = cost - balance
+    OptionButton(
+        label,
+        onClick,
+        modifier,
+        if (missing >
+            0
+        ) {
+            // Zwei Zeilen statt Umbruch mitten im Text
+            formatEuro(cost) + "\n" + tr("fehlen {missing}", "missing" to formatEuro(missing))
+        } else {
+            "${formatEuro(cost)} · $detail"
+        },
+        enabled = missing <= 0,
+    )
 }
 
 /** Warnschild, Brücke sperren, nichts tun. */
@@ -342,3 +406,40 @@ private fun SecureActions(
 
 private const val MAX_REPORTS = 8
 private const val GROUP_SPACING = 0.6f
+
+/** Was die Seite „Bauamt“ braucht. */
+internal class MaintenancePageData(
+    val game: GameState,
+    val snapshot: SimulationSnapshot,
+    val city: CityMap,
+    val rules: GameRules,
+    val onCommand: (GameCommand) -> Unit,
+    val onShow: (DamageReport) -> Unit,
+)
+
+/** Vorgaben für Screenshots: so viele Schäden ausgewählt, den ersten geöffnet, die Statistik bis unten gescrollt. */
+internal class MaintenancePreset(
+    val select: Int = 0,
+    val open: Boolean = false,
+    val statsToEnd: Boolean = false,
+    /** Die Tabelle bis ganz unten gescrollt (prüft, dass die Sammelleiste die letzte Zeile frei lässt). */
+    val tableToEnd: Boolean = false,
+)
+
+internal val LocalMaintenancePreset = staticCompositionLocalOf { MaintenancePreset() }
+
+/** Verfall je Tag (Anteil) im Mittel der Abschnitte des Schadens. */
+internal fun decayOf(
+    report: DamageReport,
+    data: MaintenancePageData,
+    days: Double,
+): Double? =
+    report.segments
+        .map {
+            data.snapshot.wear.bySegment
+                .getOrElse(it) { 0f }
+        }.average()
+        .takeIf { !it.isNaN() }
+        ?.div(days)
+
+private const val PERCENT = 100

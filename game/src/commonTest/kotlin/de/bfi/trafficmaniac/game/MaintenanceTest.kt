@@ -15,7 +15,6 @@ import de.bfi.trafficmaniac.sim.DamageKind
 import de.bfi.trafficmaniac.sim.DemandProfile
 import de.bfi.trafficmaniac.sim.Infrastructure
 import de.bfi.trafficmaniac.sim.SimulationConfig
-import de.bfi.trafficmaniac.sim.isClosed
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

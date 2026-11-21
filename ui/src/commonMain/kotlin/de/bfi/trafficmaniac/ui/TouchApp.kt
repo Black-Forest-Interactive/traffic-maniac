@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.NoSprites
@@ -85,17 +86,7 @@ fun TouchGameApp(
             Box(Modifier.fillMaxSize().background(TmColors.Ground)) {
                 Column(Modifier.fillMaxSize()) {
                     hudFrame?.let {
-                        TouchTopBar(
-                            it,
-                            TopBarActions(
-                                callbacks.onSpeed,
-                                callbacks.onSave,
-                                callbacks.onMenu,
-                                onDebug = { touch.debug = !touch.debug },
-                                onResume = callbacks.onResumeSpeed,
-                                onFastForward = callbacks.onFastForward,
-                            ),
-                        )
+                        TouchTopBar(it, topBarActions(callbacks, touch))
                     }
                     Row(Modifier.weight(1f)) {
                         TouchRail(
@@ -113,21 +104,67 @@ fun TouchGameApp(
                             MapLayer(city, traffic, hud, picker, rules, sprites, null, touchPickRadius())
                             hudFrame?.let { TouchOverlays(it, hud, touch, rules, command, sprites, picker, city) }
                         }
-                        // Fenster rechts neben der Karte (nicht darüber): die Karte bleibt ganz sichtbar
-                        hudFrame?.takeIf { hud.panel != SidePanel.NONE }?.let { frame ->
-                            val context =
-                                PanelContext(frame, rules, command, picker, hud::show, sprites) {
-                                    hud.panel = SidePanel.NONE
-                                }
-                            SidePanelSlot(hud.panel, context)
-                        }
                     }
+                }
+                // Seiten als Vollbild über Karte und Leiste (Entwurf 2), „Zur Karte“ führt zurück
+                hudFrame?.takeIf { hud.panel != SidePanel.NONE }?.let {
+                    TouchPage(
+                        it,
+                        hud,
+                        rules,
+                        command,
+                        picker,
+                        sprites,
+                    )
                 }
                 hudFrame?.let { frame ->
                     FitToDesign { EndOfDayOverlays(frame, callbacks.onContinueDay, callbacks.onMenu, sprites) }
                 }
             }
         }
+    }
+}
+
+/** Was die Kopfleiste per Finger auslöst; langes Tippen aufs Tempo schaltet die Entwickler-Anzeige. */
+private fun topBarActions(
+    callbacks: TouchCallbacks,
+    touch: TouchState,
+) = TopBarActions(
+    callbacks.onSpeed,
+    callbacks.onSave,
+    callbacks.onMenu,
+    onDebug = { touch.debug = !touch.debug },
+    onResume = callbacks.onResumeSpeed,
+    onFastForward = callbacks.onFastForward,
+)
+
+/** Eine Seite als Vollbild unter der Kopfleiste; „Auf Karte zeigen“ und „Zur Karte“ führen zurück. */
+@Composable
+private fun TouchPage(
+    frame: TrafficFrame,
+    hud: HudState,
+    rules: GameRules,
+    command: (GameCommand) -> Unit,
+    picker: MapPicker,
+    sprites: SpriteSource,
+) {
+    val toMap = { hud.panel = SidePanel.NONE }
+    val showOnMap = { place: MapPlace ->
+        toMap()
+        hud.show(place)
+    }
+    Box(Modifier.fillMaxSize().padding(top = TOP_BAR_HEIGHT.dp)) {
+        HudPage(
+            hud.panel,
+            PanelContext(frame, rules, command, picker, showOnMap, sprites, toMap, onEnvironment = {
+                hud.toggles.layer = MapLayerKind.ENVIRONMENT
+                hud.toggles.environment = it
+                toMap()
+            }) { hud.panel = it },
+            InboxActions(showOnMap, hud.assignmentActions(command), { hud.panel = SidePanel.MAINTENANCE }, toMap) {
+                hud.panel = it
+            },
+        )
     }
 }
 

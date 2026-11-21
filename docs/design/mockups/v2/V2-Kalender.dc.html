@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Traffic Maniac – Kalender</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#15202B}
+a{color:#2257B8}
+.tm-rail:hover{background:#243444}
+.tm-ev:hover{filter:brightness(.96)}
+button:focus-visible,a:focus-visible{outline:3px solid #FFC21A;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; display: grid; grid-template-columns: 80px 1fr; grid-template-rows: 56px 1fr; font-family: Inter, system-ui, sans-serif; color: #15202B; background: #EEF1F4; overflow: hidden">
+
+  <header style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; background: #15202B; color: #EEF1F4">
+    <svg width="18" height="34" viewBox="0 0 18 34" aria-hidden="true"><rect x="1" y="1" width="16" height="32" rx="5" fill="#243444" stroke="#3B4C5D"></rect><circle cx="9" cy="9" r="4" fill="#E5484D"></circle><circle cx="9" cy="17" r="4" fill="#FFC21A"></circle><circle cx="9" cy="25" r="4" fill="#3B4C5D"></circle></svg>
+    <div style="display: flex; flex-direction: column; min-width: 118px"><span style="font-size: 11px; color: #A3B0BD; line-height: 1.2">Mittwoch · Tag 3 von 5</span><span style="font: 700 18px 'JetBrains Mono', monospace; line-height: 1.2">09:12</span></div>
+    <div style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #243444; font: 700 13px 'JetBrains Mono', monospace">
+      <span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">⏸</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">1×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">2×</span><span style="min-width: 40px; height: 36px; border-radius: 8px; background: #FFC21A; color: #15202B; display: flex; align-items: center; justify-content: center">4×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">8×</span><span style="min-width: 48px; height: 36px; display: flex; align-items: center; justify-content: center">64×</span>
+    </div>
+    <span style="flex: 1"></span>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <div style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><div style="display: flex; flex-direction: column"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Kasse</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">96.210 €</b></div><span style="font: 600 11px 'JetBrains Mono', monospace; color: #8FE0A8">heute +4.180</span></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Reputation</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">42<span style="color: #8193A5; font-weight: 500">/100</span></b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #3A1F28"><span style="font-size: 10px; color: #F3B7BD; line-height: 1.2">Bürgerzorn</span><b style="font: 700 15px 'JetBrains Mono', monospace; color: #FF9AA2; line-height: 1.2">31</b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 150px; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="display: flex; justify-content: space-between; font-size: 10px; color: #A3B0BD; line-height: 1.2">Abwahlindex <b style="font: 700 11px 'JetBrains Mono', monospace; color: #EEF1F4">38/100</b></span><span style="display: block; height: 6px; border-radius: 3px; background: #3B4C5D; overflow: hidden"><span style="display: block; width: 38%; height: 100%; background: #FF8A8F"></span></span></div>
+    </div>
+    <span style="width: 1px; height: 32px; background: #3B4C5D; margin: 0 4px"></span>
+    <button type="button" aria-label="Speichern" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8"></path></svg></button>
+    <button type="button" aria-label="Menü" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+  </header>
+
+  <nav aria-label="Navigation" style="background: #1E2B38; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; overflow: hidden">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="14">
+      <sc-if value="{{r.isHead}}" hint-placeholder-val="{{false}}"><span style="display: block; margin: 8px 0 2px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8193A5; text-align: center">{{r.label}}</span></sc-if>
+      <sc-if value="{{r.isGap}}" hint-placeholder-val="{{false}}"><span style="flex: 1"></span></sc-if>
+      <sc-if value="{{r.isItem}}" hint-placeholder-val="{{true}}">
+        <a href="{{r.href}}" class="tm-rail" style="{{r.style}}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg>
+          <span style="font-size: 11px; font-weight: 600; line-height: 1.1">{{r.label}}</span>
+          <sc-if value="{{r.badge}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 4px; right: 8px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: #C62B3B; color: #FFFFFF; font: 700 10px Inter, sans-serif; display: flex; align-items: center; justify-content: center">{{r.badge}}</span></sc-if>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <main style="min-height: 0; overflow: hidden; padding: 24px 32px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 16px">
+
+    <div style="grid-column: 1 / -1; display: flex; align-items: flex-end; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Rathaus</span>
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 32px; line-height: 1.1">Kalender &amp; Ereignisse</h1>
+      </div>
+      <a href="V2-Karte.dc.html" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; background: #15202B; color: #FFFFFF; text-decoration: none; font-size: 13px; font-weight: 700">Zur Karte <span style="font: 500 11px 'JetBrains Mono', monospace; opacity: .7">M</span></a>
+    </div>
+
+    <!-- Jetzt + Risiken -->
+    <div style="grid-column: 1 / -1; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 16px">
+      <div style="padding: 14px 18px; border-radius: 14px; background: #15202B; color: #EEF1F4; display: flex; gap: 14px; align-items: center">
+        <span style="flex: none; width: 10px; height: 10px; border-radius: 5px; background: #4CC27A; box-shadow: 0 0 0 4px rgba(76,194,122,.25)"></span>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #A3B0BD">Jetzt</span>
+          <b style="font-size: 16px">Wochenmarkt · Jahnstraße</b>
+          <span style="font-size: 12px; color: #A3B0BD">bis 13 Uhr · Jahnstraße halbseitig gesperrt · Lieferverkehr ab 6 Uhr</span>
+        </div>
+        <a href="V2-Karte.dc.html" style="height: 36px; padding: 0 12px; border-radius: 8px; background: #FFFFFF; color: #15202B; text-decoration: none; font-size: 12px; font-weight: 700; display: flex; align-items: center">Zeigen</a>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Rad-Korso droht</span>
+        <div style="display: flex; align-items: baseline; gap: 8px"><b style="font: 700 22px 'JetBrains Mono', monospace">0 / 2</b><span style="font-size: 12px; color: #586674">Dauerstau-Tage in Folge</span></div>
+        <span style="font-size: 12px; color: #6B4A00; font-weight: 600">sicher am Wochenende</span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 2px solid #E9A2AA; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Spontandemo-Risiko</span>
+        <div style="display: flex; align-items: baseline; gap: 8px"><b style="font: 700 22px 'JetBrains Mono', monospace; color: #A3202E">8 %/Std.</b><span style="font-size: 12px; color: #586674">wegen Zorn 31</span></div>
+        <span role="meter" aria-label="Demo-Risiko" aria-valuenow="31" aria-valuemin="0" aria-valuemax="100" style="position: relative; display: block; height: 6px; border-radius: 3px; background: #E3E8ED"><span style="display: block; width: 31%; height: 100%; border-radius: 3px; background: #C62B3B"></span><span style="position: absolute; left: 25%; top: -3px; bottom: -3px; width: 2px; background: #15202B"></span></span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Bisher in der Amtszeit</span>
+        <div style="display: flex; gap: 16px; font-size: 13px"><span><b style="font: 700 20px 'JetBrains Mono', monospace">3</b> Demos</span><span><b style="font: 700 20px 'JetBrains Mono', monospace">0</b> Korsos</span><span><b style="font: 700 20px 'JetBrains Mono', monospace">1</b> Schwertr.</span></div>
+      </div>
+    </div>
+
+    <!-- Wochenplan -->
+    <section aria-label="Wochenplan" style="grid-column: span 9; min-height: 0; padding: 14px 18px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Amtszeit · Woche</h2>
+        <div style="display: flex; gap: 14px; font-size: 12px; color: #3D4B59; flex-wrap: wrap">
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #DCE8FA; border-left: 3px solid #2257B8"></span>geplant</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #FBE3E5; border-left: 3px solid #C62B3B"></span>Störung</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #FFFFFF; border: 1px dashed #A84F0E"></span>möglich</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #DDF0E4; border-left: 3px solid #1E7A44"></span>eigene Termine</span>
+        </div>
+      </div>
+      <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 44px repeat(7, minmax(0, 1fr)); grid-template-rows: 40px minmax(0, 1fr); column-gap: 6px">
+        <span></span>
+        <sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+          <div style="{{d.headStyle}}"><b style="font-size: 13px">{{d.name}}</b><span style="font-size: 11px">{{d.sub}}</span></div>
+        </sc-for>
+        <div style="position: relative; font: 500 10px 'JetBrains Mono', monospace; color: #586674">
+          <span style="position: absolute; top: 0">06</span><span style="position: absolute; top: 33.3%">12</span><span style="position: absolute; top: 66.6%">18</span><span style="position: absolute; bottom: 0">24</span>
+        </div>
+        <sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+          <div style="{{d.colStyle}}">
+            <span style="position: absolute; left: 0; right: 0; top: 33.3%; border-top: 1px dashed #E3E8ED"></span>
+            <span style="position: absolute; left: 0; right: 0; top: 66.6%; border-top: 1px dashed #E3E8ED"></span>
+            <sc-if value="{{d.hasNow}}" hint-placeholder-val="{{false}}"><span style="position: absolute; left: -3px; right: -3px; top: 18%; border-top: 2px solid #C62B3B"></span></sc-if>
+            <sc-for list="{{d.events}}" as="e" hint-placeholder-count="1">
+              <div class="tm-ev" title="{{e.tip}}" style="{{e.style}}"><b style="font-size: 12px; line-height: 1.2">{{e.title}}</b><span style="font-size: 11px; line-height: 1.2; opacity: .8">{{e.sub}}</span></div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Was kann passieren -->
+    <section aria-label="Ereignisarten" style="grid-column: span 3; grid-row: span 2; min-height: 0; padding: 16px 18px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 12px; overflow-y: auto">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 700">Was kann passieren?</h2>
+      <sc-for list="{{kinds}}" as="k" hint-placeholder-count="5">
+        <div style="display: flex; flex-direction: column; gap: 3px; padding-bottom: 10px; border-bottom: 1px solid #EEF1F4">
+          <div style="display: flex; justify-content: space-between; align-items: baseline"><b style="font-size: 13px">{{k.name}}</b><span style="{{k.chanceStyle}}">{{k.chance}}</span></div>
+          <span style="font-size: 12px; color: #586674; line-height: 1.4">Auslöser: {{k.when}}</span>
+          <span style="font-size: 12px; color: #3D4B59; line-height: 1.4">Folge: {{k.effect}}</span>
+        </div>
+      </sc-for>
+    </section>
+
+    <!-- Chronik -->
+    <section aria-label="Chronik" style="grid-column: span 9; padding: 12px 18px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; align-items: center; gap: 14px; overflow: hidden">
+      <b style="font-size: 13px; flex: none">Chronik</b>
+      <div style="flex: 1; display: flex; gap: 8px; overflow: hidden">
+        <sc-for list="{{log}}" as="l" hint-placeholder-count="5">
+          <span style="{{l.style}}"><b style="font-family: 'JetBrains Mono', monospace">{{l.t}}</b> {{l.text}}</span>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var item = function (label, icon, href, active, badge) {
+      return { isItem: true, isHead: false, isGap: false, label: label, icon: icon, href: href, badge: badge || false,
+        style: 'position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 58px; padding: 0 2px; border-radius: 10px; text-decoration: none; text-align: center; ' + (active ? 'background: #FFC21A; color: #15202B;' : 'background: transparent; color: #EEF1F4;') };
+    };
+    var rail = [
+      item('Karte', 'M9 3 3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15', 'V2-Karte.dc.html'),
+      item('Posteingang', 'M22 12h-6l-2 3h-4l-2-3H2M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z', 'V2-Posteingang.dc.html', false, '31'),
+      { isHead: true, isItem: false, isGap: false, label: 'Rathaus' },
+      item('Kämmerei', 'M4 10h11M4 14h11M18.5 6.5A7 7 0 1 0 18.5 17.5', 'V2-Kaemmerei.dc.html'),
+      item('Ordnung', 'M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z', 'V2-Ordnungsamt.dc.html'),
+      item('Bauamt', 'M2 20h20M5 20V10l7-6 7 6v10M9 20v-6h6v6', 'V2-Bauamt.dc.html', false, '7'),
+      item('Parken', 'M5 3h14v18H5zM9 17V7h4a3 3 0 0 1 0 6H9', 'V2-Parken.dc.html'),
+      item('ÖPNV', 'M6 17h12M5 4h14v12H5zM5 11h14M8 20v-3M16 20v-3', 'V2-OePNV.dc.html'),
+      item('Einsätze', 'M12 2v3M5 5l2 2M19 5l-2 2M6 18a6 6 0 0 1 12 0zM4 21h16', 'V2-Einsaetze.dc.html'),
+      item('Presse', 'M4 4h13v16H6a2 2 0 0 1-2-2zM17 8h3v10a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h5', 'V2-Presse.dc.html'),
+      item('Bürger', 'M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'V2-Buerger.dc.html'),
+      item('Kalender', 'M3 5h18v16H3zM16 3v4M8 3v4M3 11h18', 'V2-Kalender.dc.html', true),
+      { isGap: true, isHead: false, isItem: false },
+      item('Erfolge', 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.2 13.9 7 22l5-3 5 3-1.2-8.1', 'V2-Erfolge.dc.html'),
+      item('Hilfe', 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01', '#')
+    ];
+    var K = {
+      plan: 'background: #DCE8FA; border-left: 3px solid #2257B8; color: #15202B;',
+      bad: 'background: #FBE3E5; border-left: 3px solid #C62B3B; color: #15202B;',
+      maybe: 'background: #FFFFFF; border: 1px dashed #A84F0E; color: #6B4A00;',
+      own: 'background: #DDF0E4; border-left: 3px solid #1E7A44; color: #15202B;'
+    };
+    var ev = function (title, sub, s, e, kind) {
+      var top = (s - 6) / 18 * 100, h = Math.max((e - s) / 18 * 100, 7);
+      return { title: title, sub: sub, tip: title + ' · ' + sub,
+        style: 'position: absolute; left: 3px; right: 3px; top: ' + top + '%; height: ' + h + '%; box-sizing: border-box; padding: 4px 6px; border-radius: 6px; display: flex; flex-direction: column; gap: 1px; overflow: hidden; ' + K[kind] };
+    };
+    var dd = [
+      ['Mo', 'Tag 1', 'past', [ev('Spontandemo', 'Leopoldplatz · 16–17 Uhr', 16, 17.2, 'bad')]],
+      ['Di', 'Tag 2', 'past', [ev('Spontandemo', 'Rathaus · 13 Uhr', 13, 14, 'bad'), ev('Schwertransport', 'B 10 · Polizeibegleitung', 20, 23, 'plan'), ev('Spontandemo', 'Bahnhof · 18 Uhr', 17.6, 18.8, 'bad')]],
+      ['Mi', 'Tag 3 · heute', 'now', [ev('Wochenmarkt', 'Jahnstraße · 7–13', 7, 13, 'plan'), ev('Spatenstich?', 'du entscheidest', 15, 16.4, 'own')]],
+      ['Do', 'Tag 4', 'future', [ev('+50 Sachbearbeiter', 'Einarbeitung fertig', 8, 9.4, 'own'), ev('Spontandemo', 'wenn Zorn bleibt', 16, 18, 'maybe')]],
+      ['Fr', 'Tag 5', 'future', [ev('Berufsverkehr', 'Ferienstart-Welle', 13, 19, 'plan'), ev('Amtszeit endet', '24 Uhr · Wertung', 22.6, 24, 'own')]],
+      ['Sa', 'nach Ende', 'off', [ev('Rad-Korso', 'sicher am Wochenende', 11, 15, 'maybe')]],
+      ['So', 'nach Ende', 'off', []]
+    ];
+    var days = dd.map(function (d) {
+      var now = d[2] === 'now', off = d[2] === 'off', past = d[2] === 'past';
+      return { name: d[0], sub: d[1], events: d[3], hasNow: now,
+        headStyle: 'display: flex; flex-direction: column; justify-content: center; padding: 0 8px; border-radius: 8px; ' + (now ? 'background: #15202B; color: #FFFFFF;' : (off ? 'color: #93A1AE;' : 'color: #15202B;')),
+        colStyle: 'position: relative; margin-top: 6px; border-radius: 8px; ' + (now ? 'background: #F5F8FD; box-shadow: inset 0 0 0 1px #C9DAF5;' : (off ? 'background: repeating-linear-gradient(135deg, #F5F7F9 0 8px, #EEF1F4 8px 16px);' : (past ? 'background: #FAFBFC;' : 'background: #FFFFFF; box-shadow: inset 0 0 0 1px #EEF1F4;'))) };
+    });
+    var chanceStyle = function (c) { return 'font: 700 11px "JetBrains Mono", monospace; padding: 2px 6px; border-radius: 5px; ' + (c === 'hoch' ? 'background: #FBE3E5; color: #A3202E;' : (c === 'fest' ? 'background: #DCE8FA; color: #1A4691;' : 'background: #E3E8ED; color: #3D4B59;')); };
+    var kinds = [
+      ['Spontandemo', 'hoch', 'Bürgerzorn über 25', 'sperrt 1–2 Std. eine Straße, Zorn +3'],
+      ['Rad-Korso', 'mittel', '2 Dauerstau-Tage in Folge oder Wochenende', 'blockiert eine Hauptstraße für Stunden'],
+      ['Wochenmarkt', 'fest', 'Mittwoch 7–13 Uhr', 'Jahnstraße halbseitig, Lieferwagen in zweiter Reihe'],
+      ['Schwertransport', 'mittel', 'zufällig, meist nachts', 'langsam auf B 10 / B 294, Polizeibegleitung'],
+      ['Frost', 'niedrig', 'Nacht unter 0 °C', 'Straßen verfallen doppelt so schnell']
+    ].map(function (k) { return { name: k[0], chance: k[1], chanceStyle: chanceStyle(k[1]), when: k[2], effect: k[3] }; });
+    var lg = function (t, text, kind) { return { t: t, text: text, style: 'flex: none; font-size: 12px; padding: 5px 10px; border-radius: 6px; white-space: nowrap; ' + K[kind] }; };
+    var log = [lg('Mi 07:00', 'Wochenmarkt beginnt', 'plan'), lg('Di 22:10', 'Schwertransport durch', 'plan'), lg('Di 18:00', 'Spontandemo Bahnhof', 'bad'), lg('Di 13:00', 'Spontandemo Rathaus', 'bad'), lg('Mo 16:00', 'Spontandemo Leopoldplatz', 'bad')];
+    return { rail: rail, days: days, kinds: kinds, log: log };
+  }
+}
+</script>
+</body>
+</html>

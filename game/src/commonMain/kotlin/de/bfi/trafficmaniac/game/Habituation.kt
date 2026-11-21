@@ -83,7 +83,7 @@ internal class Habituation(
                 ),
             )
         }
-        if (!treasury.pay(habits.campaignCost, tr("Polizeiaktion"))) return
+        if (!treasury.pay(habits.campaignCost, tr("Polizeiaktion"), BookingCategory.POLICE)) return
         lastCampaignDay = day
         campaigns++
         val control = simulation.speedControl

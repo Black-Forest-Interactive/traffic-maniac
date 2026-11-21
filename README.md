@@ -80,13 +80,14 @@ Spielwerte (Kosten, Bußgelder, Schwellen für Bürgerzorn usw.) stehen in `bala
 
 ## Anonyme Statistiken
 
-Nach jeder Partie kann das Spiel ein kleines, anonymes Paket senden – **nur, wenn der Spieler beim ersten Start
-zustimmt** (jederzeit änderbar unter Einstellungen). Enthalten sind Version, Plattform, grobe Geräteklasse, Sprache,
+Während einer Partie kann das Spiel kleine, anonyme Pakete senden – **nur, wenn der Spieler beim ersten Start
+zustimmt** (jederzeit änderbar unter Einstellungen). Gesendet wird zu Beginn, nach jedem Spieltag und am Ende; jede
+Partie hat eine zufällige Kennung (UUID), der Server ersetzt den älteren Stand einer Partie durch den neueren. Enthalten sind Version, Plattform, grobe Geräteklasse, Sprache,
 Stadt, Szenario, Schwierigkeit, Dauer, wie die Partie endete, Punkte, Einnahmen und Ausgaben, je Spieltag Kasse,
 Stimmung, Zorn, Abwahlindex, Reputation und Verkehrsbilanz sowie wie oft welche Werkzeuge und Zeitraffer benutzt
 wurden. Keine Namen, keine Spielstände, keine IP-Adressen; eine zufällige Kennung der Installation lässt sich
-zurücksetzen. „Anzeigen, was gesendet wird“ zeigt das letzte Paket im Klartext. Pakete liegen bis zum nächsten Start in
-`~/.traffic-maniac/outbox/`; gesendet wird nur, wenn das Spiel mit einer Server-Adresse gebaut wurde
+zurücksetzen. „Anzeigen, was gesendet wird“ zeigt das letzte Paket im Klartext. Ohne Netz bleibt der letzte Stand jeder Partie in
+`~/.traffic-maniac/outbox/` liegen und geht beim nächsten Versuch raus; gesendet wird nur, wenn das Spiel mit einer Server-Adresse gebaut wurde
 (`-PstatsUrl=…`, im Release-Workflow aus der Repository-Variable `STATS_URL`). Der Statistik-Server liegt in einem
 eigenen, nicht öffentlichen Repository.
 

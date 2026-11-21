@@ -9,6 +9,8 @@ import de.bfi.trafficmaniac.sim.SimulationConfig
 import de.bfi.trafficmaniac.sim.Weekday
 import kotlinx.coroutines.channels.Channel
 import kotlin.jvm.Transient
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Das Spiel um die Simulation: Kasse, Werkzeuge, Bußgeldstelle, Bürger und Politik.
@@ -60,12 +62,12 @@ class CityGame(
                 override fun unlocked(achievement: Achievement) {
                     alerts++
                     message(
-                        tr("Achievement freigeschaltet: {title}!", "title" to achievement.title),
+                        tr("Erfolg freigeschaltet: {title}!", "title" to achievement.title),
                         kind = MessageKind.SUCCESS,
                     )
                     highlights.add(
                         HighlightKind.BIG,
-                        tr("Errungenschaft: {title}", "title" to achievement.title),
+                        tr("Erfolg: {title}", "title" to achievement.title),
                         achievement.description,
                     )
                 }
@@ -157,6 +159,11 @@ class CityGame(
     /** Höchstes Verhältnis gemessen/erlaubt unter den heutigen Blitzerfotos (für „Raser des Jahres“). */
     private var recordRatioToday = 0.0
     private var latestEdition: NewspaperEdition? = null
+
+    private val citizenRecorder = CitizenRecorder()
+
+    /** Alle Ausgaben der Amtszeit – fürs Archiv auf der Seite „Presse & PR“. */
+    private val editions = ArrayList<NewspaperEdition>()
     private var commuteYesterday = CommuteStats()
 
     init {
@@ -202,11 +209,25 @@ class CityGame(
 
     private val telemetryLog = TelemetryLog()
 
-    /** Statistikpaket dieser Partie (Paket F); [context] liefert die Plattform. Gesendet wird nur mit Zustimmung. */
-    fun telemetry(context: TelemetryContext): GameTelemetry {
+    /** Zufällige Kennung dieser Partie für die Statistik; wird mitgespeichert (Spielstand = ganzer Objektgraph). */
+    private var gameIdValue: String? = newGameId()
+
+    /** Kennung der Partie – ältere Spielstände ohne Kennung bekommen beim ersten Zugriff eine neue. */
+    val gameId: String
+        get() = gameIdValue ?: newGameId().also { gameIdValue = it }
+
+    /**
+     * Statistikpaket dieser Partie (Paket F); [context] liefert die Plattform. [final] = die Partie ist vorbei (Ende
+     * der Amtszeit, Abwahl oder Abbruch), sonst ein Zwischenstand. Gesendet wird nur mit Zustimmung.
+     */
+    fun telemetry(
+        context: TelemetryContext,
+        final: Boolean = true,
+    ): GameTelemetry {
         val state = state()
         return GameTelemetry(
             installation = context.installation,
+            game = gameId,
             appVersion = context.appVersion,
             platform = context.platform,
             deviceClass = context.deviceClass,
@@ -218,7 +239,8 @@ class CityGame(
                 when {
                     isGameOver -> GameTelemetry.END_RECALLED
                     isTermOver -> GameTelemetry.END_TERM
-                    else -> GameTelemetry.END_ABORTED
+                    final -> GameTelemetry.END_ABORTED
+                    else -> GameTelemetry.END_RUNNING
                 },
             daysPlayed = simulation.dayReports.size,
             realMinutes = context.realMinutes,
@@ -246,6 +268,8 @@ class CityGame(
 
     fun step() {
         if (isFinished) return
+        // Uhr fürs Journal der Kämmerei: Spielzeit ab Mitternacht des ersten Tags (das Spiel beginnt nicht um 0 Uhr)
+        treasury.now = simulation.gameTime.let { it.day * SECONDS_PER_DAY + it.secondOfDay }
         var executed = false
         while (true) {
             val command = commands.tryReceive().getOrNull() ?: break
@@ -259,6 +283,7 @@ class CityGame(
         }
         val reportsBefore = simulation.dayReports.size
         simulation.step()
+        treasury.startup = false
         collectFines()
         habits.update()
         winter.update()
@@ -275,65 +300,84 @@ class CityGame(
     }
 
     fun state(): GameState =
-        GameState(
-            balance = treasury.balance,
-            fineIncome = treasury.fineIncome,
-            expenses = treasury.expenses,
-            speedLimits = works.speedLimits.toMap(),
-            nightLimits = works.nightLimits.toMap(),
-            priorityRoads = works.priorityRoads.toSet(),
-            bikeCrossings = works.bikeCrossings.toSet(),
-            achievements = achievements.titles,
-            signalNodes = works.signalNodes,
-            greenWaves = timing.greenWaves.toList(),
-            roadworks = roadworks.roadworks.toSet(),
-            roadClosures = roadworks.closed.toSet(),
-            bikeStreets = roadworks.bikeStreets.toSet(),
-            busLanes = buses.busLanes.toSet(),
-            busPriorityNodes = buses.priorityNodes.toSet(),
-            busModeShift = buses.modeShift,
-            winterService = winter.enabled,
-            ploughs = winter.ploughs,
-            cameras = works.cameraCounters.values.map { it.toRecord() },
-            messages = messages.toList(),
-            highlights = highlights.list(),
-            assignments = assignments.state(simulation.time),
-            warnerShare = simulation.speedControl.warnerShare,
-            marathonActive = habits.marathonActive,
-            campaignInDays = habits.campaignInDays,
-            grantIncome = treasury.grantIncome,
-            prContract = prContract,
-            argumentsCampaign = argumentsCampaign,
-            unhappyShare = unhappyShare,
-            anger = politics.anger,
-            recallIndex = politics.recallIndex,
-            reputation = politics.reputation,
-            zoneMoods = moods,
-            lastBudgetRound = lastBudgetRound,
-            isGameOver = isGameOver,
-            daysPlayed = simulation.dayReports.size,
-            termDays = rules.termDays,
-            isTermOver = isTermOver,
-            score = score,
-            latestEdition = latestEdition,
-            fineOffice = office.state(simulation.time),
-            bannedDrivers = drivers.bannedCount,
-            licenseRevocations = drivers.revocations,
-            commuteToday = citizens.commuteToday,
-            commuteYesterday = commuteYesterday,
-            commuteDamage = (commuteYesterday.lostMinutes * rules.damagePerLostMinute).toLong(),
-            maintenance = maintenance.state(simulation.time),
-            parkingOffice = parkingOffice.state(),
-            detourSegments = works.detourSegments.toSet(),
-            events = events.state(),
-            press = press.state(unhappyShare, maintenance.state(simulation.time)),
-            achievementList = achievements.state(),
-            firstDay = firstDay,
-            firstDayReport = simulation.dayReports.firstOrNull(),
-            city = rules.city,
-            trailers = works.trailers,
-            idleTrailers = works.idleTrailers,
+        baseState.copy(
+            journal = treasury.journal.state(treasury.now, treasury.balance),
+            editions = editions.toList(),
+            citizenHistory = citizenRecorder.state(),
         )
+
+    /** Der Spielstand ohne das Journal der Kämmerei (das hängt [state] an). */
+    private val baseState: GameState
+        get() =
+            GameState(
+                balance = treasury.balance,
+                fineIncome = treasury.fineIncome,
+                expenses = treasury.expenses,
+                speedLimits = works.speedLimits.toMap(),
+                nightLimits = works.nightLimits.toMap(),
+                priorityRoads = works.priorityRoads.toSet(),
+                bikeCrossings = works.bikeCrossings.toSet(),
+                achievements = achievements.titles,
+                signalNodes = works.signalNodes,
+                greenWaves = timing.greenWaves.toList(),
+                roadworks = roadworks.roadworks.toSet(),
+                roadClosures = roadworks.closed.toSet(),
+                bikeStreets = roadworks.bikeStreets.toSet(),
+                busLanes = buses.busLanes.toSet(),
+                busPriorityNodes = buses.priorityNodes.toSet(),
+                busModeShift = buses.modeShift,
+                winterService = winter.enabled,
+                ploughs = winter.ploughs,
+                cameras = works.cameraCounters.values.map { it.toRecord() },
+                messages = messages.toList(),
+                highlights = highlights.list(),
+                assignments = assignments.state(simulation.time),
+                warnerShare = simulation.speedControl.warnerShare,
+                marathonActive = habits.marathonActive,
+                campaignInDays = habits.campaignInDays,
+                grantIncome = treasury.grantIncome,
+                prContract = prContract,
+                argumentsCampaign = argumentsCampaign,
+                unhappyShare = unhappyShare,
+                anger = politics.anger,
+                recallIndex = politics.recallIndex,
+                reputation = politics.reputation,
+                zoneMoods = moods,
+                lastBudgetRound = lastBudgetRound,
+                isGameOver = isGameOver,
+                daysPlayed = simulation.dayReports.size,
+                termDays = rules.termDays,
+                isTermOver = isTermOver,
+                score = score,
+                latestEdition = latestEdition,
+                fineOffice = office.state(simulation.time),
+                bannedDrivers = drivers.bannedCount,
+                licenseRevocations = drivers.revocations,
+                commuteToday = citizens.commuteToday,
+                commuteYesterday = commuteYesterday,
+                commuteDamage = (commuteYesterday.lostMinutes * rules.damagePerLostMinute).toLong(),
+                maintenance = maintenance.state(simulation.time),
+                parkingOffice = parkingOffice.state(),
+                detourSegments = works.detourSegments.toSet(),
+                events = events.state(),
+                press = press.state(unhappyShare, maintenance.state(simulation.time)),
+                achievementList = achievements.state(),
+                firstDay = firstDay,
+                firstDayReport = simulation.dayReports.firstOrNull(),
+                incidentCounts = incidentCounts,
+                city = rules.city,
+                trailers = works.trailers,
+                idleTrailers = works.idleTrailers,
+            )
+
+    /** Einsätze je Art heute und in der Amtszeit (abgeschlossene Tage plus heute). */
+    private val incidentCounts: IncidentCounts
+        get() {
+            val today = simulation.incidentsToday
+            val term = simulation.dayReports.fold(today) { sum, day -> sum.addCounts(day.incidents) }
+            val ambulance = simulation.dayReports.flatMap { it.ambulanceMinutes }
+            return IncidentCounts(today, term, ambulance.takeIf { it.isNotEmpty() }?.average())
+        }
 
     private val hourIndex: Int get() = (simulation.time / SECONDS_PER_HOUR).toInt()
 
@@ -349,7 +393,16 @@ class CityGame(
                     else -> FineTier.of(violation.excessKmh)
                 }
             works.cameraCounters[violation.cameraId]?.record(tier, violation.measuredKmh, violation.limitKmh)
-            office.register(tier, violation.homeZone, violation.person, simulation.time)
+            val counter = works.cameraCounters[violation.cameraId]
+            office.register(
+                tier,
+                violation.homeZone,
+                violation.person,
+                simulation.time,
+                counter?.let {
+                    BookingPlace(it.segment, it.streetName)
+                },
+            )
             finesToday += tier.fine
             // Tagesrekord und „Raser des Jahres“ zählen nur Tempoverstöße
             if (!tier.isSpeed) continue
@@ -371,6 +424,7 @@ class CityGame(
         parkingOffice.hourPassed(simulation.time, simulation.gameTime, office.strictness)
         citizens.forget(hours = 1.0)
         moods = citizens.moods(argumentsCampaign, simulation.environment.snapshot)
+        citizenRecorder.hourPassed(moods, politics.anger)
         unhappyShare = citizens.unhappyShare(moods)
         val incomeThisHour = treasury.fineIncome - fineIncomeAtHourStart
         fineIncomeAtHourStart = treasury.fineIncome
@@ -429,7 +483,8 @@ class CityGame(
     private fun dayEnded() {
         val reports = simulation.dayReports
         val report = reports.last()
-        val officeToday = office.startNewDay()
+        citizenRecorder.dayEnded(moods)
+        val officeToday = office.startNewDay().also { treasury.journal.startNewDay() }
         commuteYesterday = citizens.startNewDay()
         val revocationsToday = drivers.startNewDay(simulation.time)
         maintenance.dayPassed()
@@ -472,10 +527,10 @@ class CityGame(
                     press.tone,
                 ),
             )
+        latestEdition?.let(editions::add)
         finesToday = 0
         recordToday = null
         recordRatioToday = 0.0
-        if (works.laserCount > 0) treasury.charge(works.laserCount * rules.laserDailyCost)
         politics.press(roadworks.dayEnded(report.day))
         politics.press(buses.dayEnded())
         winter.dayEnded()
@@ -492,6 +547,10 @@ class CityGame(
      * Spieltag an.
      */
     private fun budgetRound() {
+        // Laser kosten Tagesmiete – mit der Haushaltsrunde um Mitternacht abgebucht
+        if (works.laserCount > 0) {
+            treasury.charge(works.laserCount * rules.laserDailyCost, BookingCategory.LASER, tr("Laser"))
+        }
         val argumentsCost = if (argumentsCampaign) rules.argumentsWeeklyCost else 0
         val round =
             BudgetRound(
@@ -506,15 +565,11 @@ class CityGame(
         treasury.receiveAllowance(round.allowance)
         treasury.earn(round.permits)
         val costs = round.prCost + round.argumentsCost + round.salaries + round.maintenance
-        treasury.charge(costs)
+        treasury.charge(round.prCost + round.argumentsCost, BookingCategory.PR, tr("PR-Agentur und Kampagne"))
+        treasury.charge(round.salaries, BookingCategory.STAFF, tr("Gehälter"))
+        treasury.charge(round.maintenance, BookingCategory.UPKEEP, tr("Erhaltungsbudget"))
         lastBudgetRound = round
-        message(
-            tr(
-                "Haushaltsrunde: +{allowance} Haushalt, −{costs} PR, Gehälter und Erhalt",
-                "allowance" to formatEuro(round.allowance),
-                "costs" to formatEuro(costs),
-            ),
-        )
+        message(budgetRoundMessage(round, costs))
     }
 
     private val score: Score
@@ -708,3 +763,32 @@ class CityGame(
         const val COLLAPSE_STORY_WEIGHT = 5
     }
 }
+
+private const val SECONDS_PER_DAY = 86_400.0
+
+/** „PR, Gehälter und Erhalt“: mit Komma aufgezählt, das letzte mit „und“. */
+private fun enumerate(items: List<String>): String =
+    if (items.size < 2) items.joinToString() else items.dropLast(1).joinToString(", ") + tr(" und ") + items.last()
+
+/** Meldung zur Haushaltsrunde – nennt nur die Posten, die wirklich etwas kosten (ohne Agentur keine „PR“). */
+private fun budgetRoundMessage(
+    round: BudgetRound,
+    costs: Long,
+): String {
+    val posts =
+        listOfNotNull(
+            tr("PR").takeIf { round.prCost + round.argumentsCost > 0 },
+            tr("Gehälter").takeIf { round.salaries > 0 },
+            tr("Erhalt").takeIf { round.maintenance > 0 },
+        )
+    if (posts.isEmpty()) return tr("Haushaltsrunde: +{allowance} Haushalt", "allowance" to formatEuro(round.allowance))
+    return tr(
+        "Haushaltsrunde: +{allowance} Haushalt, −{costs} für {posts}",
+        "allowance" to formatEuro(round.allowance),
+        "costs" to formatEuro(costs),
+        "posts" to enumerate(posts),
+    )
+}
+
+@OptIn(ExperimentalUuidApi::class)
+private fun newGameId(): String = Uuid.random().toString()

@@ -47,6 +47,11 @@ data class EventsState(
     val totals: Map<EventKind, Int> = emptyMap(),
     /** Dauerstau-Tage in Folge (treibt die Rad-Korsos). */
     val jamStreak: Int = 0,
+    /** Was bisher passiert ist: jedes gestartete Ereignis (Tag, Startstunde, Art, Ort), das älteste zuerst. */
+    val chronicle: List<CalendarEntry> = emptyList(),
+    /** Chance je Stunde auf eine Spontandemo bzw. auf einen Rad-Korso am Tag – für „Was kann passieren?“. */
+    val demoChancePerHour: Double = 0.0,
+    val corsoChance: Double = 0.0,
 )
 
 /** Was heute los war (für Zeitung und Achievements). */
@@ -153,6 +158,9 @@ internal class EventPlanner(
             active = active,
             totals = totals.toMap(),
             jamStreak = jamStreak,
+            chronicle = chronicle.toList(),
+            demoChancePerHour = lastDemoChance,
+            corsoChance = lastCorsoChance,
         )
     }
 
@@ -217,7 +225,7 @@ internal class EventPlanner(
         val weekend = if (weekday.isWorkday) 0.0 else rules.corsoChanceWeekend
         val banned =
             rules.corsoChanceBanned * (bannedDrivers.toDouble() / rules.corsoBannedReference).coerceAtMost(1.0)
-        return weekend + jamStreak * rules.corsoChancePerJamDay + banned
+        return (weekend + jamStreak * rules.corsoChancePerJamDay + banned).also { lastCorsoChance = it }
     }
 
     private fun maybeDemo(
@@ -255,9 +263,10 @@ internal class EventPlanner(
 
     /** Unter [GameRules.demoMinAnger] keine Demos, darüber überproportional mehr. */
     fun demoChance(anger: Double): Double {
+        lastDemoChance = 0.0
         if (anger < rules.demoMinAnger) return 0.0
         val share = ((anger - rules.demoMinAnger) / (MAX_ANGER - rules.demoMinAnger)).coerceIn(0.0, 1.0)
-        return rules.demoChancePerHour * share.pow(DEMO_EXPONENT)
+        return (rules.demoChancePerHour * share.pow(DEMO_EXPONENT)).also { lastDemoChance = it }
     }
 
     private fun heavyTransport() {
@@ -282,8 +291,16 @@ internal class EventPlanner(
         )
     }
 
+    private val chronicle = ArrayList<CalendarEntry>()
+
+    /** Zuletzt berechnete Chancen (für die Oberfläche). */
+    private var lastDemoChance = 0.0
+    private var lastCorsoChance = 0.0
+
     private fun start(event: CityEvent) {
         running[event.id] = simulation.gameTime.clockText
+        val now = simulation.gameTime
+        chronicle += CalendarEntry(now.day, now.weekday, now.hour, now.hour, event.kind, event.place, event.segments)
         totals[event.kind] = (totals[event.kind] ?: 0) + 1
     }
 

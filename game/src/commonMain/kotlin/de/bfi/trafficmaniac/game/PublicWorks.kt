@@ -73,7 +73,12 @@ internal class PublicWorks(
                 limits.remove(s)
             }
             message(tr("Tempolimit{suffix} aufgehoben: {street}", "suffix" to suffix, "street" to street))
-        } else if (treasury.pay(rules.speedLimitSignCost, tr("Tempo-{kmh}-Schild", "kmh" to kmh))) {
+        } else if (treasury.pay(
+                rules.speedLimitSignCost,
+                tr("Tempo-{kmh}-Schild", "kmh" to kmh),
+                place = city.placeOf(segment),
+            )
+        ) {
             for (s in stretch) {
                 simulation.graph.setSegmentSpeedLimit(s, kmh, nightOnly)
                 limits[s] = kmh
@@ -144,8 +149,8 @@ internal class PublicWorks(
         val affordable =
             when {
                 mobile -> true
-                dummy -> treasury.pay(rules.habits.dummyCost, tr("Attrappe"))
-                else -> treasury.pay(rules.cameraCost, tr("Blitzer"))
+                dummy -> treasury.pay(rules.habits.dummyCost, tr("Attrappe"), place = city.placeOf(segment))
+                else -> treasury.pay(rules.cameraCost, tr("Blitzer"), place = city.placeOf(segment))
             }
         if (affordable) {
             val camera = simulation.speedControl.placeCamera(segment, mobile, dummy = dummy)
@@ -176,9 +181,9 @@ internal class PublicWorks(
         val fromDepot = idleTrailers > 0
         val paid =
             if (fromDepot) {
-                treasury.pay(rules.trailerMoveCost, tr("Blitzeranhänger umsetzen"))
+                treasury.pay(rules.trailerMoveCost, tr("Blitzeranhänger umsetzen"), place = city.placeOf(segment))
             } else {
-                treasury.pay(rules.trailerCost, tr("Blitzeranhänger"))
+                treasury.pay(rules.trailerCost, tr("Blitzeranhänger"), place = city.placeOf(segment))
             }
         if (!paid) return
         if (fromDepot) idleTrailers-- else trailers++
@@ -194,7 +199,11 @@ internal class PublicWorks(
         priority: Boolean,
     ) {
         if ((segment in priorityRoads) == priority) return
-        if (priority && !treasury.pay(rules.priorityRoadCost, tr("Vorfahrtsschilder"))) return
+        if (priority &&
+            !treasury.pay(rules.priorityRoadCost, tr("Vorfahrtsschilder"), place = city.placeOf(segment))
+        ) {
+            return
+        }
         simulation.graph.setSegmentPriority(segment, priority)
         if (priority) priorityRoads += segment else priorityRoads -= segment
         message(
@@ -218,7 +227,11 @@ internal class PublicWorks(
         crossing: Boolean,
     ) {
         if ((segment in bikeCrossings) == crossing) return
-        if (crossing && !treasury.pay(rules.bikeCrossingCost, tr("Radweg-Querung"))) return
+        if (crossing &&
+            !treasury.pay(rules.bikeCrossingCost, tr("Radweg-Querung"), place = city.placeOf(segment))
+        ) {
+            return
+        }
         simulation.graph.setSegmentBikeCrossing(segment, crossing)
         if (crossing) bikeCrossings += segment else bikeCrossings -= segment
         message(

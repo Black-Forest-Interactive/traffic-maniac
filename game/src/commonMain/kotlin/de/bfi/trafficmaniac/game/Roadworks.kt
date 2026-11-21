@@ -69,7 +69,14 @@ internal class Roadworks(
         if (changing.isEmpty()) return
         val street = streetOf(changing)
         if (active) {
-            if (!treasury.pay(rules.roadworksSetupCost * stretchCount(changing), tr("Baustelle einrichten"))) return
+            if (!treasury.pay(
+                    rules.roadworksSetupCost * stretchCount(changing),
+                    tr("Baustelle einrichten"),
+                    place = city.placeOf(changing),
+                )
+            ) {
+                return
+            }
             for (segment in changing) {
                 sites[segment] = Site(simulation.gameTime.day, works.speedLimits[segment])
                 simulation.infrastructure.closures.setPlayerWorks(segment, true)
@@ -105,7 +112,11 @@ internal class Roadworks(
         val changing = segments.filter { (it in closed) != close }
         if (changing.isEmpty()) return
         val street = streetOf(changing)
-        if (close && !treasury.pay(rules.closureCost * stretchCount(changing), tr("Absperrung"))) return
+        if (close &&
+            !treasury.pay(rules.closureCost * stretchCount(changing), tr("Absperrung"), place = city.placeOf(changing))
+        ) {
+            return
+        }
         for (segment in changing) {
             simulation.infrastructure.closures.setPlayerClosed(segment, close)
             if (close) closed += segment else closed -= segment
@@ -126,7 +137,15 @@ internal class Roadworks(
     ) {
         val changing = segments.filter { (it in bikeStreetLimits) != on }
         if (changing.isEmpty()) return
-        if (on && !treasury.pay(rules.bikeStreetCost * stretchCount(changing), tr("Fahrradstraße"))) return
+        if (on &&
+            !treasury.pay(
+                rules.bikeStreetCost * stretchCount(changing),
+                tr("Fahrradstraße"),
+                place = city.placeOf(changing),
+            )
+        ) {
+            return
+        }
         for (segment in changing) {
             simulation.graph.setSegmentBikeStreet(segment, on)
             if (on) {
@@ -152,7 +171,11 @@ internal class Roadworks(
      */
     fun dayEnded(day: Int): Double {
         if (sites.isEmpty()) return 0.0
-        treasury.charge(rules.roadworksDailyCost * stretchCount(sites.keys))
+        treasury.charge(
+            rules.roadworksDailyCost * stretchCount(sites.keys),
+            BookingCategory.ROADWORKS,
+            tr("Baustellen"),
+        )
         val stale = sites.filterValues { day - it.day >= rules.fakeRoadworksGraceDays }.keys
         if (stale.isEmpty() || random.nextDouble() >= rules.fakeRoadworksPressChance) return 0.0
         message(

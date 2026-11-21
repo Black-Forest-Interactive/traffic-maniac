@@ -23,6 +23,8 @@ import de.bfi.trafficmaniac.ui.StatisticsControls
 import de.bfi.trafficmaniac.ui.TouchCallbacks
 import de.bfi.trafficmaniac.ui.TouchGameApp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -44,7 +46,7 @@ fun AndroidGame(
     var loading by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(settings) { data.save(settings) }
-    // Statistik-Postausgang beim Start (bzw. nach der Zustimmung) leeren – nie während des Spiels
+    // Statistik-Postausgang beim Start (bzw. nach der Zustimmung) leeren; Zwischenstände siehe unten
     LaunchedEffect(settings.statistics) {
         if (settings.statistics == true) withContext(Dispatchers.IO) { data.statistics.sendPending() }
     }
@@ -64,6 +66,8 @@ fun AndroidGame(
     // Takt und Spielende laufen weiter (angehalten), solange die Partie im Menü wartet
     slot.live?.let { live ->
         LaunchedEffect(live) { live.runner.run() }
+        // Statistik zwischendurch: zu Beginn und nach jedem Spieltag ein Zwischenstand, gleich gesendet
+        if (settings.statistics == true) ProgressReports(live, data.statistics)
         LaunchedEffect(live) {
             val entry = live.result()
             slot.finished = live
@@ -173,4 +177,26 @@ private fun Playing(
         tutorial = current.scenario.tutorial,
         input = current.input,
     )
+}
+
+/**
+ * Zwischenstände der Partie für die Statistik: einmal beim Start und bei jedem Tageswechsel – abgelegt und sofort im
+ * Hintergrund gesendet (ohne Netz bleiben sie im Postausgang).
+ */
+@Composable
+private fun ProgressReports(
+    session: Session,
+    statistics: Statistics,
+) {
+    LaunchedEffect(session) {
+        session.runner.frames
+            .mapNotNull { it?.current?.gameTime?.day }
+            .distinctUntilChanged()
+            .collect {
+                withContext(Dispatchers.IO) {
+                    session.progress(statistics)
+                    statistics.sendPending()
+                }
+            }
+    }
 }

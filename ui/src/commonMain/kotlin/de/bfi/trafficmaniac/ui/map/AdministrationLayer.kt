@@ -211,8 +211,8 @@ internal fun DrawScope.drawParkingLots(
     }
 }
 
-private const val GOOD = 0.6f
-private const val BAD = 0.2f
+private const val GOOD = MapStyle.CONDITION_FAIR
+private const val BAD = MapStyle.CONDITION_BAD
 private const val CONDITION_WIDTH_METERS = 9f
 private const val CONDITION_MIN_PIXELS = 3f
 private const val CONDITION_ALPHA = 0.75f

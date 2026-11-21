@@ -1,6 +1,7 @@
 package de.bfi.trafficmaniac.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.unit.Density
 import de.bfi.trafficmaniac.city.CityMap
@@ -76,31 +77,52 @@ class Screenshots {
                     onContinue = {},
                 )
             }
-            for (panel in listOf(SidePanel.NONE, SidePanel.EMERGENCIES, SidePanel.CAMERAS, SidePanel.TRANSIT)) {
-                val input =
-                    HudInput().apply {
-                        panelRequest = panel
-                        // Ohne Fenster: das Ampelprogramm-Werkzeug mit seiner Auswahl zeigen
-                        listRequest = if (panel == SidePanel.NONE) Tool.CAMERA else Tool.ROUTE
-                    }
-                shoot(File(out, "game-${panel.name.lowercase()}-$suffix.png"), width, height) {
-                    TrafficManiacApp(
-                        city,
-                        traffic = MutableStateFlow(frame),
-                        input = input,
-                        onSpeed = {},
-                        onSave = {},
-                        onMenu = {},
-                        onFastForward = {},
-                        onResumeSpeed = {},
-                    )
-                }
-            }
+            gamePages(out, city, frame, suffix, width, height)
         }
         touch(out, city, frame)
+        if (System.getenv("TM_SCREENSHOTS_DAY3") == "1") day3(out, city)
         dayReport(out)
         inspectCard(out, frame)
         toastsAndTransit(out, city, frame)
+    }
+
+    /** Spiel mit Karte (Kontrolle-Auswahl offen) und einigen Seiten der Leiste. */
+    private fun gamePages(
+        out: File,
+        city: CityMap,
+        frame: TrafficFrame,
+        suffix: String,
+        width: Int,
+        height: Int,
+    ) {
+        for (panel in listOf(
+            SidePanel.NONE,
+            SidePanel.INBOX,
+            SidePanel.TREASURY,
+            SidePanel.PRESS,
+            SidePanel.OFFICE,
+            SidePanel.EMERGENCIES,
+            SidePanel.TRANSIT,
+        )) {
+            val input =
+                HudInput().apply {
+                    panelRequest = panel
+                    // Ohne Fenster: das Ampelprogramm-Werkzeug mit seiner Auswahl zeigen
+                    listRequest = if (panel == SidePanel.NONE) Tool.CAMERA else Tool.ROUTE
+                }
+            shoot(File(out, "game-${panel.name.lowercase()}-$suffix.png"), width, height) {
+                TrafficManiacApp(
+                    city,
+                    traffic = MutableStateFlow(frame),
+                    input = input,
+                    onSpeed = {},
+                    onSave = {},
+                    onMenu = {},
+                    onFastForward = {},
+                    onResumeSpeed = {},
+                )
+            }
+        }
     }
 
     /** Einblendungen in allen drei Stufen und die Nahansicht am Marktplatz mit Haltestellen und Bussen. */
@@ -112,7 +134,7 @@ class Screenshots {
         shoot(File(out, "toasts.png"), TOAST_SHOT_WIDTH, TOAST_SHOT_HEIGHT, settleMillis = TOAST_SETTLE_MILLIS) {
             HighlightToasts(
                 listOf(
-                    Highlight(1, HighlightKind.BIG, "Errungenschaft: Es blitzt", "Der erste Blitzer steht"),
+                    Highlight(1, HighlightKind.BIG, "Erfolg: Es blitzt", "Der erste Blitzer steht"),
                     Highlight(
                         2,
                         HighlightKind.MEDIUM,
@@ -123,6 +145,7 @@ class Screenshots {
                 ),
                 {},
                 showExisting = true,
+                onInbox = {},
             )
         }
         // Nah dran am Marktplatz: Haltestellen und Busse
@@ -134,6 +157,19 @@ class Screenshots {
                     initialCamera =
                         de.bfi.trafficmaniac.ui.map
                             .Camera(stop.x, stop.y, MAP_SHOT_SCALE),
+                )
+            }
+            // Dieselbe Stelle mit der Ebene „Buslinien“: Linien in Linienfarbe, Abschnitte nach Verspätung
+            shoot(File(out, "map-transit-lines.png"), MAP_SHOT_WIDTH, MAP_SHOT_HEIGHT) {
+                de.bfi.trafficmaniac.ui.map.MapView(
+                    city,
+                    traffic = { frame },
+                    initialCamera =
+                        de.bfi.trafficmaniac.ui.map
+                            .Camera(stop.x, stop.y, MAP_SHOT_SCALE / 2),
+                    extras =
+                        de.bfi.trafficmaniac.ui.map
+                            .MapExtras(transit = true),
                 )
             }
         }
@@ -149,7 +185,7 @@ class Screenshots {
             listOf(
                 Triple("tutorial", SidePanel.NONE, null),
                 Triple("camera", SidePanel.NONE, Tool.CAMERA),
-                Triple("budget", SidePanel.BUDGET, null),
+                Triple("treasury", SidePanel.TREASURY, null),
                 Triple("transit", SidePanel.TRANSIT, null),
                 Triple("route", SidePanel.NONE, Tool.ROUTE),
             )
@@ -201,31 +237,76 @@ class Screenshots {
 
     /** Tagesabschluss mit Zeitung, Kasten „Aus der Praxis“ und Blitzer-Bilanz. */
     private fun dayReport(out: File) {
+        val (report, edition) = sampleDay()
+        shoot(File(out, "dayreport.png"), SIZES.first().first, SIZES.first().second) {
+            TmTheme {
+                DayReportOverlay(
+                    report,
+                    edition,
+                    {},
+                    cameraSummary = "82 % der Blitzer-Einnahmen stammen aus Verstößen bis 10 km/h.",
+                    balance = DayBalance(38_400, 46_900, -5_595, 50 to 53, 9 to 14, 12 to 18, "bissig", 4),
+                    actions = DayReportActions(onClose = {}, onTreasury = {}),
+                )
+            }
+        }
+    }
+
+    /** Beispieltag für den Tagesabschluss: typischer Werktag und eine Ausgabe der Zeitung. */
+    private fun sampleDay(): Pair<DayReport, NewspaperEdition> {
         val report =
             DayReport(
                 day = 0,
                 weekday = Weekday.MONDAY,
-                tripsStartedPerHour = IntArray(GameTime.HOURS_PER_DAY) { (it % 12 + 1) * 300 },
-                tripsCompleted = 41_000,
+                // Typischer Werktag: Spitzen morgens und am Nachmittag, nachts fast nichts
+                tripsStartedPerHour =
+                    intArrayOf(
+                        60,
+                        30,
+                        20,
+                        20,
+                        60,
+                        400,
+                        1900,
+                        3600,
+                        2700,
+                        1700,
+                        1500,
+                        1600,
+                        1900,
+                        1800,
+                        1700,
+                        2200,
+                        3000,
+                        3300,
+                        2400,
+                        1600,
+                        1100,
+                        700,
+                        400,
+                        150,
+                    ),
+                tripsCompleted = 33_100,
                 meanTripMinutes = 17.4,
                 peakVehicles = 1_800,
                 peakHour = 7,
                 stuckRemovals = 120,
+                vehicleKm = 312_000.0,
+                vehicleHours = 9_800.0,
             )
         val edition =
             NewspaperEdition(
                 day = 0,
-                headlines = listOf("Blitzer-Rekord in der Goethestraße", "Stau am Leopoldplatz", "Tempo 30 kommt"),
+                headlines =
+                    listOf(
+                        "Blitzer-Rekord in der Goethestraße",
+                        "Rathaus verdient prächtig – Pendler stehen im Stau",
+                        "Stau am Leopoldplatz",
+                        "Tempo 30 kommt",
+                    ),
                 letters = listOf("„Ich fahre seit 40 Jahren unfallfrei zu schnell.“"),
             )
-        shoot(File(out, "dayreport.png"), SIZES.first().first, SIZES.first().second) {
-            DayReportOverlay(
-                report,
-                edition,
-                {},
-                cameraSummary = "82 % der Blitzer-Einnahmen stammen aus Verstößen bis 10 km/h.",
-            )
-        }
+        return report to edition
     }
 
     private fun shoot(
@@ -265,7 +346,91 @@ class Screenshots {
         return if (file.isFile) CityMapCodec.decode(file.readBytes()) else null
     }
 
-    private fun frame(city: CityMap): TrafficFrame {
+    /**
+     * Spielstand nach zwei vollen Spieltagen (Tag 3): echte Zahlen in Kämmerei, Presse, Ordnungsamt und ÖPNV. Dauert
+     * – deshalb nur mit `TM_SCREENSHOTS_DAY3=1`.
+     */
+    private fun day3(
+        out: File,
+        city: CityMap,
+    ) {
+        val frame = frame(city, days = 2)
+        val (width, height) = DAY3_WIDTH to DAY3_HEIGHT
+        for (panel in DAY3_PAGES) {
+            dayPage(
+                File(out, "game-${panel.name.lowercase()}-day3-${width}x$height.png"),
+                city,
+                frame,
+                panel,
+            )
+        }
+        // Bauamt: Sammelaktion (12 ausgewählt, Statistik bis unten) und ein geöffneter Schaden
+        val maintenance = SidePanel.MAINTENANCE
+        val selected = MaintenancePreset(select = SELECTED_DAMAGES, statsToEnd = true)
+        dayPage(File(out, "game-maintenance-selected-day3-${width}x$height.png"), city, frame, maintenance, selected)
+        val end = MaintenancePreset(select = SELECTED_DAMAGES, tableToEnd = true)
+        dayPage(File(out, "game-maintenance-selected-end-day3-${width}x$height.png"), city, frame, maintenance, end)
+        dayPage(
+            File(out, "game-maintenance-detail-day3-${width}x$height.png"),
+            city,
+            frame,
+            maintenance,
+            MaintenancePreset(open = true),
+        )
+    }
+
+    private fun dayPage(
+        file: File,
+        city: CityMap,
+        frame: TrafficFrame,
+        panel: SidePanel,
+        preset: MaintenancePreset = MaintenancePreset(),
+    ) {
+        val input = HudInput().apply { panelRequest = panel }
+        shoot(file, DAY3_WIDTH, DAY3_HEIGHT) {
+            CompositionLocalProvider(LocalMaintenancePreset provides preset) {
+                TrafficManiacApp(
+                    city,
+                    traffic = MutableStateFlow(frame),
+                    input = input,
+                    onSpeed = {},
+                    onSave = {},
+                    onMenu = {},
+                    onFastForward = {},
+                    onResumeSpeed = {},
+                )
+            }
+        }
+    }
+
+    /** ÖPNV am Marktplatz: Busspur mit Blitzer und Busvorrang an der nächsten Ampel. */
+    private fun submitTransit(
+        game: CityGame,
+        city: CityMap,
+    ) {
+        // ÖPNV am Marktplatz: Busspur mit Blitzer und Busvorrang an der nächsten Ampel
+        city.transitStops.firstOrNull { it.name == "Marktplatz" }?.let { stop ->
+            val graph = game.simulation.graph
+            val near =
+                city.roads.segments
+                    .filter { !it.passive && graph.segmentLinks[it.id].any { link -> graph.linkLanes[link] >= 2 } }
+                    .sortedBy { kotlin.math.hypot(it.geometry.x(0) - stop.x, it.geometry.y(0) - stop.y) }
+                    .take(BUS_LANE_SEGMENTS)
+                    .map { it.id }
+            game.submit(GameCommand.SetBusLane(near, on = true))
+            near.firstOrNull()?.let { game.submit(GameCommand.PlaceBusLaneCamera(it)) }
+            city.roads.nodes
+                .filter { it.trafficSignals }
+                .minByOrNull { kotlin.math.hypot(it.x - stop.x, it.y - stop.y) }
+                ?.let { game.submit(GameCommand.SetBusPriority(it.id, on = true)) }
+        }
+    }
+
+    private fun frame(
+        city: CityMap,
+        /** So viele volle Spieltage weiterrechnen (0 = nur Vorlauf). */
+        days: Int = 0,
+    ): TrafficFrame {
         val game = CityGame(city)
         // Ein paar typische Meldungen: dreimal Tempo 30 (gebündelt), ein Blitzer, eine Einstellung im Amt
         val main =
@@ -287,22 +452,7 @@ class Screenshots {
         game.simulation.signals.controlledLinks.firstOrNull()?.let {
             game.submit(GameCommand.PlaceRedLightCamera(it, withSpeed = true))
         }
-        // ÖPNV am Marktplatz: Busspur mit Blitzer und Busvorrang an der nächsten Ampel
-        city.transitStops.firstOrNull { it.name == "Marktplatz" }?.let { stop ->
-            val graph = game.simulation.graph
-            val near =
-                city.roads.segments
-                    .filter { !it.passive && graph.segmentLinks[it.id].any { link -> graph.linkLanes[link] >= 2 } }
-                    .sortedBy { kotlin.math.hypot(it.geometry.x(0) - stop.x, it.geometry.y(0) - stop.y) }
-                    .take(BUS_LANE_SEGMENTS)
-                    .map { it.id }
-            game.submit(GameCommand.SetBusLane(near, on = true))
-            near.firstOrNull()?.let { game.submit(GameCommand.PlaceBusLaneCamera(it)) }
-            city.roads.nodes
-                .filter { it.trafficSignals }
-                .minByOrNull { kotlin.math.hypot(it.x - stop.x, it.y - stop.y) }
-                ?.let { game.submit(GameCommand.SetBusPriority(it.id, on = true)) }
-        }
+        submitTransit(game, city)
         game.submit(GameCommand.SetDeadlineDays(5))
         // Grüne Welle über die Karlsruher Straße (getrennte Richtungsfahrbahnen, mehrere Ampeln)
         val street = city.roads.segments.filter { !it.passive && it.name == "Karlsruher Straße" }
@@ -312,6 +462,7 @@ class Screenshots {
             }
         }
         repeat(WARMUP_TICKS) { game.step() }
+        while (game.simulation.dayReports.size < days) game.step()
         val snapshot = game.simulation.snapshot()
         return TrafficFrame(
             snapshot,
@@ -327,10 +478,30 @@ class Screenshots {
     }
 
     private companion object {
-        val SIZES = listOf(1440 to 900, 2000 to 1050)
+        val SIZES = listOf(1440 to 900, 1920 to 1080, 2000 to 1050)
+
+        const val DAY3_WIDTH = 1920
+        const val DAY3_HEIGHT = 1080
+        const val SELECTED_DAMAGES = 12
+
+        /** Seiten mit dem Spielstand nach zwei Spieltagen. */
+        val DAY3_PAGES =
+            listOf(
+                SidePanel.TREASURY,
+                SidePanel.PRESS,
+                SidePanel.OFFICE,
+                SidePanel.TRANSIT,
+                SidePanel.EMERGENCIES,
+                SidePanel.INBOX,
+                SidePanel.MAINTENANCE,
+                SidePanel.PARKING,
+                SidePanel.CITIZENS,
+                SidePanel.EVENTS,
+                SidePanel.ACHIEVEMENTS,
+            )
         const val TOAST_SHOT_WIDTH = 600
         const val INSPECT_SHOT_WIDTH = 480
-        const val INSPECT_SHOT_HEIGHT = 300
+        const val INSPECT_SHOT_HEIGHT = 560
         const val TOAST_SHOT_HEIGHT = 300
         const val TOAST_SETTLE_MILLIS = 900L
         const val SETTLE_STEP_MILLIS = 16L

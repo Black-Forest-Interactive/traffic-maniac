@@ -70,6 +70,10 @@ data class FineOfficeState(
     val strictness: Strictness,
     val policy: UnidentifiedPolicy,
     val deadlineDays: Int,
+    /** Alle eingegangenen Fotos der Amtszeit – der Anfang des Trichters „Weg eines Falls“. */
+    val received: Int = 0,
+    /** Eingegangene Fotos je Stunde der letzten 24 Stunden, die laufende Stunde zuletzt. */
+    val photosPerHour: List<Int> = emptyList(),
 )
 
 /** Ein Blitzerfoto auf dem Stapel. */
@@ -78,6 +82,8 @@ internal class FineCase(
     val tier: FineTier,
     val homeZone: Int,
     val person: Int,
+    /** Blitzer-Standort – fürs Journal der Kämmerei. */
+    val place: BookingPlace? = null,
 )
 
 /**
@@ -95,6 +101,10 @@ internal class FineOffice(
     private val random = Random(RANDOM_SEED)
     private val backlog = ArrayDeque<FineCase>()
     private val hires = ArrayDeque<Double>()
+
+    /** Fotos je Stunde, Ring über 24 Stunden; [hourStamp] sagt, zu welcher Stunde ein Platz gehört. */
+    private val photos = IntArray(HOURS_PER_DAY)
+    private val hourStamp = IntArray(HOURS_PER_DAY) { -1 }
     var staff = rules.initialStaff
         private set
     var strictness = Strictness.NORMAL
@@ -110,6 +120,7 @@ internal class FineOffice(
         private set
 
     class Counters {
+        var received = 0
         var processed = 0
         var paid = 0
         var expired = 0
@@ -128,8 +139,26 @@ internal class FineOffice(
         homeZone: Int,
         person: Int,
         time: Double,
+        place: BookingPlace? = null,
     ) {
-        backlog.addLast(FineCase(time, tier, homeZone, person))
+        backlog.addLast(FineCase(time, tier, homeZone, person, place))
+        count { received++ }
+        val hour = (time / SECONDS_PER_HOUR).toInt()
+        val slot = hour % HOURS_PER_DAY
+        if (hourStamp[slot] != hour) {
+            hourStamp[slot] = hour
+            photos[slot] = 0
+        }
+        photos[slot]++
+    }
+
+    /** Die letzten 24 Stunden bis [time], älteste zuerst; Stunden ohne Foto zählen 0. */
+    private fun photosPerHour(time: Double): List<Int> {
+        val now = (time / SECONDS_PER_HOUR).toInt()
+        return (now - HOURS_PER_DAY + 1..now).map { hour ->
+            val slot = hour.mod(HOURS_PER_DAY)
+            if (hourStamp[slot] == hour) photos[slot] else 0
+        }
     }
 
     fun hire(
@@ -186,6 +215,8 @@ internal class FineOffice(
             strictness = strictness,
             policy = policy,
             deadlineDays = deadlineDays,
+            photosPerHour = photosPerHour(time),
+            received = totals.received,
         )
 
     private fun process(
@@ -206,7 +237,7 @@ internal class FineOffice(
         if (appealed || random.nextDouble() >= payShare) return count { dropped++ }
 
         count { paid++ }
-        treasury.earnFine(case.tier.fine)
+        treasury.earnFine(case.tier.fine, case.place)
         val logbookAnger = if (!identified && policy == UnidentifiedPolicy.LOGBOOK) rules.logbookPainFactor else 1.0
         citizens.fined(case.homeZone, (case.tier.fine * strictness.painFactor * logbookAnger).toInt())
         drivers.penalize(case.person, case.homeZone, case.tier, time)?.let(message)
@@ -221,5 +252,6 @@ internal class FineOffice(
         const val RANDOM_SEED = 4711
         const val SECONDS_PER_HOUR = 3_600.0
         const val SECONDS_PER_DAY = 86_400.0
+        const val HOURS_PER_DAY = 24
     }
 }

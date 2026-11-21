@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Traffic Maniac – Kämmerei</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#15202B}
+a{color:#2257B8}
+.tm-rail:hover{background:#243444}
+.tm-col:hover .tm-bar{filter:brightness(1.12)}
+.tm-col:hover{background:#EEF1F4}
+.tm-row:hover{background:#F5F7F9}
+button:focus-visible,a:focus-visible{outline:3px solid #FFC21A;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; display: grid; grid-template-columns: 80px 1fr; grid-template-rows: 56px 1fr; font-family: Inter, system-ui, sans-serif; color: #15202B; background: #EEF1F4; overflow: hidden">
+
+  <!-- TOPBAR (gleich wie Karte) -->
+  <header style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; background: #15202B; color: #EEF1F4">
+    <svg width="18" height="34" viewBox="0 0 18 34" aria-hidden="true"><rect x="1" y="1" width="16" height="32" rx="5" fill="#243444" stroke="#3B4C5D"></rect><circle cx="9" cy="9" r="4" fill="#E5484D"></circle><circle cx="9" cy="17" r="4" fill="#FFC21A"></circle><circle cx="9" cy="25" r="4" fill="#3B4C5D"></circle></svg>
+    <div style="display: flex; flex-direction: column; min-width: 118px"><span style="font-size: 11px; color: #A3B0BD; line-height: 1.2">Dienstag · Tag 2 von 5</span><span style="font: 700 18px 'JetBrains Mono', monospace; line-height: 1.2">07:01</span></div>
+    <div role="group" aria-label="Spieltempo" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #243444; font: 700 13px 'JetBrains Mono', monospace">
+      <span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">⏸</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">1×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">2×</span><span style="min-width: 40px; height: 36px; border-radius: 8px; background: #FFC21A; color: #15202B; display: flex; align-items: center; justify-content: center">4×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">8×</span><span style="min-width: 48px; height: 36px; display: flex; align-items: center; justify-content: center">64×</span>
+    </div>
+    <span style="flex: 1"></span>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <div style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 14px; border-radius: 10px; background: #3A1F28"><div style="display: flex; flex-direction: column"><span style="font-size: 10px; color: #F3B7BD; line-height: 1.2">Kasse</span><b style="font: 700 15px 'JetBrains Mono', monospace; color: #FF9AA2; line-height: 1.2">−5.595 €</b></div><span style="font: 600 11px 'JetBrains Mono', monospace; color: #F3B7BD">heute −8.600</span></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Reputation</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">45<span style="color: #8193A5; font-weight: 500">/100</span></b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Bürgerzorn</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">9</b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 150px; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="display: flex; justify-content: space-between; font-size: 10px; color: #A3B0BD; line-height: 1.2">Abwahlindex <b style="font: 700 11px 'JetBrains Mono', monospace; color: #EEF1F4">12/100</b></span><span style="display: block; height: 6px; border-radius: 3px; background: #3B4C5D; overflow: hidden"><span style="display: block; width: 12%; height: 100%; background: #FF8A8F"></span></span></div>
+    </div>
+    <span style="width: 1px; height: 32px; background: #3B4C5D; margin: 0 4px"></span>
+    <button type="button" aria-label="Speichern" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8"></path></svg></button>
+    <button type="button" aria-label="Menü" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+  </header>
+
+  <!-- RAIL -->
+  <nav aria-label="Navigation" style="background: #1E2B38; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; overflow: hidden">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="13">
+      <sc-if value="{{r.isHead}}" hint-placeholder-val="{{false}}"><span style="display: block; margin: 8px 0 2px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8193A5; text-align: center">{{r.label}}</span></sc-if>
+      <sc-if value="{{r.isGap}}" hint-placeholder-val="{{false}}"><span style="flex: 1"></span></sc-if>
+      <sc-if value="{{r.isItem}}" hint-placeholder-val="{{true}}">
+        <button type="button" class="tm-rail" style="{{r.style}}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg>
+          <span style="font-size: 11px; font-weight: 600; line-height: 1.1">{{r.label}}</span>
+          <sc-if value="{{r.badge}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 4px; right: 8px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: #C62B3B; color: #FFFFFF; font: 700 10px Inter, sans-serif; display: flex; align-items: center; justify-content: center">{{r.badge}}</span></sc-if>
+        </button>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <!-- AMTSSTUBE: KÄMMEREI -->
+  <main style="min-height: 0; overflow: hidden; padding: 24px 32px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr); gap: 16px">
+
+    <!-- Kopf -->
+    <div style="grid-column: 1 / -1; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Rathaus</span>
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 32px; line-height: 1.1">Kämmerei</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="font-size: 12px; color: #586674">Spiel läuft weiter (4×)</span>
+        <div role="group" aria-label="Zeitraum" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #FFFFFF; border: 1px solid #C3CCD5">
+          <sc-for list="{{ranges}}" as="rg" hint-placeholder-count="3">
+            <button type="button" onClick="{{rg.pick}}" aria-pressed="{{rg.pressed}}" style="{{rg.style}}">{{rg.label}}</button>
+          </sc-for>
+        </div>
+        <a href="V2-Karte.dc.html" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; background: #15202B; color: #FFFFFF; text-decoration: none; font-size: 13px; font-weight: 700">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15"></path></svg>
+          Zur Karte <span style="font: 500 11px 'JetBrains Mono', monospace; opacity: .7">M</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px">
+      <div style="padding: 16px 18px; border-radius: 14px; background: #FFFFFF; border: 2px solid #E9A2AA; display: flex; justify-content: space-between; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; color: #586674">Kassenstand</span>
+          <b style="font: 700 26px 'JetBrains Mono', monospace; color: #A3202E">−5.595 €</b>
+          <span style="font-size: 12px; color: #A3202E; font-weight: 600">im Minus seit 06:12</span>
+        </div>
+        <svg width="110" height="56" viewBox="0 0 110 56" role="img" aria-label="Kassenstand der letzten 24 Stunden: von 15.800 € auf −5.595 € gefallen" style="align-self: center">
+          <line x1="0" y1="40" x2="110" y2="40" stroke="#C3CCD5" stroke-dasharray="3 3"></line>
+          <polyline points="0,14 10,12 14,30 24,28 34,25 44,20 50,22 52,52 62,48 72,44 80,44 88,45 94,46 100,50 104,52 110,48" fill="none" stroke="#15202B" stroke-width="2" stroke-linejoin="round"></polyline>
+          <circle cx="110" cy="48" r="3.5" fill="#A3202E"></circle>
+        </svg>
+      </div>
+      <div style="padding: 16px 18px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674; display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #2F6BD0"></span>Einnahmen heute</span>
+        <b style="font: 700 26px 'JetBrains Mono', monospace">+4.700 €</b>
+        <span style="font-size: 12px; color: #586674">24 Std.: +46.400 €</span>
+      </div>
+      <div style="padding: 16px 18px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674; display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #D9701F"></span>Ausgaben heute</span>
+        <b style="font: 700 26px 'JetBrains Mono', monospace">−13.300 €</b>
+        <span style="font-size: 12px; color: #586674">24 Std.: −67.800 €</span>
+      </div>
+      <div style="padding: 16px 18px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Saldo heute</span>
+        <b style="font: 700 26px 'JetBrains Mono', monospace; color: #A3202E">−8.600 €</b>
+        <span style="font-size: 12px; color: #586674">Tagesbeginn: +3.005 €</span>
+      </div>
+      <div style="padding: 16px 18px; border-radius: 14px; background: #15202B; color: #EEF1F4; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #A3B0BD">Prognose 24:00 Uhr</span>
+        <b style="font: 700 26px 'JetBrains Mono', monospace; color: #8FE0A8">+14.300 €</b>
+        <span style="font-size: 12px; color: #A3B0BD">wenn Blitzer wie gestern laufen</span>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <section aria-label="Einnahmen und Ausgaben pro Stunde" style="grid-column: span 8; grid-row: span 1; padding: 18px 20px 14px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Geldfluss pro Stunde · letzte 24 Std.</h2>
+        <div style="display: flex; gap: 16px; font-size: 12px; color: #3D4B59">
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #2F6BD0"></span>Einnahmen</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #D9701F"></span>Ausgaben</span>
+          <button type="button" style="height: 28px; padding: 0 10px; border: 1px solid #C3CCD5; border-radius: 6px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #15202B">Als Tabelle</button>
+        </div>
+      </div>
+      <div style="position: relative; flex: 1; min-height: 300px; display: flex; gap: 0; padding-left: 52px">
+        <!-- Achse -->
+        <div aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 22px; width: 100%; pointer-events: none">
+          <span style="position: absolute; left: 0; top: 0; font: 500 10px 'JetBrains Mono', monospace; color: #586674">+5k</span>
+          <span style="position: absolute; left: 52px; right: 0; top: 6px; border-top: 1px dashed #E3E8ED"></span>
+          <span style="position: absolute; left: 0; top: 104px; font: 500 10px 'JetBrains Mono', monospace; color: #15202B">0</span>
+          <span style="position: absolute; left: 52px; right: 0; top: 110px; border-top: 1px solid #93A1AE"></span>
+          <span style="position: absolute; left: 0; top: 204px; font: 500 10px 'JetBrains Mono', monospace; color: #586674">−5k</span>
+          <span style="position: absolute; left: 52px; right: 0; top: 210px; border-top: 1px dashed #E3E8ED"></span>
+          <span style="position: absolute; left: 0; bottom: 0; font: 500 10px 'JetBrains Mono', monospace; color: #586674">−9k</span>
+        </div>
+        <sc-for list="{{hours}}" as="h" hint-placeholder-count="24">
+          <div class="tm-col" title="{{h.tip}}" style="{{h.colStyle}}">
+            <div style="height: 110px; display: flex; align-items: flex-end; justify-content: center"><span class="tm-bar" style="{{h.inStyle}}"></span></div>
+            <div style="height: 2px"></div>
+            <div style="position: relative; height: 180px; display: flex; align-items: flex-start; justify-content: center"><span class="tm-bar" style="{{h.outStyle}}"></span>
+              <sc-if value="{{h.broken}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 166px; left: 50%; transform: translateX(-50%); width: 22px; height: 4px; background: #FFFFFF; border-top: 1px solid #D9701F; border-bottom: 1px solid #D9701F"></span></sc-if>
+            </div>
+            <span style="{{h.labelStyle}}">{{h.label}}</span>
+          </div>
+        </sc-for>
+        <div style="position: absolute; left: 532px; top: 128px; padding: 6px 10px; border-radius: 8px; background: #15202B; color: #FFFFFF; font-size: 12px; line-height: 1.4; pointer-events: none">
+          <b>17 Uhr · −32.000 €</b><br>Ampel Bahnhofplatz gebaut
+        </div>
+        <div style="position: absolute; right: 0; top: 0; bottom: 22px; border-left: 2px solid #15202B"></div>
+        <span style="position: absolute; right: 6px; top: -2px; font-size: 11px; font-weight: 700">jetzt</span>
+      </div>
+    </section>
+
+    <!-- Woher / Wohin -->
+    <section aria-label="Einnahmen und Ausgaben nach Posten" style="grid-column: span 4; padding: 18px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow: auto">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between"><h2 style="margin: 0; font-size: 16px; font-weight: 700">Woher kommt das Geld?</h2><b style="font: 700 14px 'JetBrains Mono', monospace">46.400 €</b></div>
+        <sc-for list="{{income}}" as="i" hint-placeholder-count="5">
+          <div style="display: grid; grid-template-columns: 128px minmax(0, 1fr) 76px; gap: 10px; align-items: center; font-size: 13px">
+            <span>{{i.label}}</span>
+            <span style="display: block; height: 10px; border-radius: 0 4px 4px 0; background: #EEF1F4"><span style="{{i.bar}}"></span></span>
+            <span style="font: 600 12px 'JetBrains Mono', monospace; text-align: right">{{i.v}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="height: 1px; background: #E3E8ED"></div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between"><h2 style="margin: 0; font-size: 16px; font-weight: 700">Wohin geht es?</h2><b style="font: 700 14px 'JetBrains Mono', monospace">67.800 €</b></div>
+        <sc-for list="{{expense}}" as="e" hint-placeholder-count="6">
+          <div style="display: grid; grid-template-columns: 128px minmax(0, 1fr) 76px; gap: 10px; align-items: center; font-size: 13px">
+            <span>{{e.label}}</span>
+            <span style="display: block; height: 10px; border-radius: 0 4px 4px 0; background: #EEF1F4"><span style="{{e.bar}}"></span></span>
+            <span style="font: 600 12px 'JetBrains Mono', monospace; text-align: right">{{e.v}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Orte -->
+    <section aria-label="Einnahmen und Ausgaben nach Ort" style="grid-column: span 4; padding: 18px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Wo?</h2>
+        <a href="V2-Karte.dc.html" style="font-size: 13px; font-weight: 600; text-decoration: none">Als Karten-Ebene „Geld“ →</a>
+      </div>
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #586674">Top-Einnahmen</span>
+      <sc-for list="{{placesIn}}" as="p" hint-placeholder-count="5">
+        <button type="button" class="tm-row" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 10px; margin: 0 -10px; border: none; border-radius: 8px; background: transparent; text-align: left; font-family: Inter, sans-serif; color: #15202B; cursor: pointer">
+          <span style="font-size: 13px; font-weight: 600">{{p.name}}</span>
+          <span style="font: 700 13px 'JetBrains Mono', monospace; color: #1E5BB8">{{p.v}}</span>
+          <span style="font-size: 11px; color: #586674">{{p.kind}}</span>
+          <span style="font-size: 11px; color: #586674; text-align: right">{{p.share}}</span>
+        </button>
+      </sc-for>
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #586674; margin-top: 4px">Größte Ausgaben</span>
+      <sc-for list="{{placesOut}}" as="p" hint-placeholder-count="2">
+        <button type="button" class="tm-row" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 10px; margin: 0 -10px; border: none; border-radius: 8px; background: transparent; text-align: left; font-family: Inter, sans-serif; color: #15202B; cursor: pointer">
+          <span style="font-size: 13px; font-weight: 600">{{p.name}}</span>
+          <span style="font: 700 13px 'JetBrains Mono', monospace; color: #A84F0E">{{p.v}}</span>
+          <span style="font-size: 11px; color: #586674">{{p.kind}}</span>
+          <span></span>
+        </button>
+      </sc-for>
+    </section>
+
+    <!-- Journal -->
+    <section aria-label="Buchungsjournal" style="grid-column: span 5; padding: 18px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Buchungen</h2>
+        <div style="display: flex; gap: 6px">
+          <button type="button" style="height: 30px; padding: 0 10px; border: none; border-radius: 15px; background: #15202B; color: #FFFFFF; font: 600 12px Inter, sans-serif">Alle</button>
+          <button type="button" style="height: 30px; padding: 0 10px; border: 1px solid #C3CCD5; border-radius: 15px; background: #FFFFFF; color: #15202B; font: 600 12px Inter, sans-serif">Einnahmen</button>
+          <button type="button" style="height: 30px; padding: 0 10px; border: 1px solid #C3CCD5; border-radius: 15px; background: #FFFFFF; color: #15202B; font: 600 12px Inter, sans-serif">Ausgaben</button>
+          <button type="button" style="height: 30px; padding: 0 10px; border: 1px solid #C3CCD5; border-radius: 15px; background: #FFFFFF; color: #15202B; font: 600 12px Inter, sans-serif">Bußgelder bündeln ✓</button>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 150px 100px; gap: 10px; padding: 0 0 6px; border-bottom: 1px solid #E3E8ED; font-size: 11px; font-weight: 700; color: #586674">
+        <span>Zeit</span><span>Buchung</span><span>Ort</span><span style="text-align: right">Betrag</span>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column">
+        <sc-for list="{{journal}}" as="j" hint-placeholder-count="9">
+          <div class="tm-row" style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 150px 100px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid #F0F3F6; font-size: 13px">
+            <span style="font: 500 12px 'JetBrains Mono', monospace; color: #586674">{{j.t}}</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{j.what}}</span>
+            <span style="font-size: 12px; color: #586674; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{j.where}}</span>
+            <span style="{{j.amtStyle}}">{{j.amt}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Fixkosten -->
+    <section aria-label="Haushaltsrunde" style="grid-column: span 3; padding: 18px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 16px; font-weight: 700">Haushaltsrunde</h2><span style="font-size: 11px; color: #586674">jede Nacht 24 Uhr</span></div><span style="font-size: 12px; color: #586674; margin-top: -4px">Letzte Runde: Dienstag · je ⅙ der Wochenbeträge</span>
+      <sc-for list="{{fixed}}" as="x" hint-placeholder-count="4">
+        <div style="display: flex; justify-content: space-between; gap: 8px; font-size: 13px">
+          <span style="display: flex; flex-direction: column"><span style="font-weight: 600">{{x.label}}</span><span style="font-size: 11px; color: #586674">{{x.sub}}</span></span>
+          <span style="font: 600 13px 'JetBrains Mono', monospace">{{x.v}}</span>
+        </div>
+      </sc-for>
+      <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid #E3E8ED; font-size: 13px; font-weight: 700"><span>Saldo</span><span style="font-family: 'JetBrains Mono', monospace; color: #A3202E">−3.275 €</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="color: #586674">Nächste Runde</span><span style="font: 600 13px 'JetBrains Mono', monospace">in 16:59 Std.</span></div>
+      <span style="flex: 1"></span>
+      <a href="V2-Presse.dc.html" style="font-size: 13px; font-weight: 600; text-decoration: none">PR-Ausgaben in Presse &amp; PR ändern →</a>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { range: '24' };
+  }
+  renderVals() {
+    var self = this;
+    var item = function (label, icon, active, badge) {
+      return { isItem: true, isHead: false, isGap: false, label: label, icon: icon, badge: badge || false,
+        style: 'position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 62px; padding: 0 2px; border: none; border-radius: 10px; cursor: pointer; font-family: Inter, sans-serif; text-align: center; ' + (active ? 'background: #FFC21A; color: #15202B;' : 'background: transparent; color: #EEF1F4;') };
+    };
+    var rail = [
+      item('Karte', 'M9 3 3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15'),
+      item('Posteingang', 'M22 12h-6l-2 3h-4l-2-3H2M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z', false, '31'),
+      { isHead: true, isItem: false, isGap: false, label: 'Rathaus' },
+      item('Kämmerei', 'M4 10h11M4 14h11M18.5 6.5A7 7 0 1 0 18.5 17.5', true),
+      item('Ordnung', 'M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z'),
+      item('Bauamt', 'M2 20h20M5 20V10l7-6 7 6v10M9 20v-6h6v6', false, '6'),
+      item('Parken', 'M5 3h14v18H5zM9 17V7h4a3 3 0 0 1 0 6H9'),
+      item('ÖPNV', 'M6 17h12M5 4h14v12H5zM5 11h14M8 20v-3M16 20v-3'),
+      item('Presse', 'M4 4h13v16H6a2 2 0 0 1-2-2zM17 8h3v10a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h5'),
+      item('Bürger', 'M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'),
+      item('Kalender', 'M3 5h18v16H3zM16 3v4M8 3v4M3 11h18'),
+      { isGap: true, isHead: false, isItem: false },
+      item('Erfolge', 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.2 13.9 7 22l5-3 5 3-1.2-8.1'),
+      item('Hilfe', 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01')
+    ];
+    var ranges = [['heute', 'Heute'], ['24', '24 Std.'], ['amt', 'Amtszeit']].map(function (r) {
+      var on = r[0] === self.state.range;
+      return { label: r[1], pressed: on ? 'true' : 'false',
+        style: 'height: 34px; padding: 0 14px; border: none; border-radius: 8px; cursor: pointer; font: 600 13px Inter, sans-serif; ' + (on ? 'background: #15202B; color: #FFFFFF;' : 'background: transparent; color: #15202B;'),
+        pick: function () { self.setState({ range: r[0] }); } };
+    });
+    var inc = [0.9, 2.4, 3.1, 2.8, 2.6, 2.9, 3.4, 3.0, 2.7, 3.8, 4.6, 4.1, 2.2, 1.4, 0.9, 0.6, 0.3, 0.2, 0.1, 0.1, 0.2, 0.4, 1.1, 2.6];
+    var out = [1.2, 1.2, 8.0, 1.2, 1.2, 1.2, 1.5, 1.2, 1.2, 1.2, 32.0, 1.2, 0.6, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 6.0, 4.4, 1.3];
+    var px = 20;
+    var fmt = function (k) { return Math.round(k * 1000).toLocaleString('de-DE') + ' €'; };
+    var hours = inc.map(function (v, i) {
+      var hr = (7 + i) % 24;
+      var o = out[i];
+      var broken = o * px > 175;
+      var oh = broken ? 175 : Math.max(2, o * px);
+      var today = i >= 17;
+      return {
+        label: (hr < 10 ? '0' : '') + hr,
+        tip: hr + ' Uhr · Einnahmen +' + fmt(v) + ' · Ausgaben −' + fmt(o),
+        broken: broken,
+        colStyle: 'flex: 1; display: flex; flex-direction: column; border-radius: 6px; padding: 0 2px;' + (today ? '' : ''),
+        inStyle: 'display: block; width: 22px; height: ' + Math.max(2, v * px) + 'px; background: #2F6BD0; border-radius: 4px 4px 0 0;',
+        outStyle: 'display: block; width: 22px; height: ' + oh + 'px; background: #D9701F; border-radius: 0 0 4px 4px;',
+        labelStyle: 'height: 20px; padding-top: 4px; text-align: center; font: 500 10px "JetBrains Mono", monospace; color: ' + (hr % 3 === 0 ? '#586674' : 'transparent') + ';'
+      };
+    });
+    var bar = function (v, max, c) { return 'display: block; height: 100%; width: ' + Math.round(v / max * 100) + '%; background: ' + c + '; border-radius: 0 4px 4px 0;'; };
+    var income = [['Blitzer-Bußgelder', 28900], ['Laser', 9870], ['Knöllchen', 3410], ['Aufträge', 2500], ['Parkgebühren', 1720]].map(function (x) {
+      return { label: x[0], v: x[1].toLocaleString('de-DE') + ' €', bar: bar(x[1], 28900, '#2F6BD0') };
+    });
+    var expense = [['Baumaßnahmen', 46000], ['Personal', 13400], ['Reparaturen', 3000], ['PR-Agentur', 2150], ['Klagen', 1750], ['Laser-Miete', 1500]].map(function (x) {
+      return { label: x[0], v: x[1].toLocaleString('de-DE') + ' €', bar: bar(x[1], 46000, '#D9701F') };
+    });
+    var placesIn = [
+      { name: 'Altstädter Brücke', kind: 'Blitzer · 203 Fotos', v: '+14.200 €', share: '31 %' },
+      { name: 'Bahnhofstraße', kind: 'Laser · seit gestern', v: '+9.870 €', share: '21 %' },
+      { name: 'Kelterstraße', kind: 'Blitzer · 120 Fotos', v: '+8.400 €', share: '18 %' },
+      { name: 'Zerrennerstraße', kind: 'Blitzer · 90 Fotos', v: '+6.300 €', share: '14 %' },
+      { name: 'Innenstadt', kind: 'Politessen · 97 Knöllchen', v: '+3.410 €', share: '7 %' }
+    ];
+    var placesOut = [
+      { name: 'Bahnhofplatz', kind: 'Ampel gebaut', v: '−30.000 €' },
+      { name: 'Innenstadt', kind: '8 × Tempo 30', v: '−16.000 €' }
+    ];
+    var j = function (t, what, where, amt) {
+      var neg = amt.charAt(0) === '−';
+      return { t: t, what: what, where: where, amt: amt, amtStyle: 'text-align: right; font: 700 13px "JetBrains Mono", monospace; color: ' + (neg ? '#A84F0E' : '#1E5BB8') + ';' };
+    };
+    var journal = [
+      j('07:00', '41 Bußgelder (Stunde)', 'Altstädter Brücke u. a.', '+2.610 €'),
+      j('06:58', 'Tempo 30 gebaut', 'Kelterstraße', '−2.000 €'),
+      j('06:30', 'Auftrag erfüllt: Schild Schlagloch', 'Blücherstraße', '+1.000 €'),
+      j('06:12', 'Kasse unter 0 €', '—', '±0 €'),
+      j('06:00', 'Löhne (Tagesrate)', 'Rathaus', '−1.300 €'),
+      j('05:40', 'Tempo 30 × 2 gebaut', 'Bahnhofstraße', '−4.000 €'),
+      j('04:00', 'Laser-Miete (Tag)', 'Bahnhofstraße', '−1.500 €'),
+      j('03:00', 'Klage: Felgenschaden', 'Hohenzollernstraße', '−1.750 €'),
+      j('00:00', 'PR-Agentur (Tagesanteil)', 'Rathaus', '−2.150 €'),
+      j('17:02', 'Ampel gebaut', 'Bahnhofplatz', '−30.000 €')
+    ];
+    var fixed = [
+      { label: 'Haushalt', sub: '90.000 €/Woche ÷ 7', v: '+12.857 €' },
+      { label: 'Anwohnerausweise', sub: 'Anwohnerparken', v: '+428 €' },
+      { label: 'PR-Agentur', sub: 'Premium + 83 % Aufschlag', v: '−12.647 €' },
+      { label: 'Kampagne', sub: '„Totschlagargumente“', v: '−1.142 €' },
+      { label: 'Gehälter', sub: 'Sachbearbeiter, Politessen', v: '−2.771 €' },
+      { label: 'Erhalt', sub: 'Erhaltungsbudget: keins', v: '0 €' }
+    ];
+    return { rail: rail, ranges: ranges, hours: hours, income: income, expense: expense, placesIn: placesIn, placesOut: placesOut, journal: journal, fixed: fixed };
+  }
+}
+</script>
+</body>
+</html>

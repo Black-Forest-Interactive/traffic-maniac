@@ -19,11 +19,30 @@ class TransitLineStatus(
     val averageDelaySeconds: Double,
     /** Anteil der Halte mit höchstens drei Minuten Verspätung. */
     val punctualShare: Double,
+    /** Der Fahrweg von Halt zu Halt mit der heutigen Verspätung am Ende jedes Abschnitts. */
+    val sections: List<TransitSection> = emptyList(),
+) {
+    companion object {
+        /** Farbe einer Linie ohne eigene Farbe in OpenStreetMap: Stadtbus-Rot. */
+        const val DEFAULT_COLOR = 0xFFD62828.toInt()
+    }
+}
+
+/**
+ * Ein Abschnitt einer Linie: Straßenabschnitte ([segments]) von einer Haltestelle zur nächsten ([stop], Id in der
+ * Stadtdatei) und die mittlere Verspätung dort heute in Sekunden – `null`, solange noch kein Bus angekommen ist.
+ */
+class TransitSection(
+    val segments: IntArray,
+    val stop: Int,
+    val delaySeconds: Double?,
 )
 
 /** ÖPNV für Karte und Bericht: Linien mit Pünktlichkeit. */
 class TransitSnapshot(
     val lines: List<TransitLineStatus> = emptyList(),
+    /** Die Zahlen stammen von gestern: Nach Mitternacht gilt die Bilanz des Vortags bis zum ersten Halt. */
+    val fromYesterday: Boolean = false,
 )
 
 /** Eine Haltestelle im Fahrweg: auf welchem Link (Index in der Route), wo darauf und wann laut Fahrplan. */
@@ -51,16 +70,29 @@ internal class TransitTrip(
 }
 
 /** Heutige Bilanz einer Linienrichtung. */
-private class LineTally {
+private class LineTally(
+    stopCount: Int,
+) {
     var stops = 0
     var punctual = 0
     var delaySum = 0.0
 
-    fun record(delay: Double) {
+    /** Je Haltestelle der Linie: Summe der Verspätungen und Zahl der Ankünfte. */
+    val stopDelay = DoubleArray(stopCount)
+    val stopArrivals = IntArray(stopCount)
+
+    fun record(
+        stop: Int,
+        delay: Double,
+    ) {
         stops++
         delaySum += delay
         if (delay <= PUNCTUAL_SECONDS) punctual++
+        stopDelay[stop] += delay
+        stopArrivals[stop]++
     }
+
+    fun delayAt(stop: Int): Double? = if (stopArrivals[stop] == 0) null else stopDelay[stop] / stopArrivals[stop]
 }
 
 /**
@@ -81,18 +113,22 @@ internal class Transit(
 
     /** Nächste Abfahrt je Linienrichtung; versetzt, damit nicht alle Busse gleichzeitig starten. */
     private val nextDeparture = DoubleArray(plans.size) { random.nextDouble() * config.busHeadwayMinutes * MINUTE }
-    private val tallies = Array(plans.size) { LineTally() }
+    private val tallies = Array(plans.size) { LineTally(plans[it].stops.size) }
+
+    /** Straßenabschnitte je Abschnitt (Halt zu Halt) jeder Linienrichtung – ändert sich nie. */
+    private val sectionSegments: List<List<IntArray>> = plans.map(::sectionsOf)
     private var day = -1
+
+    /** Tag, zu dem die [tallies] gehören – neu begonnen wird erst mit dem ersten Halt des Tages. */
+    private var tallyDay = -1
 
     /** Jeden Tick: neue Fahrten im Takt, um Mitternacht beginnt die Tagesbilanz neu. */
     fun update(
         time: Double,
         gameTime: GameTime,
     ) {
-        if (gameTime.day != day) {
-            day = gameTime.day
-            tallies.indices.forEach { tallies[it] = LineTally() }
-        }
+        day = gameTime.day
+        if (tallyDay < 0) tallyDay = day
         val hour = gameTime.hour
         val running = hour >= config.busFirstHour && hour < config.busLastHour
         val headway = if (hour in DAY_START until DAY_END) config.busHeadwayMinutes else config.busOffPeakHeadwayMinutes
@@ -108,7 +144,7 @@ internal class Transit(
         time: Double,
     ) {
         val plan = plans[index]
-        val bus = factory.createBus(plan.route, time, plan.line.color ?: DEFAULT_COLOR)
+        val bus = factory.createBus(plan.route, time, plan.line.color ?: TransitLineStatus.DEFAULT_COLOR)
         bus.transitTrip = TransitTrip(index, time)
         spawn(bus)
     }
@@ -131,14 +167,22 @@ internal class Transit(
                 vehicle.position >= max(it.position - STOP_ZONE, vehicle.type.length + STOP_ZONE_ENTRY)
         }
         val stop = stops.getOrNull(trip.next)?.takeIf(reached) ?: return false
-        tallies[trip.plan].record(time - trip.departure - stop.scheduled)
+        if (tallyDay != day) {
+            tallyDay = day
+            tallies.indices.forEach { tallies[it] = LineTally(plans[it].stops.size) }
+        }
+        tallies[trip.plan].record(trip.next, time - trip.departure - stop.scheduled)
         trip.next++
         vehicle.speed = 0.0
         vehicle.deliveringUntil = time + random.nextDouble(config.busDwellMinSeconds, config.busDwellMaxSeconds)
         return true
     }
 
-    fun snapshot(vehicles: List<Vehicle>): TransitSnapshot {
+    /** [today]: der laufende Spieltag – um 00:00 gilt die Bilanz schon als „gestern“, auch vor dem ersten Schritt. */
+    fun snapshot(
+        vehicles: List<Vehicle>,
+        today: Int = day,
+    ): TransitSnapshot {
         if (plans.isEmpty()) return TransitSnapshot()
         val buses = IntArray(plans.size)
         for (vehicle in vehicles) vehicle.transitTrip?.let { buses[it.plan]++ }
@@ -148,15 +192,29 @@ internal class Transit(
                 TransitLineStatus(
                     plan.line.ref,
                     plan.line.name,
-                    plan.line.color ?: DEFAULT_COLOR,
+                    plan.line.color ?: TransitLineStatus.DEFAULT_COLOR,
                     buses[i],
                     tally.stops,
                     if (tally.stops == 0) 0.0 else tally.delaySum / tally.stops,
                     if (tally.stops == 0) 1.0 else tally.punctual.toDouble() / tally.stops,
+                    plan.stops.mapIndexed {
+                        n,
+                        stop,
+                        ->
+                        TransitSection(sectionSegments[i][n], stop.stop, tally.delayAt(n))
+                    },
                 )
             },
+            fromYesterday = tallyDay in 0 until today,
         )
     }
+
+    /** Straßenabschnitte vom vorigen Halt bis zu jedem Halt (beim ersten: nur sein eigener Abschnitt). */
+    private fun sectionsOf(plan: LinePlan): List<IntArray> =
+        plan.stops.mapIndexed { n, stop ->
+            val from = if (n == 0) stop.routeIndex else plan.stops[n - 1].routeIndex
+            (from..stop.routeIndex).map { graph.linkSegment[plan.route[it]] }.distinct().toIntArray()
+        }
 
     /** Linienrichtungen, für die ein Fahrweg gefunden wurde (Tests, Statistik beim Start). */
     val lineCount: Int get() = plans.size
@@ -165,9 +223,6 @@ internal class Transit(
         const val MINUTE = 60.0
         const val DAY_START = 6
         const val DAY_END = 20
-
-        /** Linien ohne eigene Farbe: Stadtbus-Rot. */
-        const val DEFAULT_COLOR = 0xFFD62828.toInt()
     }
 }
 

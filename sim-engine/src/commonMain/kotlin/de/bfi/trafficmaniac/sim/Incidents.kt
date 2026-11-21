@@ -72,6 +72,12 @@ internal class Incidents(
 
     val active: List<Incident> get() = incidents
 
+    /** Die zuletzt erledigten Einsätze, der neueste zuerst (höchstens [RECENT_FINISHED]). */
+    val recentFinished = ArrayDeque<FinishedIncident>()
+
+    /** Zeitpunkt des letzten [update] – Ende eines Einsatzes. */
+    private var lastUpdate = 0.0
+
     fun isOpen(id: Int): Boolean = incidents.any { it.id == id }
 
     /** Nach jeder Bewegung: Panne, Ölverlust oder Unfall auswürfeln. */
@@ -246,6 +252,7 @@ internal class Incidents(
 
     /** Jeden Tick: Ankunft der Einsatzkräfte prüfen und erledigte Einsätze abschließen. */
     fun update(time: Double) {
+        lastUpdate = time
         val finished = ArrayList<Incident>()
         for (incident in incidents) {
             // Wer nach einer Viertelstunde nicht durchkommt, nimmt einen anderen Weg – sonst blockieren sich zwei
@@ -312,6 +319,8 @@ internal class Incidents(
             }
 
     private fun resolve(incident: Incident) {
+        recentFinished.addFirst(FinishedIncident(incident.kind, incident.x, incident.y, incident.startTime, lastUpdate))
+        while (recentFinished.size > RECENT_FINISHED) recentFinished.removeLast()
         for (vehicle in incident.vehicles + incident.responders) {
             if (vehicle.active &&
                 vehicle.routeIndex < vehicle.route.size
@@ -370,3 +379,5 @@ private fun RoadGraph.distanceToScene(
 }
 
 internal fun SimulationConfig.ticksPerSecondInverse(): Double = 1.0 / ticksPerSecond
+
+private const val RECENT_FINISHED = 10

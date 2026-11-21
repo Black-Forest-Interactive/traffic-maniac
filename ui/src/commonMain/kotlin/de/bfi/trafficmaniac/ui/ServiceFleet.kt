@@ -32,7 +32,7 @@ import de.bfi.trafficmaniac.ui.components.Icons
 import de.bfi.trafficmaniac.ui.map.MapPicker
 
 /** Fahrzeuge, die im Dienst unterwegs sind – Blaulicht, Abschleppdienst, Straßenmeisterei, Winterdienst. */
-private val SERVICE_ROLES =
+internal val SERVICE_ROLES =
     listOf(
         VehicleRole.AMBULANCE,
         VehicleRole.POLICE,

@@ -5,7 +5,7 @@ import de.bfi.trafficmaniac.city.CityMap
 
 /** Pfad je Straßenabschnitt (in Weltkoordinaten), erst bei Bedarf gebaut. */
 internal class SegmentPaths(
-    private val city: CityMap,
+    val city: CityMap,
 ) {
     private val paths = arrayOfNulls<Path>(city.roads.segments.size)
 

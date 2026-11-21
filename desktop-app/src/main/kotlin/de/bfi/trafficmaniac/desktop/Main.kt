@@ -11,22 +11,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.toComposeImageBitmap
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import de.bfi.trafficmaniac.city.CityMap
-import de.bfi.trafficmaniac.city.CityMapCodec
 import de.bfi.trafficmaniac.game.GameInfo
-import de.bfi.trafficmaniac.game.GameRunner
 import de.bfi.trafficmaniac.game.GameSettings
-import de.bfi.trafficmaniac.game.HighscoreEntry
 import de.bfi.trafficmaniac.game.Highscores
 import de.bfi.trafficmaniac.game.SaveInfo
 import de.bfi.trafficmaniac.game.Scenario
@@ -40,17 +31,17 @@ import de.bfi.trafficmaniac.ui.ScaledUi
 import de.bfi.trafficmaniac.ui.SessionSlot
 import de.bfi.trafficmaniac.ui.SoundBoard
 import de.bfi.trafficmaniac.ui.StatisticsControls
-import de.bfi.trafficmaniac.ui.Tool
 import de.bfi.trafficmaniac.ui.TrafficManiacApp
 import de.bfi.trafficmaniac.ui.map.NoSprites
 import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
-import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -58,18 +49,6 @@ import kotlin.system.exitProcess
 
 private const val NOTICE_MILLIS = 2_500L
 private val SAVE_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
-
-/** Tasten 1–7 → Zeitraffer 1× bis 64×. */
-private val speedKeys =
-    listOf(Key.One, Key.Two, Key.Three, Key.Four, Key.Five, Key.Six, Key.Seven)
-        .zip(GameRunner.SPEEDS)
-        .toMap()
-
-/** Ziffern 1–9: bei offener Werkzeugliste die Art an dieser Stelle. */
-private val digitKeys =
-    listOf(Key.One, Key.Two, Key.Three, Key.Four, Key.Five, Key.Six, Key.Seven, Key.Eight, Key.Nine)
-        .mapIndexed { i, key -> key to i + 1 }
-        .toMap()
 
 /**
  * Startet das Spiel mit dem Startmenü (Szenario, Schwierigkeit, Highscores, Einstellungen, Credits).
@@ -210,6 +189,8 @@ private fun Game(
     ApplySettings(settings, sound, userData, library.statistics)
     val report: (Session) -> Unit = { if (settings.statistics == true) it.report(library.statistics) }
     slot.live?.let { live ->
+        // Statistik zwischendurch: zu Beginn und nach jedem Spieltag ein Zwischenstand, gleich gesendet
+        if (settings.statistics == true) ProgressReports(live, library.statistics)
         RunSession(live) { entry ->
             slot.finished = live
             // Amtszeit vorbei oder abgewählt: Statistik jetzt, nicht erst beim Zurück ins Menü
@@ -270,9 +251,31 @@ private fun ApplySettings(
         sound.music = settings.music
         userData.save(settings)
     }
-    // Statistik-Postausgang beim Start leeren – nie während des Spiels
+    // Statistik-Postausgang beim Start leeren (Zwischenstände während des Spiels sendet ProgressReports)
     LaunchedEffect(settings.statistics) {
         if (settings.statistics == true) withContext(Dispatchers.IO) { statistics.sendPending() }
+    }
+}
+
+/**
+ * Zwischenstände der Partie für die Statistik: einmal beim Start und bei jedem Tageswechsel – abgelegt und sofort im
+ * Hintergrund gesendet (ohne Netz bleiben sie im Postausgang).
+ */
+@Composable
+private fun ProgressReports(
+    session: Session,
+    statistics: Statistics,
+) {
+    LaunchedEffect(session) {
+        session.runner.frames
+            .mapNotNull { it?.current?.gameTime?.day }
+            .distinctUntilChanged()
+            .collect {
+                withContext(Dispatchers.IO) {
+                    session.progress(statistics)
+                    statistics.sendPending()
+                }
+            }
     }
 }
 
@@ -394,23 +397,6 @@ private fun Playing(
     }
 }
 
-/** Tempo-Tasten: Leertaste, 1–7, +/−, V (vorspulen). `false`, wenn [key] keine davon ist. */
-private fun handleSpeedKey(
-    key: Key,
-    runner: GameRunner,
-): Boolean {
-    val speed = speedKeys[key]
-    when {
-        key == Key.Spacebar -> runner.togglePause()
-        speed != null -> runner.setSpeed(speed)
-        key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals -> runner.stepSpeed(1)
-        key == Key.Minus || key == Key.NumPadSubtract -> runner.stepSpeed(-1)
-        key == Key.V -> runner.fastForward()
-        else -> return false
-    }
-    return true
-}
-
 /** Lädt [info] im Hintergrund; `null`, wenn der Spielstand nicht (mehr) passt. */
 private suspend fun resume(
     library: Library,
@@ -480,33 +466,4 @@ private fun parseOptions(args: Array<String>): Options {
         named["--peak-trips"]?.toDouble(),
         named["--scenario"],
     )
-}
-
-/**
- * Tasten im Spiel: Leertaste Pause, Enter Tagesabschluss schließen, 1–7 Tempo 1×–64× (bei offener Werkzeugliste: 1–9
- * wählt die Art), +/− eine Stufe schneller/langsamer, V vorspulen bis zum nächsten Ereignis, M Ton, N Musik,
- * F5 Schnellspeichern, F3 Entwickler-Anzeige, F4 Straßennetz-Modus, Esc/Q/W/E/A/B/X Werkzeuggruppen.
- */
-private fun handleKey(
-    event: KeyEvent,
-    session: Session,
-    sound: SoundBoard,
-    onQuickSave: () -> Unit,
-): Boolean {
-    if (event.type != KeyEventType.KeyDown) return false
-    val runner = session.runner
-    val digit = digitKeys[event.key]
-    when {
-        event.key == Key.Enter -> runner.acknowledgeReport()
-        digit != null && session.input.listOpen -> session.input.kindRequest = digit
-        handleSpeedKey(event.key, runner) -> Unit
-        event.key == Key.M -> sound.muted = !sound.muted
-        event.key == Key.N -> sound.music = !sound.music
-        event.key == Key.F5 -> onQuickSave()
-        event.key == Key.F3 -> session.input.debug = !session.input.debug
-        event.key == Key.F4 -> session.input.network = !session.input.network
-        Tool.forKey(event.key) != null -> session.input.toolRequest = Tool.forKey(event.key)
-        else -> return false
-    }
-    return true
 }

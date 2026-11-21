@@ -5,7 +5,8 @@ import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
 
 /**
- * Anonyme Spielstatistik (Paket F, nur mit Zustimmung): ein Paket je beendeter oder abgebrochener Partie. Keine
+ * Anonyme Spielstatistik (Paket F, nur mit Zustimmung): Pakete zu Beginn, nach jedem Spieltag und am Ende einer
+ * Partie – alle mit derselben [game]-Kennung, der Server ersetzt den älteren Stand durch den neueren. Keine
  * Namen, keine Spielstände, keine Orte über die Stadt hinaus – nur, was fürs Balancing zählt. Der Spieler kann sich
  * jedes Paket vor dem Senden im Klartext ansehen ([TelemetryJson]).
  */
@@ -15,6 +16,8 @@ data class GameTelemetry(
     val schema: Int = SCHEMA,
     /** Zufällige Kennung der Installation, vom Spieler zurücksetzbar. */
     val installation: String,
+    /** Zufällige Kennung dieser Partie (UUID); bleibt über Speichern und Laden gleich. */
+    val game: String,
     val appVersion: String,
     /** "desktop-linux", "desktop-windows", "android" … */
     val platform: String,
@@ -24,7 +27,7 @@ data class GameTelemetry(
     val city: String,
     val scenario: String,
     val difficulty: String,
-    /** Ende der Partie: [END_TERM], [END_RECALLED] oder [END_ABORTED]. */
+    /** Stand der Partie: [END_RUNNING] (Zwischenstand) oder ihr Ende: [END_TERM], [END_RECALLED], [END_ABORTED]. */
     val end: String,
     val daysPlayed: Int,
     val realMinutes: Int,
@@ -41,7 +44,8 @@ data class GameTelemetry(
     val performance: TelemetryPerformance? = null,
 ) {
     companion object {
-        const val SCHEMA = 1
+        const val SCHEMA = 2
+        const val END_RUNNING = "running"
         const val END_TERM = "term"
         const val END_RECALLED = "recalled"
         const val END_ABORTED = "aborted"
