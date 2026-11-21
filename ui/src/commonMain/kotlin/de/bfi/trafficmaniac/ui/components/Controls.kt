@@ -208,20 +208,42 @@ fun OptionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     detail: String? = null,
+    /** Aus (z. B. zu teuer): blass, nicht klickbar, das Detail in Rot. */
+    enabled: Boolean = true,
 ) {
     Column(
         modifier
             .heightIn(min = if (detail != null) OPTION_TWO_LINES.dp else 40.dp)
             .clip(SegmentShape)
-            .background(TmColors.Surface)
-            .border(1.dp, TmColors.Line, SegmentShape)
-            .clickable(role = Role.Button, onClick = onClick)
+            .background(if (enabled) TmColors.Surface else TmColors.Ground)
+            .border(1.dp, if (enabled) TmColors.Line else TmColors.LineSoft, SegmentShape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        BasicText(label, style = TmType.text(12.sp, FontWeight.SemiBold).copy(textAlign = TextAlign.Center))
-        detail?.let { BasicText(it, style = TmType.mono(11.sp, bold = false, color = TmColors.Muted)) }
+        BasicText(
+            label,
+            style =
+                TmType
+                    .text(
+                        12.sp,
+                        FontWeight.SemiBold,
+                        if (enabled) TmColors.Ink else TmColors.Muted,
+                    ).copy(textAlign = TextAlign.Center),
+        )
+        detail?.let {
+            BasicText(
+                it,
+                style =
+                    TmType
+                        .mono(
+                            11.sp,
+                            bold = false,
+                            color = if (enabled) TmColors.Muted else TmColors.DangerText,
+                        ).copy(textAlign = TextAlign.Center),
+            )
+        }
     }
 }
 

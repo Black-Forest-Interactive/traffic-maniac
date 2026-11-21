@@ -15,6 +15,20 @@ import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.sim.SpeedCamera
 import kotlin.math.roundToInt
 
+/** Schilder weichen den Anzeigetafeln aus – sonst verdeckt die Tafel („– –“) das Tempo-Schild. */
+internal fun avoidDisplays(
+    signs: List<SpeedSign>,
+    cameras: List<SpeedCamera>,
+    scale: Float,
+): List<SpeedSign> {
+    val displays = cameras.filter { it.display }
+    if (signs.isEmpty() || displays.isEmpty()) return signs
+    val radius = signRadius(scale)
+    val height = radius * BOARD_HEIGHT
+    val centers = displays.map { Offset(it.x, it.y + height * LIFT) }
+    return pushAway(signs, centers, height * BOARD_ASPECT / 2 + radius * CLEARANCE)
+}
+
 /**
  * Geschwindigkeits-Anzeigetafeln: schwarze Tafel auf einem Pfahl, darauf der Anteil der zu Schnellen in LED-Farbe –
  * grün (wenige), gelb, rot (viele). So sieht man auf der Karte, wo gerast wird. In Weltkoordinaten gezeichnet.
@@ -71,6 +85,7 @@ private const val PERCENT = 100
 private const val BOARD_HEIGHT = 1.4f
 private const val BOARD_ASPECT = 2.2f
 private const val LIFT = 1.2f
+private const val CLEARANCE = 1.1f
 private const val POST = 0.12f
 private const val CORNER = 0.15f
 private const val INK = 0.06f

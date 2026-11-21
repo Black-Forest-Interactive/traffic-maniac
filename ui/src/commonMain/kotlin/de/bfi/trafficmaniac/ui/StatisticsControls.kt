@@ -66,16 +66,16 @@ internal fun StatisticsConsent(onAnswer: (Boolean) -> Unit) {
             BasicText(tr("Beim Balancing helfen?"), style = TmType.display(22.sp))
             BasicText(
                 tr(
-                    "Nach jeder Partie kann das Spiel ein kleines, anonymes Paket an uns schicken. Damit sehen wir, " +
-                        "an welchem Tag Spieler aufhören und warum – und stellen das Spiel danach ein.",
+                    "Während einer Partie kann das Spiel kleine, anonyme Zwischenstände an uns schicken. Damit sehen " +
+                        "wir, an welchem Tag Spieler aufhören und warum – und stellen das Spiel danach ein.",
                 ),
                 style = TmType.text(14.sp),
             )
             WhatIsSent()
             BasicText(
                 tr(
-                    "Keine Namen, keine Spielstände, keine IP-Adressen. Gesendet wird beim nächsten Start, nie " +
-                        "während des Spiels. Jederzeit änderbar unter Einstellungen.",
+                    "Keine Namen, keine Spielstände, keine IP-Adressen. Gesendet wird zu Beginn, nach jedem " +
+                        "Spieltag und am Ende. Jederzeit änderbar unter Einstellungen.",
                 ),
                 style = TmType.small,
             )
@@ -102,7 +102,7 @@ internal fun StatisticsSettings(
     controls: StatisticsControls,
 ) {
     var shown by remember { mutableStateOf<String?>(null) }
-    SettingRow(tr("Anonyme Statistiken"), hint = tr("Ein Paket je Partie, gesendet beim nächsten Start")) {
+    SettingRow(tr("Anonyme Statistiken"), hint = tr("Zu Beginn, nach jedem Spieltag und am Ende einer Partie")) {
         SegmentedControl(listOf(false, true), settings.statistics == true, {
             if (it) tr("An") else tr("Aus")
         }, { on ->

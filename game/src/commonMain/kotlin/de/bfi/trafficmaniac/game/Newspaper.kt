@@ -17,6 +17,8 @@ data class NewspaperEdition(
     val tone: String = "",
     /** Name der Zeitung im Kopf. */
     val masthead: String = CityTexts().newspaper,
+    /** Tonlage als Zahl: −1 Verriss … +1 Jubelpresse – für den Verlauf auf der Seite „Presse & PR“. */
+    val toneValue: Double = 0.0,
 )
 
 /** Was die Zeitung über einen Tag weiß. */
@@ -99,6 +101,7 @@ internal object Newspaper {
             EventHeadlines.letters(news, friendly, random),
             Press.toneLabel(news.tone),
             news.state.city.newspaper,
+            news.tone,
         )
     }
 

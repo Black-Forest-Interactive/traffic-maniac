@@ -476,6 +476,7 @@ class Simulation(
             cameras = speedControl.cameras.toList(),
             environment = environment.snapshot,
             incidents = incidents.active.map { it.toMarker(time) },
+            finishedIncidents = incidents.recentFinished.toList(),
             events = events.markers(),
             chargingStations = charging.states(),
             infrastructure = infrastructure.snapshot(),
@@ -486,8 +487,10 @@ class Simulation(
             roles = ByteArray(count) { vehicles[it].role.ordinal.toByte() },
             troubles = ByteArray(count) { vehicles[it].trouble?.let { kind -> (kind.ordinal + 1).toByte() } ?: 0 },
             segmentFlow = router.segmentFlow(),
+            segmentVolume = segmentVolume(vehicles, graph),
+            wear = infrastructure.wear(),
             weather = weather.snapshot(),
-            transit = transit.snapshot(vehicles),
+            transit = transit.snapshot(vehicles, gameTime.day),
             stats =
                 SimulationStats(
                     activeVehicles = vehicles.size,
@@ -522,3 +525,19 @@ class Simulation(
     internal val incidentsForTest: Incidents get() = incidents
     internal val vehiclesForTest: List<Vehicle> get() = vehicles
 }
+
+/** Kfz/Std. je Abschnitt: jedes Fahrzeug trägt Tempo / Linklänge bei (q = k · v). */
+internal fun segmentVolume(
+    vehicles: List<Vehicle>,
+    graph: RoadGraph,
+): FloatArray {
+    val volume = FloatArray(graph.segmentCount)
+    for (vehicle in vehicles) {
+        val link = vehicle.link
+        val length = graph.linkLength[link]
+        if (length > 0f) volume[graph.linkSegment[link]] += (vehicle.speed * SECONDS_PER_HOUR_VOLUME / length).toFloat()
+    }
+    return volume
+}
+
+private const val SECONDS_PER_HOUR_VOLUME = 3600.0

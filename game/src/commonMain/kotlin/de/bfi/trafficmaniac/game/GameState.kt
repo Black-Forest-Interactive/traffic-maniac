@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.game
 
 import de.bfi.trafficmaniac.sim.DayReport
 import de.bfi.trafficmaniac.sim.GameTime
+import de.bfi.trafficmaniac.sim.IncidentKind
 
 /** Art einer Meldung – bestimmt die Farbe in der Meldungsliste. */
 enum class MessageKind {
@@ -119,6 +120,14 @@ data class GameState(
     val highlights: List<Highlight> = emptyList(),
     /** Bilanz des ersten Spieltags – Bezug für die Verkehrsbilanz im Tagesabschluss. */
     val firstDayReport: DayReport? = null,
+    /** Einsätze heute und in der ganzen Amtszeit je Art. */
+    val incidentCounts: IncidentCounts = IncidentCounts(),
+    /** Buchungen der Kämmerei, Summen je Kategorie, Geldfluss je Stunde. */
+    val journal: TreasuryJournal = TreasuryJournal(),
+    /** Alle Ausgaben der Lokalzeitung in dieser Amtszeit, die älteste zuerst. */
+    val editions: List<NewspaperEdition> = emptyList(),
+    /** Stimmung im Verlauf: je Haushaltstyp, Bürgerzorn, Gebiete am Vortag. */
+    val citizenHistory: CitizenHistory = CitizenHistory(),
 ) {
     /** Tag der Amtszeit, ab 1 gezählt. */
     fun termDay(day: Int): Int = day - firstDay + 1
@@ -135,3 +144,15 @@ data class Score(
 ) {
     val points: Long get() = (earnings * reputationFactor).toLong()
 }
+
+/** Begonnene Einsätze je Art: heute und in der ganzen Amtszeit. */
+data class IncidentCounts(
+    val today: Map<IncidentKind, Int> = emptyMap(),
+    val term: Map<IncidentKind, Int> = emptyMap(),
+    /** Mittlere Anfahrt des Rettungsdienstes in Minuten über die abgeschlossenen Tage; `null` ohne Einsatz. */
+    val meanAmbulanceMinutes: Double? = null,
+)
+
+/** Zwei Zählungen je Art zusammenzählen. */
+internal fun <K> Map<K, Int>.addCounts(other: Map<K, Int>): Map<K, Int> =
+    (keys + other.keys).associateWith { (this[it] ?: 0) + (other[it] ?: 0) }

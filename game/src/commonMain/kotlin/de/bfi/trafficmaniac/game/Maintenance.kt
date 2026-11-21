@@ -116,6 +116,11 @@ data class MaintenanceState(
     val reports: List<DamageReport> = emptyList(),
     /** Mittlerer Zustand der Straßen in Prozent. */
     val meanConditionPercent: Int = 100,
+    /** Mittlerer Straßenzustand je Spielstunde seit Spielbeginn (Prozent). */
+    val conditionHistory: List<Int> = emptyList(),
+    /** Neu gemeldete bzw. behobene Schäden je 6 Stunden seit Spielbeginn. */
+    val newPer6h: List<Int> = emptyList(),
+    val fixedPer6h: List<Int> = emptyList(),
     val lawsuitCosts: Long = 0,
     val lawsuits: Int = 0,
     /** Laufende Wartungsverträge mit dem Turbo-Konsortium. */
@@ -177,7 +182,23 @@ internal class Maintenance(
             turboContracts = construction.turboContracts,
             repaired = construction.repaired,
             lastRepaired = construction.lastRepaired,
+            conditionHistory = conditionHistory.toList(),
+            newPer6h = newBins.toList(),
+            fixedPer6h = fixedBins.toList(),
         )
+
+    /** Verlauf für die Seite „Bauamt“: Zustand je Stunde, neue und behobene Schäden je 6 Stunden. */
+    private val conditionHistory = ArrayList<Int>()
+
+    /**
+     * Sekunden seit Mitternacht beim Spielstart: Die 6-Stunden-Fächer zählen ab Mitternacht des ersten Tages,
+     * damit sie an der Uhr ausgerichtet sind (0–6, 6–12, 12–18, 18–24 Uhr).
+     */
+    private val clockOffset: Double
+        get() = (simulation.gameTime.secondOfDay - simulation.time).mod(SECONDS_PER_DAY_OF_GAME)
+    private val newBins = ArrayList<Int>()
+    private val fixedBins = ArrayList<Int>()
+    private var repairedSeen = 0
 
     fun weeklyCost(): Long =
         when (budget) {
@@ -223,6 +244,7 @@ internal class Maintenance(
                 )
             if (event.segment >= 0) case.segments += event.segment
             cases += case
+            newBins[bin(newBins, time + clockOffset)]++
             messenger.say(
                 tr(
                     "Schadensmeldung: {kind} – {place} (Frist {damageDeadlineHours} Std.)",
@@ -306,7 +328,7 @@ internal class Maintenance(
         cost: Long,
         what: String,
     ) {
-        treasury.charge(cost)
+        treasury.charge(cost, BookingCategory.LAWSUITS, what)
         lawsuitCosts += cost
         lawsuits++
         today.lawsuitCosts += cost
@@ -354,7 +376,7 @@ internal class Maintenance(
         if (case.kind != DamageKind.POTHOLES || case.segments.isEmpty()) {
             return messenger.say(tr("Mit Kaltasphalt ist hier nichts mehr zu machen."))
         }
-        if (!treasury.pay(rules.patchCost, tr("Kaltasphalt"))) return
+        if (!treasury.pay(rules.patchCost, tr("Kaltasphalt"), BookingCategory.REPAIRS)) return
         for (segment in case.segments) {
             simulation.infrastructure.repairSegment(segment, rules.patchCondition, rules.patchWearFactor)
         }
@@ -369,7 +391,7 @@ internal class Maintenance(
     ) {
         val report = report(case, 0.0)
         if (!report.canSign) return messenger.say(tr("Ein Schild reicht hier nicht mehr – sperren oder reparieren!"))
-        if (!treasury.pay(rules.warningSignCost, tr("Warnschild"))) return
+        if (!treasury.pay(rules.warningSignCost, tr("Warnschild"), BookingCategory.REPAIRS)) return
         case.status = DamageStatus.SIGNED
         if (case.segments.isNotEmpty()) {
             case.signKmh = kmh
@@ -401,7 +423,7 @@ internal class Maintenance(
 
     private fun close(case: DamageCase) {
         if (!case.kind.isBridge) return
-        if (!treasury.pay(rules.bridgeClosureCost, tr("Absperrung"))) return
+        if (!treasury.pay(rules.bridgeClosureCost, tr("Absperrung"), BookingCategory.REPAIRS)) return
         case.status = DamageStatus.CLOSED
         for (segment in case.segments) simulation.infrastructure.closures.setBridgeClosed(segment, true)
         today.closedBridges += case.place
@@ -410,6 +432,10 @@ internal class Maintenance(
 
     /** Jede Stunde: Fristen und Bauphasen. */
     fun hourPassed(time: Double) {
+        conditionHistory += (simulation.infrastructure.meanCondition() * PERCENT).roundToInt()
+        val fixed = construction.repaired - repairedSeen
+        repairedSeen = construction.repaired
+        if (fixed > 0) fixedBins[bin(fixedBins, time + clockOffset)] += fixed
         for (case in cases.toList()) {
             if (case.status == DamageStatus.OPEN && time > case.deadline) {
                 case.status = DamageStatus.IGNORED
@@ -497,3 +523,18 @@ internal class Maintenance(
             )
     }
 }
+
+/** Sechs Spielstunden je Balken in „neu vs. behoben“. */
+private const val SECONDS_PER_BIN = 6 * 3_600.0
+
+/** Index des 6-Stunden-Fachs zu [time]; fehlende Fächer werden mit 0 angelegt. */
+private fun bin(
+    bins: ArrayList<Int>,
+    time: Double,
+): Int {
+    val index = (time / SECONDS_PER_BIN).toInt().coerceAtLeast(0)
+    while (bins.size <= index) bins += 0
+    return index
+}
+
+private const val SECONDS_PER_DAY_OF_GAME = 86_400.0

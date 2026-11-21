@@ -22,6 +22,24 @@ data class ParkingOfficeState(
     val curbConversions: Int = 0,
     val residentParking: Boolean = false,
     val breadButton: Boolean = true,
+    /** Belegung je Spielstunde seit Spielbeginn: Parkhäuser und Straßenrand (Anteil), neue Falschparker. */
+    val history: List<ParkingHour> = emptyList(),
+    /** Stunden (Index in [history]), in denen eine Parkgebühr geändert wurde. */
+    val priceChanges: List<Int> = emptyList(),
+    /** Höchste Gebühr (€/Std.), die Autofahrer noch zahlen; darunter gleichmäßig verteilt – für die Preis-Schätzung. */
+    val maxFeeTolerance: Double = 4.0,
+    /** Gebührenpflicht von … bis … Uhr (außerhalb frei). */
+    val paidFromHour: Int = 8,
+    val paidUntilHour: Int = 20,
+    /** Spieltage seit Beginn, für „je Tag“ (mindestens ein Bruchteil). */
+    val daysPlayed: Double = 0.0,
+)
+
+/** Eine Stunde Parken: belegte Anteile und wie viele Falschparker in dieser Stunde dazukamen. */
+data class ParkingHour(
+    val lotShare: Float,
+    val curbShare: Float,
+    val illegal: Int,
 )
 
 /** Zähler eines Tages (für die Zeitung). */
@@ -71,7 +89,16 @@ internal class ParkingOffice(
             curbConversions = curbConversions,
             residentParking = residentParking,
             breadButton = simulation.parking.breadButton,
+            history = history.toList(),
+            priceChanges = pricing.changes.toList(),
+            maxFeeTolerance = simulation.config.maxFeeTolerance,
+            paidFromHour = simulation.config.paidFromHour,
+            paidUntilHour = simulation.config.paidUntilHour,
+            daysPlayed = simulation.time / SECONDS_PER_DAY_PARKING,
         )
+
+    private val history = ArrayList<ParkingHour>()
+    private var illegalSeen = 0
 
     fun startNewDay(): ParkingNews = today.also { today = ParkingNews() }
 
@@ -133,6 +160,15 @@ internal class ParkingOffice(
         clock: GameTime,
         strictness: Strictness,
     ) {
+        val summary = simulation.parking.summary()
+        history +=
+            ParkingHour(
+                if (summary.lotCapacity > 0) summary.lotOccupied.toFloat() / summary.lotCapacity else 0f,
+                if (summary.curbCapacity > 0) summary.curbOccupied.toFloat() / summary.curbCapacity else 0f,
+                illegal - illegalSeen,
+            )
+        illegalSeen = illegal
+        pricing.hour = history.size
         while (hires.isNotEmpty() && hires.first() <= time) {
             hires.removeFirst()
             wardens++
@@ -215,11 +251,16 @@ internal class ParkingPricing(
     private val simulation: Simulation,
     private val message: (String) -> Unit,
 ) {
+    /** Stunden mit Preisänderung (fürs Diagramm) und die laufende Stunde. */
+    val changes = ArrayList<Int>()
+    var hour = 0
+
     /** Gebühr für einen Parkplatz oder (`null`) alle. */
     fun setFee(
         lot: Int?,
         euros: Double,
     ) {
+        changes += hour
         val lots = if (lot == null) 0 until simulation.parking.lotCount else lot..lot
         lots.forEach { simulation.parking.setLotFee(it, euros) }
         val where = if (lot == null) tr("alle Parkplätze") else lotName(lot)
@@ -228,6 +269,7 @@ internal class ParkingPricing(
 
     /** Gebühr am Parkscheinautomaten (Straßenrand in Gewerbe- und Einkaufsgebieten). */
     fun setCurbFee(euros: Double) {
+        changes += hour
         simulation.parking.curbFee = euros
         message(tr("Parkscheinautomat am Straßenrand: {euros} €/Std.", "euros" to formatDecimal(euros, 2)))
     }
@@ -255,3 +297,5 @@ internal class ParkingPricing(
 
     private fun lotName(lot: Int): String = simulation.parking.lotName(lot) ?: tr("Parkplatz {lot}", "lot" to lot + 1)
 }
+
+private const val SECONDS_PER_DAY_PARKING = 86_400.0

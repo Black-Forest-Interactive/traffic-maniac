@@ -9,9 +9,10 @@ import java.net.URL
 import java.util.UUID
 
 /**
- * Anonyme Statistiken wie am Desktop (Paket F): Pakete landen im Postausgang `outbox/` im privaten App-Speicher und
- * werden beim nächsten Start gesendet – nie während des Spiels, nur mit Zustimmung und nur, wenn die App eine
- * Server-Adresse kennt (`-PstatsUrl` beim Bauen). Ohne Netz bleiben sie liegen und gehen beim nächsten Mal raus.
+ * Anonyme Statistiken wie am Desktop (Paket F): Pakete landen im Postausgang `outbox/` im privaten App-Speicher – ein
+ * Stand je Partie – und werden beim Start, zu Beginn einer Partie und nach jedem Spieltag gesendet, nur mit
+ * Zustimmung und nur, wenn die App eine Server-Adresse kennt (`-PstatsUrl` beim Bauen). Ohne Netz bleiben sie
+ * liegen und gehen beim nächsten Mal raus.
  */
 class Statistics(
     private val directory: File,
@@ -41,11 +42,13 @@ class Statistics(
     }
 
     /** Legt [telemetry] in den Postausgang und merkt es sich als zuletzt erzeugtes Paket. */
+    @Synchronized
     fun store(telemetry: GameTelemetry) {
         runCatching {
             outbox.mkdirs()
             val text = TelemetryJson.encodeToString(GameTelemetry.serializer(), telemetry)
-            File(outbox, "${UUID.randomUUID()}.json").writeText(text)
+            // Ein Stand je Partie: der neuere ersetzt den älteren, solange er noch nicht gesendet ist
+            File(outbox, "${telemetry.game}.json").writeText(text)
             File(directory, LAST_FILE).writeText(text)
         }
     }
@@ -57,6 +60,7 @@ class Statistics(
     fun pending(): List<File> = outbox.listFiles { file -> file.extension == "json" }?.sortedBy { it.name }.orEmpty()
 
     /** Sendet alle wartenden Pakete; gesendete werden gelöscht. Liefert die Zahl der gesendeten. Nicht im UI-Thread. */
+    @Synchronized
     fun sendPending(): Int {
         val target = url ?: return 0
         var sent = 0

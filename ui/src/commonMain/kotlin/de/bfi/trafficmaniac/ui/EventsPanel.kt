@@ -37,6 +37,7 @@ import de.bfi.trafficmaniac.ui.components.Badge
 import de.bfi.trafficmaniac.ui.components.BadgeTone
 import de.bfi.trafficmaniac.ui.components.Icon
 import de.bfi.trafficmaniac.ui.components.Icons
+import de.bfi.trafficmaniac.ui.components.LocalPage
 import de.bfi.trafficmaniac.ui.components.Meter
 import de.bfi.trafficmaniac.ui.components.PanelScaffold
 import de.bfi.trafficmaniac.ui.components.PanelSection
@@ -163,6 +164,10 @@ fun AchievementsPanel(
     firstDay: Int = 0,
     onClose: (() -> Unit)? = null,
 ) {
+    LocalPage.current?.let { page ->
+        AchievementsPage(achievements, firstDay, page)
+        return
+    }
     PanelScaffold(
         tr("Bericht"),
         tr("Erfolge"),
@@ -186,7 +191,7 @@ fun AchievementsPanel(
 }
 
 @Composable
-private fun AchievementTile(
+internal fun AchievementTile(
     status: AchievementStatus,
     firstDay: Int,
     modifier: Modifier = Modifier,

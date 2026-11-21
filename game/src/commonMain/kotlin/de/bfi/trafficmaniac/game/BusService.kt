@@ -62,7 +62,11 @@ internal class BusService(
         if (on && wide.isEmpty()) return message(tr("Für eine Busspur braucht es mindestens zwei Spuren"))
         if (changing.isEmpty()) return
         val stretchCount = changing.map { stretches.stretchOf(it).min() }.distinct().size
-        if (on && !treasury.pay(rules.bus.laneCost * stretchCount, tr("Busspur"))) return
+        if (on &&
+            !treasury.pay(rules.bus.laneCost * stretchCount, tr("Busspur"), place = city.placeOf(changing))
+        ) {
+            return
+        }
         for (segment in changing) {
             simulation.graph.setSegmentBusLane(segment, on)
             if (on) busLanes += segment else busLanes -= segment
@@ -80,7 +84,7 @@ internal class BusService(
     private fun placeCamera(segment: Int) {
         if (segment !in busLanes) return message(tr("Hier ist keine Busspur"))
         if (works.cameraCounters.values.any { it.segment == segment }) return message(tr("Hier blitzt es schon"))
-        if (!treasury.pay(rules.bus.laneCameraCost, tr("Busspur-Blitzer"))) return
+        if (!treasury.pay(rules.bus.laneCameraCost, tr("Busspur-Blitzer"), place = city.placeOf(segment))) return
         val camera = simulation.speedControl.placeMidSegment(segment, MidSegmentCamera.BUS_LANE)
         val street = streetOf(listOf(segment))
         works.cameraCounters[camera.id] = CameraCounter(camera.id, segment, street, camera = camera)
@@ -156,3 +160,16 @@ internal class BusService(
         const val PERCENT = 100
     }
 }
+
+/** Ort einer Maßnahme über mehrere Abschnitte: der erste benannte. */
+internal fun CityMap.placeOf(segments: List<Int>): BookingPlace? =
+    segments.firstOrNull { roads.segments[it].name != null }?.let {
+        BookingPlace(
+            it,
+            roads.segments[it].name.orEmpty(),
+        )
+    }
+
+/** Ort eines Abschnitts für das Journal der Kämmerei. */
+internal fun CityMap.placeOf(segment: Int): BookingPlace =
+    BookingPlace(segment, roads.segments[segment].name ?: tr("Straße ohne Namen"))

@@ -25,30 +25,38 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameRules
 import de.bfi.trafficmaniac.game.GameState
+import de.bfi.trafficmaniac.game.IncidentCounts
 import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.TrafficFrame
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
+import de.bfi.trafficmaniac.sim.GameTime
 import de.bfi.trafficmaniac.sim.IncidentKind
 import de.bfi.trafficmaniac.sim.IncidentMarker
 import de.bfi.trafficmaniac.sim.SimulationSnapshot
 import de.bfi.trafficmaniac.ui.components.Badge
 import de.bfi.trafficmaniac.ui.components.BadgeTone
+import de.bfi.trafficmaniac.ui.components.LocalPage
 import de.bfi.trafficmaniac.ui.components.Meter
 import de.bfi.trafficmaniac.ui.components.PanelScaffold
 import de.bfi.trafficmaniac.ui.components.PanelSection
+import de.bfi.trafficmaniac.ui.map.EnvironmentLayer
 import de.bfi.trafficmaniac.ui.map.MapPicker
 import de.bfi.trafficmaniac.ui.map.SpriteSource
 import kotlin.math.roundToInt
 
-/** Fenster, die die linke Leiste rechts öffnet. */
+/** Seiten der linken Leiste (am Handy: Fenster rechts neben der Karte); [NONE] = Karte. */
 internal enum class SidePanel(
     private val labelText: String,
 ) {
     NONE(""),
+    INBOX(translatable("Posteingang")),
+    TREASURY(translatable("Kämmerei")),
+    PRESS(translatable("Presse & PR")),
     CAMERAS(translatable("Blitzer-Statistik")),
     BUDGET(translatable("Haushalt & PR")),
     OFFICE(translatable("Ordnungsamt")),
@@ -58,7 +66,7 @@ internal enum class SidePanel(
     EVENTS(translatable("Kalender")),
     EMERGENCIES(translatable("Einsätze")),
     TRANSIT(translatable("ÖPNV")),
-    ACHIEVEMENTS(translatable("Achievements")),
+    ACHIEVEMENTS(translatable("Erfolge")),
     HELP(translatable("Legende ?")),
     ;
 
@@ -75,48 +83,44 @@ internal class PanelContext(
     val onShow: (MapPlace) -> Unit,
     val sprites: SpriteSource,
     val onClose: () -> Unit,
+    /** Zur Karte mit dieser Umwelt-Ebene (Lärm, Luft …). */
+    val onEnvironment: ((EnvironmentLayer) -> Unit)? = null,
+    /** Eine andere Seite öffnen (z. B. aus „Warum sauer?“ ins zuständige Amt). */
+    val onPanel: ((SidePanel) -> Unit)? = null,
 )
-
-/** Seitenbereich rechts (372 dp, volle Höhe) mit dem geöffneten Fenster; scrollt, wenn es länger ist. */
-@Composable
-internal fun SidePanelSlot(
-    panel: SidePanel,
-    context: PanelContext,
-    modifier: Modifier = Modifier,
-) {
-    Row(modifier.fillMaxHeight()) {
-        Box(Modifier.width(1.dp).fillMaxHeight().background(TmColors.Line))
-        Column(Modifier.width(SLOT_WIDTH.dp).fillMaxHeight().background(TmColors.Surface)) {
-            with(context) { PanelContent(panel, frame, rules, onCommand, picker, onShow, sprites, onClose) }
-        }
-    }
-}
 
 @Composable
 private fun MaintenanceSlot(
-    game: de.bfi.trafficmaniac.game.GameState,
+    frame: TrafficFrame,
     rules: GameRules,
     onCommand: (GameCommand) -> Unit,
     picker: MapPicker,
     onShow: (MapPlace) -> Unit,
     onClose: () -> Unit,
 ) {
+    val game = frame.game
+    val showReport = { report: DamageReport ->
+        // Ampelmeldungen haben keinen Abschnitt – dann zur Ampel selbst
+        val place = if (report.node >= 0) picker.placeOfNode(report.node) else picker.place(report.segments)
+        place?.let(onShow)
+        Unit
+    }
+    LocalPage.current?.let { page ->
+        MaintenancePage(MaintenancePageData(game, frame.current, picker.city, rules, onCommand, showReport), page)
+        return
+    }
     MaintenancePanel(
         game.maintenance,
         rules,
         onCommand,
         onClose = onClose,
-        onShow = { report ->
-            // Ampelmeldungen haben keinen Abschnitt – dann zur Ampel selbst
-            val place = if (report.node >= 0) picker.placeOfNode(report.node) else picker.place(report.segments)
-            place?.let(onShow)
-        },
+        onShow = showReport,
         ploughs = game.ploughs.takeIf { game.winterService },
     )
 }
 
 @Composable
-private fun PanelContent(
+internal fun PanelContent(
     panel: SidePanel,
     frame: TrafficFrame,
     rules: GameRules,
@@ -125,6 +129,8 @@ private fun PanelContent(
     onShow: (MapPlace) -> Unit,
     sprites: SpriteSource,
     onClose: () -> Unit,
+    onPanel: ((SidePanel) -> Unit)? = null,
+    onEnvironment: ((EnvironmentLayer) -> Unit)? = null,
 ) {
     val game = frame.game
     when (panel) {
@@ -132,23 +138,17 @@ private fun PanelContent(
             CameraStatsPanel(game.cameras, onClose = onClose)
         }
 
-        SidePanel.BUDGET -> {
-            BudgetSlot(game, rules, onCommand, onClose)
+        // Bis Kämmerei und Presse eigene Seiten haben (Entwurf 2, Schritte 5 und 7): das Haushaltsfenster
+        SidePanel.BUDGET, SidePanel.TREASURY, SidePanel.PRESS -> {
+            MoneySlot(panel, game, rules, onCommand, onClose, frame.current.gameTime) { onShow(picker.place(it)) }
         }
 
         SidePanel.OFFICE -> {
-            OfficePanel(
-                game.fineOffice,
-                rules,
-                game.bannedDrivers,
-                onCommand,
-                onClose = onClose,
-                habits = HabitsState(game.warnerShare, game.marathonActive, game.campaignInDays),
-            )
+            OfficeSlot(game, rules, onCommand, onClose)
         }
 
         SidePanel.MAINTENANCE -> {
-            MaintenanceSlot(frame.game, rules, onCommand, picker, onShow, onClose)
+            MaintenanceSlot(frame, rules, onCommand, picker, onShow, onClose)
         }
 
         SidePanel.PARKING -> {
@@ -159,28 +159,31 @@ private fun PanelContent(
                 rules,
                 onCommand,
                 onClose = onClose,
+                nowHour = frame.current.gameTime.absoluteHour,
+                firstDay = game.firstDay,
             )
         }
 
         SidePanel.CITIZENS -> {
-            CitizensPanel(game, angerThreshold = rules.angerThreshold, onShow = onShow, onClose = onClose)
+            CitizensSlot(frame, rules, picker, onShow, onClose, onPanel, onEnvironment)
         }
 
         SidePanel.EVENTS -> {
-            EventsPanel(
-                game.events,
-                frame.current.gameTime.day,
-                firstDay = game.firstDay,
-                onClose = onClose,
-            ) { picker.place(it)?.let(onShow) }
+            EventsSlot(frame, rules, picker, onShow, onClose)
         }
 
         SidePanel.EMERGENCIES -> {
-            EmergencyPanel(frame.current, picker, onShow, onClose)
+            EmergencyPanel(
+                frame.current,
+                picker,
+                onShow,
+                onClose,
+                game.incidentCounts,
+            )
         }
 
         SidePanel.TRANSIT -> {
-            TransitPanel(frame.current.transit, game.busModeShift, onClose = onClose)
+            TransitSlot(frame, picker, onClose)
         }
 
         SidePanel.ACHIEVEMENTS -> {
@@ -191,7 +194,8 @@ private fun PanelContent(
             HelpPanel(sprites = sprites, onClose = onClose)
         }
 
-        SidePanel.NONE -> {}
+        // Der Posteingang braucht die Auftrags-Aktionen der Oberfläche – siehe HudPage
+        SidePanel.NONE, SidePanel.INBOX -> {}
     }
 }
 
@@ -205,9 +209,15 @@ private fun EmergencyPanel(
     picker: MapPicker,
     onShow: (MapPlace) -> Unit,
     onClose: () -> Unit,
+    /** Einsätze heute und in der Amtszeit je Art. */
+    counts: IncidentCounts = IncidentCounts(),
 ) {
     val incidents = snapshot.incidents
     val now = snapshot.time
+    LocalPage.current?.let { page ->
+        EmergencyPage(EmergencyPageData(snapshot, picker, onShow, counts), page)
+        return
+    }
     PanelScaffold(
         tr("Bericht"),
         tr("Einsätze"),
@@ -230,12 +240,17 @@ private fun EmergencyPanel(
                 )
             }
         }
+        PanelSection(title = tr("Wachen & Fahrzeuge"), divider = false) { Stations(incidents, picker.city) }
         PanelSection(divider = false) { ServiceFleet(snapshot, picker.city, picker, onShow) }
+        PanelSection(title = tr("Amtszeit"), divider = false) { TermFigures(counts, incidents.size) }
+        if (counts.term.isNotEmpty()) {
+            PanelSection(title = tr("Häufigkeit nach Art"), divider = false) { KindCounts(counts.today, counts.term) }
+        }
     }
 }
 
 @Composable
-private fun IncidentCard(
+internal fun IncidentCard(
     incident: IncidentMarker,
     now: Double,
     onClick: () -> Unit,
@@ -291,7 +306,6 @@ private fun IncidentCard(
     }
 }
 
-private const val SLOT_WIDTH = 372
 private const val MAX_ROWS = 12
 private const val SECONDS_PER_MINUTE = 60.0
 
@@ -310,5 +324,120 @@ private fun BudgetSlot(
         onArguments = { onCommand(GameCommand.SetArgumentsCampaign(it)) },
         onCeremony = { onCommand(GameCommand.HoldCeremony) },
         onClose = onClose,
+    )
+}
+
+/** Je Art: heute und in der Amtszeit, mit Balken relativ zur häufigsten Art. */
+@Composable
+internal fun KindCounts(
+    today: Map<IncidentKind, Int>,
+    term: Map<IncidentKind, Int>,
+) {
+    val max = term.values.maxOrNull()?.coerceAtLeast(1) ?: 1
+    Row(Modifier.fillMaxWidth()) {
+        BasicText(tr("Art"), style = TmType.caption, modifier = Modifier.weight(1f))
+        BasicText(tr("heute · Amtszeit"), style = TmType.caption)
+    }
+    for ((kind, count) in term.entries.sortedByDescending { it.value }) {
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(Modifier.fillMaxWidth()) {
+                BasicText(kind.label, style = TmType.text(13.sp), modifier = Modifier.weight(1f))
+                BasicText("${today[kind] ?: 0} · $count", style = TmType.mono(13.sp))
+            }
+            Meter(count.toFloat() / max, Modifier.fillMaxWidth(), height = 5.dp, color = TmColors.Primary)
+        }
+    }
+}
+
+/** ÖPNV: als Seite mit Netzkarte, sonst das Fenster. */
+@Composable
+private fun TransitSlot(
+    frame: TrafficFrame,
+    picker: MapPicker,
+    onClose: () -> Unit,
+) {
+    val page = LocalPage.current
+    if (page != null) {
+        TransitPage(frame, picker.city, page)
+    } else {
+        TransitPanel(frame.current.transit, frame.game.busModeShift, onClose = onClose)
+    }
+}
+
+/** Ordnungsamt; als Seite gehört die Blitzer-Statistik dazu. */
+@Composable
+private fun OfficeSlot(
+    game: GameState,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+    onClose: () -> Unit,
+) {
+    OfficePanel(
+        game.fineOffice,
+        rules,
+        game.bannedDrivers,
+        onCommand,
+        onClose = onClose,
+        habits = HabitsState(game.warnerShare, game.marathonActive, game.campaignInDays),
+        cameras = game.cameras.takeIf { LocalPage.current != null },
+    )
+}
+
+/** Haushaltsfenster (Handy-Altlast), Kämmerei oder Presse & PR. */
+@Composable
+private fun MoneySlot(
+    panel: SidePanel,
+    game: GameState,
+    rules: GameRules,
+    onCommand: (GameCommand) -> Unit,
+    onClose: () -> Unit,
+    now: GameTime? = null,
+    onPlace: ((Int) -> Unit)? = null,
+) {
+    when (panel) {
+        SidePanel.TREASURY -> TreasuryPanel(game, rules, onClose, now, onPlace)
+        SidePanel.PRESS -> PressPage(game, rules, onCommand, onClose)
+        else -> BudgetSlot(game, rules, onCommand, onClose)
+    }
+}
+
+/** Kalender: als Seite mit Wochenplan, sonst das Fenster. */
+@Composable
+private fun EventsSlot(
+    frame: TrafficFrame,
+    rules: GameRules,
+    picker: MapPicker,
+    onShow: (MapPlace) -> Unit,
+    onClose: () -> Unit,
+) {
+    val game = frame.game
+    val time = frame.current.gameTime
+    val show = { segments: Set<Int> -> picker.place(segments)?.let(onShow) ?: Unit }
+    LocalPage.current?.let { page ->
+        EventsPage(game, time.day, time.hour, rules, page, show)
+        return
+    }
+    EventsPanel(game.events, time.day, firstDay = game.firstDay, onClose = onClose, onShow = show)
+}
+
+@Composable
+private fun CitizensSlot(
+    frame: TrafficFrame,
+    rules: GameRules,
+    picker: MapPicker,
+    onShow: (MapPlace) -> Unit,
+    onClose: () -> Unit,
+    onPanel: ((SidePanel) -> Unit)?,
+    onEnvironment: ((EnvironmentLayer) -> Unit)?,
+) {
+    CitizensPanel(
+        frame.game,
+        angerThreshold = rules.angerThreshold,
+        onShow = onShow,
+        onClose = onClose,
+        picker = picker,
+        onPanel = onPanel,
+        onEnvironment = onEnvironment,
+        nowHour = frame.current.gameTime.absoluteHour,
     )
 }

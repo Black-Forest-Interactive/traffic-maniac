@@ -27,33 +27,43 @@ class Session(
     private var reported = false
 
     /**
-     * Legt das Statistikpaket dieser Partie ab – einmal je Partie, am Ende der Amtszeit, nach der Abwahl oder beim
-     * Abbruch ins Menü. Nur mit Zustimmung (prüft der Aufrufer).
+     * Legt das Endpaket dieser Partie ab – einmal je Partie, am Ende der Amtszeit, nach der Abwahl oder wenn eine neue
+     * Partie sie ersetzt. Nur mit Zustimmung (prüft der Aufrufer).
      */
     fun report(statistics: Statistics) {
         if (reported) return
         reported = true
-        val frame = runner.frames.value
-        val telemetry =
-            game.telemetry(
-                TelemetryContext(
-                    installation = statistics.installation,
-                    appVersion = BuildConfig.VERSION_NAME,
-                    platform = "android",
-                    deviceClass = deviceClass(),
-                    language = I18n.language.code,
-                    city = city.id,
-                    scenario = scenario.id,
-                    difficulty = settings.difficulty.name.lowercase(),
-                    realMinutes = ((System.nanoTime() - started) / NANOS_PER_MINUTE).toInt(),
-                    speeds = runner.speedSeconds(),
-                    performance =
-                        frame?.let {
-                            TelemetryPerformance(it.stepMillis, MapDrawTime.millis, MapDrawTime.framesPerSecond)
-                        },
-                ),
-            )
+        statistics.store(game.telemetry(context(statistics), final = true))
+    }
+
+    /**
+     * Zwischenstand (Ende „running“) zu Beginn und nach jedem Spieltag – zwischen zwei Simulationsschritten erzeugt,
+     * damit das Paket in sich stimmig ist. Ersetzt im Postausgang den vorigen Stand dieser Partie.
+     */
+    suspend fun progress(statistics: Statistics) {
+        if (reported) return
+        val telemetry = runner.paused { it.telemetry(context(statistics), final = false) }
         statistics.store(telemetry)
+    }
+
+    private fun context(statistics: Statistics): TelemetryContext {
+        val frame = runner.frames.value
+        return TelemetryContext(
+            installation = statistics.installation,
+            appVersion = BuildConfig.VERSION_NAME,
+            platform = "android",
+            deviceClass = deviceClass(),
+            language = I18n.language.code,
+            city = city.id,
+            scenario = scenario.id,
+            difficulty = settings.difficulty.name.lowercase(),
+            realMinutes = ((System.nanoTime() - started) / NANOS_PER_MINUTE).toInt(),
+            speeds = runner.speedSeconds(),
+            performance =
+                frame?.let {
+                    TelemetryPerformance(it.stepMillis, MapDrawTime.millis, MapDrawTime.framesPerSecond)
+                },
+        )
     }
 
     suspend fun result(): HighscoreEntry? =

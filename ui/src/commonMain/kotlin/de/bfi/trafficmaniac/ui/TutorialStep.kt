@@ -1,6 +1,4 @@
 package de.bfi.trafficmaniac.ui
-
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,8 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.GameState
@@ -54,14 +50,14 @@ enum class TutorialStep(
     SPEED_LIMIT(
         translatable("Erst die Schilder"),
         translatable(
-            "Wählen Sie unten das Werkzeug „Tempolimit“ – 30 ist schon eingestellt. Klicken Sie auf den Anfang und " +
+            "Wählen Sie unten das Werkzeug „Tempo“ – 30 ist schon eingestellt. Klicken Sie auf den Anfang und " +
                 "dann auf das Ende eines Stücks einer großen Straße (zweimal dieselbe Stelle: bis zur nächsten " +
-                "Kreuzung). Alles ist erst geplant – gebaut und bezahlt wird mit „Bauen“ über dem Werkzeugkasten.",
+                "Kreuzung). Alles ist erst geplant – gebaut und bezahlt wird mit „Bauen“ im Bauplan rechts unten.",
         ),
         setOf(Tool.SPEED_LIMIT, Tool.REMOVE),
         { it.speedLimits.isNotEmpty() },
         translatable(
-            "Wählen Sie unten das Werkzeug „Tempolimit“ – 30 ist schon eingestellt. Tippen Sie auf den Anfang und " +
+            "Wählen Sie unten das Werkzeug „Tempo“ – 30 ist schon eingestellt. Tippen Sie auf den Anfang und " +
                 "dann auf das Ende eines Stücks einer großen Straße (zweimal dieselbe Stelle: bis zur nächsten " +
                 "Kreuzung). Alles ist erst geplant – gebaut und bezahlt wird mit „Bauen“ über dem Werkzeugkasten.",
         ),
@@ -75,7 +71,7 @@ enum class TutorialStep(
         setOf(Tool.CAMERA),
         { it.cameras.isNotEmpty() },
         translatable(
-            "Wo ein Limit ist, darf geblitzt werden. Nehmen Sie „Überwachung“, tippen Sie auf dieselbe Straße " +
+            "Wo ein Limit ist, darf geblitzt werden. Nehmen Sie „Kontrolle“, tippen Sie auf dieselbe Straße " +
                 "und dann auf „Bauen“. Ein fester Blitzer ist teuer, verdient aber Tag und Nacht.",
         ),
     ),
@@ -83,7 +79,7 @@ enum class TutorialStep(
         translatable("Abwarten und kassieren"),
         translatable(
             "Taste 4 schaltet auf achtfaches Tempo. Sobald der erste Raser geblitzt wird, klingelt die Kasse – " +
-                "die Bußgelder stehen oben links.",
+                "zu sehen oben rechts in der Kopfleiste.",
         ),
         done = { it.fineIncome > 0 },
         touchText =

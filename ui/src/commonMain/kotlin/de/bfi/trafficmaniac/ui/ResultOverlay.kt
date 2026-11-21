@@ -131,7 +131,7 @@ private fun ResultFigures(
     )
     if (state.achievements.isNotEmpty()) {
         BasicText(
-            tr("Achievements: {achievements}", "achievements" to state.achievements.joinToString()),
+            tr("Erfolge: {achievements}", "achievements" to state.achievements.joinToString()),
             style = text,
         )
     }

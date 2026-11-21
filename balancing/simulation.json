@@ -132,6 +132,8 @@
     "workStayHours": 8.0,
     "shortStayHours": 1.0,
     "maxFeeTolerance": 4.0,
+    "paidFromHour": 8,
+    "paidUntilHour": 20,
     "defaultParkingFee": 1.5,
     "defaultCurbFee": 0.0,
     "busHeadwayMinutes": 20.0,

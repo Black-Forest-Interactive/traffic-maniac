@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.bfi.trafficmaniac.game.CameraRecord
 import de.bfi.trafficmaniac.game.FineOfficeState
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameRules
@@ -16,6 +17,7 @@ import de.bfi.trafficmaniac.game.UnidentifiedPolicy
 import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.formatDecimal
 import de.bfi.trafficmaniac.i18n.tr
+import de.bfi.trafficmaniac.ui.components.LocalPage
 import de.bfi.trafficmaniac.ui.components.OptionButton
 import de.bfi.trafficmaniac.ui.components.PanelScaffold
 import de.bfi.trafficmaniac.ui.components.PanelSection
@@ -39,44 +41,62 @@ fun OfficePanel(
     modifier: Modifier = Modifier,
     onClose: (() -> Unit)? = null,
     habits: HabitsState? = null,
+    /** Als Seite: die Blitzer-Statistik gehört dazu. */
+    cameras: List<CameraRecord>? = null,
 ) {
+    val page = LocalPage.current
+    if (page != null && cameras != null) {
+        OfficePage(OfficePageData(office, rules, bannedDrivers, cameras, habits), onCommand, page)
+        return
+    }
     PanelScaffold(tr("Amt"), tr("Ordnungsamt & Bußgeldstelle"), modifier, onClose, floating = false) {
         PanelSection(divider = false) { CaseTiles(office) }
         habits?.let { HabitsSection(it, rules, onCommand) }
-        StaffSection(office, rules, onCommand)
-        PanelSection(title = tr("Schärfe der Blitzer")) {
-            SegmentedControl(
-                Strictness.entries,
-                office.strictness,
-                { it.label },
-                { onCommand(GameCommand.SetStrictness(it)) },
-                Modifier.fillMaxWidth(),
-                detail = { "±${it.toleranceKmh.roundToInt()} km/h" },
+        OfficeControls(office, rules, bannedDrivers, onCommand)
+    }
+}
+
+/** Personal, Frist, Schärfe, Umgang mit unerkannten Fahrern, Fahrverbote – im Fenster und rechts auf der Seite. */
+@Composable
+internal fun OfficeControls(
+    office: FineOfficeState,
+    rules: GameRules,
+    bannedDrivers: Int,
+    onCommand: (GameCommand) -> Unit,
+) {
+    StaffSection(office, rules, onCommand)
+    PanelSection(title = tr("Schärfe der Blitzer")) {
+        SegmentedControl(
+            Strictness.entries,
+            office.strictness,
+            { it.label },
+            { onCommand(GameCommand.SetStrictness(it)) },
+            Modifier.fillMaxWidth(),
+            detail = { "±${it.toleranceKmh.roundToInt()} km/h" },
+        )
+    }
+    PanelSection(title = tr("Wenn der Fahrer nicht ermittelbar ist")) {
+        RadioCardList(
+            UnidentifiedPolicy.entries,
+            office.policy,
+            { it.label },
+            { onCommand(GameCommand.SetUnidentifiedPolicy(it)) },
+        )
+    }
+    PanelSection(divider = false) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BasicText(
+                tr("Fahrverbote & entzogene Führerscheine"),
+                style = TmType.text(13.sp, color = TmColors.Muted),
             )
-        }
-        PanelSection(title = tr("Wenn der Fahrer nicht ermittelbar ist")) {
-            RadioCardList(
-                UnidentifiedPolicy.entries,
-                office.policy,
-                { it.label },
-                { onCommand(GameCommand.SetUnidentifiedPolicy(it)) },
-            )
-        }
-        PanelSection(divider = false) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                BasicText(
-                    tr("Fahrverbote & entzogene Führerscheine"),
-                    style = TmType.text(13.sp, color = TmColors.Muted),
-                )
-                BasicText("$bannedDrivers", style = TmType.mono(13.sp))
-            }
+            BasicText("$bannedDrivers", style = TmType.mono(13.sp))
         }
     }
 }
 
 /** Sachbearbeiter und Bearbeitungsfrist. */
 @Composable
-private fun StaffSection(
+internal fun StaffSection(
     office: FineOfficeState,
     rules: GameRules,
     onCommand: (GameCommand) -> Unit,
@@ -98,7 +118,7 @@ private fun StaffSection(
                 "${office.staff}",
                 onMinus = { onCommand(GameCommand.FireStaff(1)) }.takeIf { office.staff > 0 },
                 onPlus = { onCommand(GameCommand.HireStaff(1)) },
-                bigStep = "+$FIVE" to { onCommand(GameCommand.HireStaff(FIVE)) },
+                bigStep = tr("+{count} einstellen", "count" to FIVE) to { onCommand(GameCommand.HireStaff(FIVE)) },
             )
         }
         SettingRow(
@@ -169,7 +189,7 @@ class HabitsState(
  * sinkt, Presse spricht von Razzia) und Blitzermarathon (ein Tag brav, Lob, danach etwas weniger Warner).
  */
 @Composable
-private fun HabitsSection(
+internal fun HabitsSection(
     habits: HabitsState,
     rules: GameRules,
     onCommand: (GameCommand) -> Unit,
@@ -203,3 +223,12 @@ private fun HabitsSection(
         }
     }
 }
+
+/** Was die Seite „Ordnungsamt“ zeigt. */
+internal class OfficePageData(
+    val office: FineOfficeState,
+    val rules: GameRules,
+    val bannedDrivers: Int,
+    val cameras: List<CameraRecord>,
+    val habits: HabitsState?,
+)

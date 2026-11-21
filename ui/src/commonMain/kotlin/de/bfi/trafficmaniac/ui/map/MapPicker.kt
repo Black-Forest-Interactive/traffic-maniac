@@ -18,10 +18,12 @@ class MapPicker(
         x: Float,
         y: Float,
         maxDistance: Float,
+        /** Nur Abschnitte mit Straßennamen (z. B. um einen Ort zu benennen). */
+        named: Boolean = false,
         allowPassive: (Int) -> Boolean = { false },
     ): Int? =
         city.roads.segments
-            .filter { !it.passive || allowPassive(it.id) }
+            .filter { (!it.passive || allowPassive(it.id)) && (!named || it.name != null) }
             .map { it.id to distanceToPolyline(it.geometry, x, y) }
             .filter { it.second <= maxDistance }
             .minByOrNull { it.second }

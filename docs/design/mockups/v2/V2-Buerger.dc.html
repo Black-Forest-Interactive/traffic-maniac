@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Traffic Maniac – Bürger</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#15202B}
+a{color:#2257B8}
+.tm-rail:hover{background:#243444}
+.tm-row:hover{background:#F5F7F9}
+button:focus-visible,a:focus-visible{outline:3px solid #FFC21A;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; display: grid; grid-template-columns: 80px 1fr; grid-template-rows: 56px 1fr; font-family: Inter, system-ui, sans-serif; color: #15202B; background: #EEF1F4; overflow: hidden">
+
+  <header style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; background: #15202B; color: #EEF1F4">
+    <svg width="18" height="34" viewBox="0 0 18 34" aria-hidden="true"><rect x="1" y="1" width="16" height="32" rx="5" fill="#243444" stroke="#3B4C5D"></rect><circle cx="9" cy="9" r="4" fill="#E5484D"></circle><circle cx="9" cy="17" r="4" fill="#FFC21A"></circle><circle cx="9" cy="25" r="4" fill="#3B4C5D"></circle></svg>
+    <div style="display: flex; flex-direction: column; min-width: 118px"><span style="font-size: 11px; color: #A3B0BD; line-height: 1.2">Mittwoch · Tag 3 von 5</span><span style="font: 700 18px 'JetBrains Mono', monospace; line-height: 1.2">09:12</span></div>
+    <div style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #243444; font: 700 13px 'JetBrains Mono', monospace">
+      <span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">⏸</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">1×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">2×</span><span style="min-width: 40px; height: 36px; border-radius: 8px; background: #FFC21A; color: #15202B; display: flex; align-items: center; justify-content: center">4×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">8×</span><span style="min-width: 48px; height: 36px; display: flex; align-items: center; justify-content: center">64×</span>
+    </div>
+    <span style="flex: 1"></span>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <div style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><div style="display: flex; flex-direction: column"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Kasse</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">96.210 €</b></div><span style="font: 600 11px 'JetBrains Mono', monospace; color: #8FE0A8">heute +4.180</span></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Reputation</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">42<span style="color: #8193A5; font-weight: 500">/100</span></b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #3A1F28"><span style="font-size: 10px; color: #F3B7BD; line-height: 1.2">Bürgerzorn</span><b style="font: 700 15px 'JetBrains Mono', monospace; color: #FF9AA2; line-height: 1.2">31</b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 150px; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="display: flex; justify-content: space-between; font-size: 10px; color: #A3B0BD; line-height: 1.2">Abwahlindex <b style="font: 700 11px 'JetBrains Mono', monospace; color: #EEF1F4">38/100</b></span><span style="display: block; height: 6px; border-radius: 3px; background: #3B4C5D; overflow: hidden"><span style="display: block; width: 38%; height: 100%; background: #FF8A8F"></span></span></div>
+    </div>
+    <span style="width: 1px; height: 32px; background: #3B4C5D; margin: 0 4px"></span>
+    <button type="button" aria-label="Speichern" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8"></path></svg></button>
+    <button type="button" aria-label="Menü" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+  </header>
+
+  <nav aria-label="Navigation" style="background: #1E2B38; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; overflow: hidden">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="13">
+      <sc-if value="{{r.isHead}}" hint-placeholder-val="{{false}}"><span style="display: block; margin: 8px 0 2px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8193A5; text-align: center">{{r.label}}</span></sc-if>
+      <sc-if value="{{r.isGap}}" hint-placeholder-val="{{false}}"><span style="flex: 1"></span></sc-if>
+      <sc-if value="{{r.isItem}}" hint-placeholder-val="{{true}}">
+        <a href="{{r.href}}" class="tm-rail" style="{{r.style}}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg>
+          <span style="font-size: 11px; font-weight: 600; line-height: 1.1">{{r.label}}</span>
+          <sc-if value="{{r.badge}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 4px; right: 8px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: #C62B3B; color: #FFFFFF; font: 700 10px Inter, sans-serif; display: flex; align-items: center; justify-content: center">{{r.badge}}</span></sc-if>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <main style="min-height: 0; overflow: hidden; padding: 24px 32px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr); gap: 16px">
+
+    <div style="grid-column: 1 / -1; display: flex; align-items: flex-end; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Rathaus</span>
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 32px; line-height: 1.1">Bürger</h1>
+      </div>
+      <div style="display: flex; gap: 10px">
+        <a href="V2-Karte.dc.html" style="display: flex; align-items: center; height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #C3CCD5; background: #FFFFFF; color: #15202B; text-decoration: none; font-size: 13px; font-weight: 600">Karte: Ebene Zufriedenheit</a>
+        <a href="V2-Karte.dc.html" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; background: #15202B; color: #FFFFFF; text-decoration: none; font-size: 13px; font-weight: 700">Zur Karte <span style="font: 500 11px 'JetBrains Mono', monospace; opacity: .7">M</span></a>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div style="grid-column: 1 / -1; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr; gap: 16px">
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 2px solid #E9A2AA; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 12px; font-weight: 600; color: #586674">Unzufrieden</span><b style="font: 700 24px 'JetBrains Mono', monospace; color: #A3202E">78 %</b></div>
+        <span role="meter" aria-label="Anteil Unzufriedene" aria-valuenow="78" aria-valuemin="0" aria-valuemax="100" style="position: relative; display: block; height: 10px; border-radius: 5px; background: #E3E8ED"><span style="display: block; width: 78%; height: 100%; border-radius: 5px; background: #D9701F"></span><span style="position: absolute; left: 43%; top: -4px; bottom: -4px; width: 2px; background: #A3202E"></span></span>
+        <span style="font-size: 12px; color: #586674">ab <b style="color: #A3202E">43 %</b> wächst der Bürgerzorn – 35 Punkte drüber</span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Bürgerzorn</span>
+        <b style="font: 700 24px 'JetBrains Mono', monospace">31</b>
+        <span style="font-size: 12px; color: #A3202E; font-weight: 600">+2,1 pro Stunde</span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Spontandemos</span>
+        <b style="font: 700 24px 'JetBrains Mono', monospace">3</b>
+        <span style="font-size: 12px; color: #A3202E; font-weight: 600">Risiko heute: hoch</span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Pendler pünktlich</span>
+        <b style="font: 700 24px 'JetBrains Mono', monospace">71 %</b>
+        <span style="font-size: 12px; color: #586674">Ø 27 min unterwegs</span>
+      </div>
+      <div style="padding: 14px 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; color: #586674">Abwahl</span>
+        <b style="font: 700 24px 'JetBrains Mono', monospace">38/100</b>
+        <span style="font-size: 12px; color: #586674">bei diesem Tempo: Tag 5, 15 Uhr</span>
+      </div>
+    </div>
+
+    <!-- Verlauf je Haushaltstyp -->
+    <section aria-label="Zufriedenheit über die Zeit" style="grid-column: span 7; padding: 16px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 8px; min-height: 0">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Zufriedenheit je Haushaltstyp</h2>
+        <div style="display: flex; gap: 14px; font-size: 12px; color: #3D4B59">
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 3px; border-radius: 2px; background: #2F6BD0"></span>Rentner</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 3px; border-radius: 2px; background: #1F9E89"></span>Familien</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 3px; border-radius: 2px; background: #D9701F"></span>Pendler</span>
+        </div>
+      </div>
+      <svg viewBox="0 0 900 220" width="100%" height="100%" preserveAspectRatio="none" role="img" aria-label="Seit Tag 1 sinkt die Zufriedenheit: Rentner von 90 auf 60, Familien von 86 auf 53, Pendler von 82 auf 49 Prozent. Unter 57 Prozent wächst der Zorn." style="flex: 1; min-height: 170px">
+        <g font-family="JetBrains Mono" font-size="10" fill="#586674"><text x="0" y="14">100 %</text><text x="0" y="104">50 %</text><text x="0" y="194">0</text><text x="44" y="214">Tag 1</text><text x="300" y="214">Tag 2</text><text x="560" y="214">Tag 3</text><text x="830" y="214">jetzt</text></g>
+        <line x1="40" y1="10" x2="860" y2="10" stroke="#E3E8ED" stroke-dasharray="3 3"></line>
+        <line x1="40" y1="100" x2="860" y2="100" stroke="#E3E8ED" stroke-dasharray="3 3"></line>
+        <line x1="40" y1="190" x2="860" y2="190" stroke="#93A1AE"></line>
+        <rect x="40" y="87" width="820" height="103" fill="#FBE3E5" opacity=".45"></rect>
+        <line x1="40" y1="87" x2="860" y2="87" stroke="#A3202E" stroke-dasharray="5 4"></line>
+        <text x="46" y="82" font-family="Inter" font-size="10" font-weight="700" fill="#A3202E">57 % – darunter wächst der Zorn</text>
+        <polyline points="40,28 160,30 300,36 420,52 560,64 700,74 820,82" fill="none" stroke="#2F6BD0" stroke-width="2.5" stroke-linejoin="round"></polyline>
+        <polyline points="40,35 160,38 300,46 420,64 560,80 700,90 820,95" fill="none" stroke="#1F9E89" stroke-width="2.5" stroke-linejoin="round"></polyline>
+        <polyline points="40,42 160,48 300,58 420,76 560,88 700,98 820,102" fill="none" stroke="#D9701F" stroke-width="2.5" stroke-linejoin="round"></polyline>
+        <g font-family="Inter" font-size="11" font-weight="700"><text x="826" y="80" fill="#15202B">60</text><text x="826" y="97" fill="#15202B">53</text><text x="826" y="112" fill="#15202B">49</text></g>
+      </svg>
+    </section>
+
+    <!-- Gründe -->
+    <section aria-label="Warum die Leute sauer sind" style="grid-column: span 5; padding: 16px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 16px; font-weight: 700">Warum sind die Leute sauer?</h2><span style="font-size: 12px; color: #586674">Anteil der Beschwerden</span></div>
+      <sc-for list="{{reasons}}" as="r" hint-placeholder-count="6">
+        <div style="display: grid; grid-template-columns: 150px minmax(0, 1fr) 40px 110px; gap: 10px; align-items: center; font-size: 13px">
+          <span>{{r.label}}</span>
+          <span style="display: block; height: 12px; border-radius: 0 4px 4px 0; background: #EEF1F4"><span style="{{r.bar}}"></span></span>
+          <span style="font: 700 12px 'JetBrains Mono', monospace; text-align: right">{{r.v}}</span>
+          <a href="{{r.href}}" style="font-size: 12px; font-weight: 600; text-decoration: none; text-align: right">{{r.fix}}</a>
+        </div>
+      </sc-for>
+    </section>
+
+    <!-- Bedürfnisse x Haushaltstyp -->
+    <section aria-label="Bedürfnisse je Haushaltstyp" style="grid-column: span 5; padding: 16px 20px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 16px; font-weight: 700">Was fehlt wem?</h2><span style="font-size: 12px; color: #586674">erfüllt in %</span></div>
+      <div role="table" aria-label="Bedürfnisse je Haushaltstyp" style="display: grid; grid-template-columns: 90px repeat(4, minmax(0, 1fr)); gap: 4px">
+        <span role="columnheader"></span>
+        <span role="columnheader" style="font-size: 11px; font-weight: 700; color: #586674; text-align: center">Schnell am Ziel</span>
+        <span role="columnheader" style="font-size: 11px; font-weight: 700; color: #586674; text-align: center">Mobilität (Bußgelder)</span>
+        <span role="columnheader" style="font-size: 11px; font-weight: 700; color: #586674; text-align: center">Ruhe</span>
+        <span role="columnheader" style="font-size: 11px; font-weight: 700; color: #586674; text-align: center">Frische Luft</span>
+        <sc-for list="{{heat}}" as="h" hint-placeholder-count="4">
+          <span role="rowheader" style="{{h.headStyle}}">{{h.label}}</span>
+          <sc-for list="{{h.cells}}" as="c" hint-placeholder-count="4">
+            <span role="cell" title="{{c.tip}}" style="{{c.style}}">{{c.v}}</span>
+          </sc-for>
+        </sc-for>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #586674; margin-top: auto">
+        <span>schlecht</span>
+        <span style="display: flex; gap: 2px"><span style="width: 22px; height: 10px; border-radius: 2px; background: #D9701F"></span><span style="width: 22px; height: 10px; border-radius: 2px; background: #F2B98A"></span><span style="width: 22px; height: 10px; border-radius: 2px; background: #E3E8ED"></span><span style="width: 22px; height: 10px; border-radius: 2px; background: #A9C4EE"></span><span style="width: 22px; height: 10px; border-radius: 2px; background: #2F6BD0"></span></span>
+        <span>gut</span>
+        <span style="margin-left: auto">Einwohner: Pendler 41 % · Familien 34 % · Rentner 25 %</span>
+      </div>
+    </section>
+
+    <!-- Hotspots -->
+    <section aria-label="Hier brodelt es" style="grid-column: span 7; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; min-height: 0; overflow: hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px 10px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Hier brodelt es</h2>
+        <span style="font-size: 12px; color: #586674">Gebiete mit &lt; 30 % zufrieden: 9</span>
+      </div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) 150px minmax(0, 1.2fr) 90px 70px 80px; gap: 12px; padding: 8px 18px; font-size: 11px; font-weight: 700; color: #586674; border-top: 1px solid #E3E8ED; border-bottom: 1px solid #E3E8ED">
+        <span>Gebiet</span><span>Zufrieden</span><span>Hauptgrund</span><span style="text-align: right">Einwohner</span><span style="text-align: right">Trend</span><span></span>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow-y: auto">
+        <sc-for list="{{spots}}" as="s" hint-placeholder-count="5">
+          <div class="tm-row" style="display: grid; grid-template-columns: minmax(0, 1.4fr) 150px minmax(0, 1.2fr) 90px 70px 80px; gap: 12px; align-items: center; min-height: 46px; padding: 0 18px; border-bottom: 1px solid #F0F3F6">
+            <span style="display: flex; flex-direction: column"><b style="font-size: 14px">Gebiet {{s.id}}</b><span style="font-size: 11px; color: #586674">{{s.near}}</span></span>
+            <span style="display: flex; align-items: center; gap: 8px"><span style="flex: 1; display: block; height: 6px; border-radius: 3px; background: #E3E8ED"><span style="{{s.bar}}"></span></span><span style="font: 700 12px 'JetBrains Mono', monospace; width: 34px; text-align: right">{{s.v}}</span></span>
+            <span style="font-size: 13px">{{s.why}}</span>
+            <span style="font: 600 12px 'JetBrains Mono', monospace; text-align: right">{{s.pop}}</span>
+            <span style="font: 700 12px 'JetBrains Mono', monospace; text-align: right; color: #A3202E">{{s.trend}}</span>
+            <a href="V2-Karte.dc.html" style="font-size: 13px; font-weight: 600; text-decoration: none; text-align: right">Zeigen</a>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var item = function (label, icon, href, active, badge) {
+      return { isItem: true, isHead: false, isGap: false, label: label, icon: icon, href: href, badge: badge || false,
+        style: 'position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 62px; padding: 0 2px; border-radius: 10px; text-decoration: none; text-align: center; ' + (active ? 'background: #FFC21A; color: #15202B;' : 'background: transparent; color: #EEF1F4;') };
+    };
+    var rail = [
+      item('Karte', 'M9 3 3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15', 'V2-Karte.dc.html'),
+      item('Posteingang', 'M22 12h-6l-2 3h-4l-2-3H2M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z', 'V2-Posteingang.dc.html', false, '31'),
+      { isHead: true, isItem: false, isGap: false, label: 'Rathaus' },
+      item('Kämmerei', 'M4 10h11M4 14h11M18.5 6.5A7 7 0 1 0 18.5 17.5', 'V2-Kaemmerei.dc.html'),
+      item('Ordnung', 'M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z', 'V2-Ordnungsamt.dc.html'),
+      item('Bauamt', 'M2 20h20M5 20V10l7-6 7 6v10M9 20v-6h6v6', 'V2-Bauamt.dc.html', false, '7'),
+      item('Parken', 'M5 3h14v18H5zM9 17V7h4a3 3 0 0 1 0 6H9', 'V2-Parken.dc.html'),
+      item('ÖPNV', 'M6 17h12M5 4h14v12H5zM5 11h14M8 20v-3M16 20v-3', 'V2-OePNV.dc.html'),
+      item('Presse', 'M4 4h13v16H6a2 2 0 0 1-2-2zM17 8h3v10a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h5', 'V2-Presse.dc.html'),
+      item('Bürger', 'M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'V2-Buerger.dc.html', true),
+      item('Kalender', 'M3 5h18v16H3zM16 3v4M8 3v4M3 11h18', 'V2-Kalender.dc.html'),
+      { isGap: true, isHead: false, isItem: false },
+      item('Erfolge', 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.2 13.9 7 22l5-3 5 3-1.2-8.1', '#'),
+      item('Hilfe', 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01', '#')
+    ];
+    var reasons = [['Bußgelder & Blitzer', 41, 'Ordnungsamt →', 'V2-Ordnungsamt.dc.html'], ['Staus', 22, 'Karte →', 'V2-Karte.dc.html'], ['Schlaglöcher', 17, 'Bauamt →', 'V2-Bauamt.dc.html'], ['Parkplatznot', 12, 'Parken →', 'V2-Parken.dc.html'], ['Lärm', 5, 'Karte →', 'V2-Karte.dc.html'], ['Schlechte Luft', 3, 'Karte →', 'V2-Karte.dc.html']].map(function (r) {
+      return { label: r[0], v: r[1] + ' %', fix: r[2], href: r[3], bar: 'display: block; height: 100%; width: ' + Math.round(r[1] / 41 * 100) + '%; border-radius: 0 4px 4px 0; background: #D9701F;' };
+    });
+    var col = function (v) {
+      if (v < 35) return ['#D9701F', '#FFFFFF'];
+      if (v < 50) return ['#F2B98A', '#15202B'];
+      if (v < 65) return ['#E3E8ED', '#15202B'];
+      if (v < 80) return ['#A9C4EE', '#15202B'];
+      return ['#2F6BD0', '#FFFFFF'];
+    };
+    var needs = ['Schnell am Ziel', 'Mobilität', 'Ruhe', 'Frische Luft'];
+    var heat = [['Pendler', [62, 12, 90, 84]], ['Familien', [80, 22, 88, 80]], ['Rentner', [92, 25, 96, 90]], ['Alle (Ø)', [78, 19, 92, 85]]].map(function (r, ri) {
+      return { label: r[0], headStyle: 'display: flex; align-items: center; font-size: 13px; ' + (ri === 3 ? 'font-weight: 700; border-top: 1px solid #C3CCD5; padding-top: 4px;' : 'font-weight: 600;'),
+        cells: r[1].map(function (v, i) { var c = col(v); return { v: v, tip: r[0] + ' · ' + needs[i] + ': ' + v + ' %', style: 'display: flex; align-items: center; justify-content: center; height: 38px; border-radius: 6px; font: 700 13px "JetBrains Mono", monospace; background: ' + c[0] + '; color: ' + c[1] + ';' + (ri === 3 ? ' margin-top: 4px;' : '') }; }) };
+    });
+    var spots = [['149', 'nahe Bahnhofstraße', 14, 'Bußgelder', '2.310', '−6'], ['12', 'Innenstadt Nord', 14, 'Parkplatznot', '1.870', '−9'], ['34', 'nahe Altstädter Brücke', 19, 'Bußgelder', '2.940', '−4'], ['88', 'Brötzingen', 23, 'Schlaglöcher', '1.420', '−3'], ['61', 'nahe L 562', 27, 'Staus', '980', '−5']].map(function (s) {
+      return { id: s[0], near: s[1], v: s[2] + ' %', why: s[3], pop: s[4], trend: s[5],
+        bar: 'display: block; height: 100%; width: ' + s[2] + '%; border-radius: 3px; background: #D9701F;' };
+    });
+    return { rail: rail, reasons: reasons, heat: heat, spots: spots };
+  }
+}
+</script>
+</body>
+</html>

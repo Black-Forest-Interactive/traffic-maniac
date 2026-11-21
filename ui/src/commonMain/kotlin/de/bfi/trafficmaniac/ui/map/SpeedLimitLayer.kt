@@ -1,10 +1,12 @@
 package de.bfi.trafficmaniac.ui.map
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import de.bfi.trafficmaniac.city.TransitStop
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max
@@ -58,8 +60,41 @@ internal fun speedSigns(
             signs += SpeedSign(x, y, "$kmh", night = true)
         }
     }
-    return signs
+    return avoidStops(signs, picker.city.transitStops, radius * (1 + STOP_CLEARANCE))
 }
+
+/**
+ * Schilder, die auf einer Haltestelle stehen würden, rücken von ihr weg, bis sie sich nicht mehr berühren – sonst
+ * verdeckt das Tempo-Schild das „H“ (bzw. den Bus davor).
+ */
+internal fun avoidStops(
+    signs: List<SpeedSign>,
+    stops: List<TransitStop>,
+    distance: Float,
+): List<SpeedSign> = if (signs.isEmpty()) signs else pushAway(signs, stops.map { Offset(it.x, it.y) }, distance)
+
+/** Schilder näher als [distance] an einem der [points] rücken von ihm weg, bis sie es nicht mehr berühren. */
+internal fun pushAway(
+    signs: List<SpeedSign>,
+    points: List<Offset>,
+    distance: Float,
+): List<SpeedSign> =
+    signs.map { sign ->
+        var x = sign.x
+        var y = sign.y
+        for (point in points) {
+            val dx = x - point.x
+            val dy = y - point.y
+            val d = hypot(dx, dy)
+            if (d >= distance) continue
+            // Genau darauf: nach unten ausweichen (weg von Tafeln, die über ihrem Standort stehen), sonst in
+            // Verlängerung des Abstands
+            val (ux, uy) = if (d < MIN_DISTANCE) 0f to -1f else dx / d to dy / d
+            x = point.x + ux * distance
+            y = point.y + uy * distance
+        }
+        if (x == sign.x && y == sign.y) sign else SpeedSign(x, y, sign.label, sign.night)
+    }
 
 /**
  * Wo auf [segment] Schilder stehen: am Anfang bzw. Ende nur, wenn dort die Strecke beginnt oder endet (Kreuzung oder
@@ -142,3 +177,7 @@ private const val CAMERA_CLEARANCE = 3f
 private const val CENTER = 0.5f
 private const val NIGHT_WIDTH = 0.3f
 private const val NIGHT_DASH_GAP = 0.6f
+
+/** Abstand Schild ↔ Haltestelle über die beiden Radien hinaus (Anteil des Schildradius). */
+private const val STOP_CLEARANCE = 0.9f
+private const val MIN_DISTANCE = 0.01f

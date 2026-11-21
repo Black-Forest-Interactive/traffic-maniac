@@ -1,6 +1,8 @@
 package de.bfi.trafficmaniac.sim
 
+import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.random.Random
 
 /**
@@ -60,7 +62,7 @@ internal class ParkingSearch(
         stay: Double,
         time: Double,
     ): ParkingOutcome? {
-        val fee = parking.curbFee * payableHours(vehicle, stay)
+        val fee = parking.curbFee * payableHours(vehicle, stay, time)
         val affordable = fee / stay <= vehicle.feeTolerance
         if (!affordable || !parking.takeCurb(vehicle.parkingZone, time + stay * SECONDS_PER_HOUR)) return null
         pay(vehicle, fee)
@@ -77,7 +79,7 @@ internal class ParkingSearch(
     ): ParkingOutcome? {
         val lot =
             parking.lotsNear(vehicle.parkingZone).firstOrNull {
-                it.hasSpace && it.fee * payableHours(vehicle, stay) / stay <= vehicle.feeTolerance
+                it.hasSpace && it.fee * payableHours(vehicle, stay, time) / stay <= vehicle.feeTolerance
             } ?: return null
         return when {
             lot.facility.node == graph.linkTo[link] -> {
@@ -128,7 +130,7 @@ internal class ParkingSearch(
         time: Double,
     ): ParkingOutcome {
         lot.departures += time + stay * SECONDS_PER_HOUR
-        val fee = lot.fee * payableHours(vehicle, stay)
+        val fee = lot.fee * payableHours(vehicle, stay, time)
         pay(vehicle, fee)
         statistics.parked(curb = false, fee)
         return parked(vehicle, time)
@@ -176,11 +178,20 @@ internal class ParkingSearch(
         return true
     }
 
-    /** Mit Brötchentaste ist bei Einkäufen die erste halbe Stunde kostenlos. */
+    /**
+     * Bezahlte Stunden eines Aufenthalts ab [time]: nur der Teil innerhalb der Gebührenzeit
+     * ([SimulationConfig.paidFromHour]–[SimulationConfig.paidUntilHour]). Mit Brötchentaste ist bei Einkäufen die
+     * erste halbe Stunde kostenlos.
+     */
     private fun payableHours(
         vehicle: Vehicle,
         stay: Double,
-    ): Double = max(0.0, stay - if (parking.breadButton && vehicle.shortStay) BREAD_BUTTON_HOURS else 0.0)
+        time: Double,
+    ): Double {
+        val from = (config.startSecondOfDay + time) / SECONDS_PER_HOUR
+        val paid = paidHoursBetween(from, from + stay, config.paidFromHour, config.paidUntilHour)
+        return max(0.0, paid - if (parking.breadButton && vehicle.shortStay) BREAD_BUTTON_HOURS else 0.0)
+    }
 
     /** Aufenthalt am Ziel: Einkauf oder Arbeitstag, jeweils ±25 %. */
     private fun stayHours(vehicle: Vehicle): Double =
@@ -195,3 +206,23 @@ internal class ParkingSearch(
         const val STAY_SPREAD = 0.25
     }
 }
+
+/** Stunden zwischen [from] und [to] (Stunden seit Mitternacht von Tag 0), die in die tägliche Gebührenzeit fallen. */
+internal fun paidHoursBetween(
+    from: Double,
+    to: Double,
+    open: Int,
+    close: Int,
+): Double {
+    var total = 0.0
+    var day = floor(from / HOURS_PER_DAY)
+    while (day * HOURS_PER_DAY < to) {
+        val start = max(from, day * HOURS_PER_DAY + open)
+        val end = min(to, day * HOURS_PER_DAY + close)
+        if (end > start) total += end - start
+        day++
+    }
+    return total
+}
+
+private const val HOURS_PER_DAY = 24.0

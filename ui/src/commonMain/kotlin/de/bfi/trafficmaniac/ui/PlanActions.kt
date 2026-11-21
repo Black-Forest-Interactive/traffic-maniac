@@ -2,6 +2,7 @@ package de.bfi.trafficmaniac.ui
 
 import de.bfi.trafficmaniac.game.GameCommand
 import de.bfi.trafficmaniac.game.GameRules
+import de.bfi.trafficmaniac.game.formatEuro
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.map.PlanMarker
 import kotlin.math.hypot
@@ -36,6 +37,7 @@ internal fun speedLimitAction(
                 },
         ),
         cost,
+        title = if (selection.speedLimit == null) tr("Ursprüngliches Limit") else tr("Tempo {label}", "label" to label),
     )
 }
 
@@ -172,9 +174,7 @@ internal fun Plan.cameraAction(
 ): PlannedAction? =
     when (command) {
         is GameCommand.PlaceCamera -> {
-            val label = if (command.mobile) tr("Laser") else tr("Blitzer")
-            val cost = if (command.mobile) 0 else context.rules.cameraCost
-            single(command, "camera:${command.segment}", context.picker.midpoint(command.segment), label, cost)
+            placeCameraAction(command, context)
         }
 
         is GameCommand.PlaceTrailer -> {
@@ -304,6 +304,24 @@ internal fun single(
         PlanMarker(position.first, position.second, label, removal = removal, segments = segments),
         cost,
     )
+
+/** Blitzer (fest, sofort bezahlt) oder Laser (kostet je Tag). */
+private fun placeCameraAction(
+    command: GameCommand.PlaceCamera,
+    context: PlanContext,
+): PlannedAction {
+    val position = context.picker.midpoint(command.segment)
+    val key = "camera:${command.segment}"
+    return if (command.mobile) {
+        single(command, key, position, tr("Laser"), 0)
+            .priced(tr("{cost}/Tag", "cost" to formatEuro(context.rules.laserDailyCost)))
+    } else {
+        single(command, key, position, tr("Blitzer"), context.rules.cameraCost)
+    }
+}
+
+/** Dieselbe Maßnahme mit eigenem Preistext für den Bauplan. */
+internal fun PlannedAction.priced(text: String): PlannedAction = PlannedAction(commands, key, marker, cost, title, text)
 
 /** Steht (nach den geplanten Auflade-Aktionen) ein Anhänger frei, kostet nur das Umsetzen. */
 private fun Plan.trailerCost(context: PlanContext): Long {

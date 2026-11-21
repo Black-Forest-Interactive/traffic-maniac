@@ -100,6 +100,9 @@ data class SimulationConfig(
     val shortStayHours: Double = 1.0,
     /** Höchste Gebühr (Euro je Stunde), die Fahrer zahlen – gleichverteilt zwischen 0 und diesem Wert. */
     val maxFeeTolerance: Double = 4.0,
+    /** Gebührenpflicht von … bis … Uhr; außerhalb ist Parken frei (wie üblich etwa 8–20 Uhr). */
+    val paidFromHour: Int = 8,
+    val paidUntilHour: Int = 20,
     /** Startgebühr gebührenpflichtiger Parkplätze und Parkhäuser in Euro je Stunde. */
     val defaultParkingFee: Double = 1.5,
     /** Startgebühr am Parkscheinautomaten am Straßenrand in Euro je Stunde (0 = kostenlos). */

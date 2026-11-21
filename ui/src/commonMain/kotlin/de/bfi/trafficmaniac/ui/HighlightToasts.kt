@@ -1,20 +1,22 @@
 package de.bfi.trafficmaniac.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -25,33 +27,39 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.Highlight
 import de.bfi.trafficmaniac.game.HighlightKind
 import de.bfi.trafficmaniac.game.MapPlace
+import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.components.Icon
 import de.bfi.trafficmaniac.ui.components.Icons
-import kotlinx.coroutines.delay
+import de.bfi.trafficmaniac.ui.components.TmIcon
 import kotlin.math.sin
 import kotlin.random.Random
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * Einblendungen oben in der Mitte (v0.9 Paket 3): Errungenschaft groß mit Konfetti, Nachrichten mittel, Warnungen rot.
- * Jede Einblendung erscheint genau einmal (nach [Highlight.id]) und bleibt [SHOW_MILLIS] echte Zeit stehen – auch bei
- * 64× Zeitraffer. Höchstens [MAX_VISIBLE] gleichzeitig, weitere warten. Ein Klick springt zum Ort, falls es einen gibt.
- * Was beim ersten Bild schon da war (z. B. nach dem Laden), wird nicht nachgeholt.
+ * Meldungen unten links (Entwurf 2): höchstens [MAX_VISIBLE] gestapelt, 380 dp breit, ein Stil für alle – weiße Karte
+ * mit Farbstreifen und rundem Icon nach Typ (Problem rot, Neues blau, Erfolg grün), Titel, Unterzeile, optional
+ * „Ansehen“, ✕ und ein dünner Zeitbalken. Jede Meldung erscheint genau einmal (nach [Highlight.id]) und bleibt
+ * [SHOW_MILLIS] echte Zeit stehen – auch bei 64× Zeitraffer –, solange die Maus darauf steht, länger. Was beim ersten
+ * Bild schon da war (z. B. nach dem Laden), wird nicht nachgeholt. Alles steht zusätzlich im Posteingang.
  */
 @Composable
 internal fun HighlightToasts(
@@ -60,6 +68,8 @@ internal fun HighlightToasts(
     modifier: Modifier = Modifier,
     /** Für Screenshots: auch zeigen, was beim ersten Bild schon da ist. */
     showExisting: Boolean = false,
+    /** Link unter dem Stapel; `null` = keiner. */
+    onInbox: (() -> Unit)? = null,
 ) {
     var seen by remember { mutableStateOf<Int?>(if (showExisting) 0 else null) }
     val waiting = remember { mutableStateListOf<Highlight>() }
@@ -77,71 +87,154 @@ internal fun HighlightToasts(
     LaunchedEffect(waiting.size, visible.size) {
         while (visible.size < MAX_VISIBLE && waiting.isNotEmpty()) visible += waiting.removeAt(0)
     }
-    Column(
-        modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    Column(modifier.width(TOAST_WIDTH.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for (highlight in visible) {
             key(highlight.id) {
-                LaunchedEffect(Unit) {
-                    delay(SHOW_MILLIS.milliseconds)
-                    visible.remove(highlight)
-                }
-                Toast(highlight) { highlight.place?.let(onPlace) }
+                Toast(highlight, { highlight.place?.let(onPlace) }) { visible.remove(highlight) }
             }
+        }
+        if (visible.isNotEmpty() && onInbox != null) {
+            BasicText(
+                tr("Alle Meldungen im Posteingang →"),
+                style = TmType.text(12.sp, FontWeight.SemiBold, TmColors.Primary),
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(TmColors.Surface.copy(alpha = LINK_ALPHA))
+                        .clickable(role = Role.Button, onClick = onInbox)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
         }
     }
 }
 
+/** Farbe und Icon nach Typ: Erfolg grün, Neues blau, Problem rot. */
+private fun look(kind: HighlightKind): Pair<Color, TmIcon> =
+    when (kind) {
+        HighlightKind.BIG -> TmColors.Success to Icons.Award
+        HighlightKind.MEDIUM -> TmColors.Primary to Icons.Info
+        HighlightKind.WARNING -> TmColors.Danger to Icons.Siren
+    }
+
 @Composable
 private fun Toast(
     highlight: Highlight,
-    onClick: () -> Unit,
+    onShow: () -> Unit,
+    onDone: () -> Unit,
 ) {
-    var shown by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { shown = true }
-    AnimatedVisibility(shown, enter = slideInVertically { -it } + fadeIn(), exit = fadeOut()) {
-        val (background, accent, text) =
-            when (highlight.kind) {
-                HighlightKind.BIG -> Triple(ComicTheme.paper, TmColors.Active, ComicTheme.ink)
-                HighlightKind.MEDIUM -> Triple(TmColors.Ink, TmColors.Success, TmColors.OnDark)
-                HighlightKind.WARNING -> Triple(TmColors.Danger, TmColors.Surface, TmColors.Surface)
-            }
-        val big = highlight.kind == HighlightKind.BIG
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    val elapsed = rememberElapsed(hovered, onDone)
+    val (color, icon) = look(highlight.kind)
+    // Titel nicht in der Unterzeile wiederholen
+    val detail = highlight.text.removePrefix(highlight.title).trimStart(' ', ':', '–', '-')
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, ToastShape, spotColor = ToastShadow)
+            .clip(ToastShape)
+            .background(TmColors.Surface)
+            .hoverable(interaction),
+    ) {
+        if (highlight.kind == HighlightKind.BIG) Confetti(Modifier.matchParentSize())
+        ToastContent(highlight, color, icon, detail, onShow, onDone)
+        // Zeitbalken: läuft ab, solange die Maus nicht darauf steht
         Box(
             Modifier
-                .widthIn(min = if (big) BIG_MIN_WIDTH.dp else 0.dp, max = MAX_WIDTH.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(background, RoundedCornerShape(12.dp))
-                .then(if (big) Modifier.border(3.dp, ComicTheme.ink, RoundedCornerShape(12.dp)) else Modifier)
-                .clickable(enabled = highlight.place != null, onClick = onClick),
-        ) {
-            if (big) Confetti(Modifier.matchParentSize())
-            Row(
-                Modifier.padding(horizontal = 14.dp, vertical = if (big) 12.dp else 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                ToastBadge(highlight.kind, accent)
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    BasicText(
-                        highlight.title,
-                        style =
-                            if (big) {
-                                TmType.display(18.sp, text)
-                            } else {
-                                TmType.text(13.sp, FontWeight.Bold, text)
-                            },
-                    )
-                    if (highlight.text.isNotEmpty()) {
-                        BasicText(highlight.text, style = TmType.text(12.sp, color = text.copy(alpha = TEXT_ALPHA)))
-                    }
-                }
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(1f - elapsed.toFloat() / SHOW_MILLIS)
+                .height(2.dp)
+                .background(color.copy(alpha = BAR_ALPHA)),
+        )
+    }
+}
+
+/** Echte Zeit seit dem Erscheinen in ms (läuft nicht, solange [paused]); danach [onDone]. */
+@Composable
+private fun rememberElapsed(
+    paused: Boolean,
+    onDone: () -> Unit,
+): Long {
+    var elapsed by remember { mutableStateOf(0L) }
+    val pausedNow by rememberUpdatedState(paused)
+    LaunchedEffect(Unit) {
+        var last = withFrameMillis { it }
+        while (elapsed < SHOW_MILLIS) {
+            withFrameMillis { now ->
+                if (!pausedNow) elapsed += now - last
+                last = now
             }
+        }
+        onDone()
+    }
+    return elapsed
+}
+
+/** Streifen, Icon, Titel und Unterzeile, „Ansehen“ und ✕. */
+@Composable
+private fun ToastContent(
+    highlight: Highlight,
+    color: Color,
+    icon: TmIcon,
+    detail: String,
+    onShow: () -> Unit,
+    onDone: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(4.dp).fillMaxHeight().background(color))
+        Box(
+            Modifier.padding(start = 12.dp).size(32.dp).background(color, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, null, tint = TmColors.Surface, size = 16.dp)
+        }
+        Column(
+            Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            BasicText(
+                highlight.title,
+                style = TmType.text(13.sp, FontWeight.Bold),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (detail.isNotEmpty()) {
+                BasicText(
+                    detail,
+                    style = TmType.text(12.sp, color = TmColors.Muted),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (highlight.place != null) {
+            BasicText(
+                tr("Ansehen"),
+                style = TmType.text(12.sp, FontWeight.SemiBold, TmColors.Primary),
+                modifier =
+                    Modifier
+                        .clip(
+                            RoundedCornerShape(6.dp),
+                        ).clickable(role = Role.Button, onClick = onShow)
+                        .padding(6.dp),
+            )
+        }
+        Box(
+            Modifier
+                .padding(
+                    end = 6.dp,
+                ).size(28.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .clickable(role = Role.Button, onClick = onDone),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Close, tr("Meldung schließen"), tint = TmColors.Muted, size = 14.dp)
         }
     }
 }
+
+private val ToastShape = RoundedCornerShape(12.dp)
+private val ToastShadow = TmColors.Ink.copy(alpha = 0.25f)
 
 /** Ein paar Sekunden fallendes Konfetti hinter einer Errungenschaft. */
 @Composable
@@ -174,11 +267,11 @@ private class Piece(
 )
 
 private val COLORS = listOf(Color(0xFFFFC300), Color(0xFFE63946), Color(0xFF1D5FD1), Color(0xFF2A9D8F))
-private const val SHOW_MILLIS = 4_000
+private const val SHOW_MILLIS = 6_000L
+private const val TOAST_WIDTH = 380
+private const val BAR_ALPHA = 0.6f
+private const val LINK_ALPHA = 0.9f
 private const val MAX_VISIBLE = 3
-private const val BIG_MIN_WIDTH = 340
-private const val MAX_WIDTH = 460
-private const val TEXT_ALPHA = 0.85f
 private const val CONFETTI = 24
 private const val CONFETTI_ALPHA = 0.45f
 private const val CONFETTI_SECONDS = 2.5f
@@ -192,25 +285,3 @@ private const val SPIN = 240f
 private const val FULL_TURN = 360f
 private const val PIECE_WIDTH = 6f
 private const val PIECE_HEIGHT = 10f
-
-/** Runder Knopf links in der Einblendung: Siegel, Haken oder Hinweis. */
-@Composable
-private fun ToastBadge(
-    kind: HighlightKind,
-    accent: Color,
-) {
-    val big = kind == HighlightKind.BIG
-    Box(
-        Modifier.size(if (big) 36.dp else 24.dp).background(accent, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        val icon =
-            when (kind) {
-                HighlightKind.BIG -> Icons.Award
-                HighlightKind.MEDIUM -> Icons.Check
-                HighlightKind.WARNING -> Icons.Info
-            }
-        val tint = if (kind == HighlightKind.WARNING) TmColors.Danger else TmColors.Ink
-        Icon(icon, null, tint = tint, size = if (big) 20.dp else 14.dp)
-    }
-}

@@ -60,32 +60,38 @@ fun CameraStatsPanel(
             }
         },
     ) {
-        if (cameras.isEmpty()) {
-            PanelSection(divider = false) { BasicText(tr("Noch kein Blitzer aufgestellt."), style = TmType.small) }
-            return@PanelScaffold
+        CameraStatsSections(cameras)
+    }
+}
+
+/** Abschnitte der Blitzer-Statistik – auch Teil der Seite „Ordnungsamt“. */
+@Composable
+internal fun CameraStatsSections(cameras: List<CameraRecord>) {
+    if (cameras.isEmpty()) {
+        PanelSection(divider = false) { BasicText(tr("Noch kein Blitzer aufgestellt."), style = TmType.small) }
+        return
+    }
+    PanelSection { TierDistribution(cameras) }
+    CameraBalance.smallFishShare(cameras)?.let { PanelSection { RevenueDistribution(cameras) } }
+    PanelSection(title = tr("Standorte"), divider = false) {
+        Row(Modifier.fillMaxWidth()) {
+            Header(tr("Standort"), Modifier.weight(2f), TextAlign.Start)
+            Header(tr("Fotos"), Modifier.weight(1f), TextAlign.End)
+            Header(tr("Einnahmen"), Modifier.weight(1f), TextAlign.End)
         }
-        PanelSection { TierDistribution(cameras) }
-        CameraBalance.smallFishShare(cameras)?.let { PanelSection { RevenueDistribution(cameras) } }
-        PanelSection(divider = false) {
-            Row(Modifier.fillMaxWidth()) {
-                Header(tr("Standort"), Modifier.weight(2f), TextAlign.Start)
-                Header(tr("Fotos"), Modifier.weight(1f), TextAlign.End)
-                Header(tr("Einnahmen"), Modifier.weight(1f), TextAlign.End)
-            }
-            for (camera in cameras.sortedWith(compareBy({ it.display }, { -it.totalRevenue }))) {
-                Divider()
-                CameraRow(camera)
-            }
-            cameras.filter { it.totalCount > 0 }.maxByOrNull { it.fastestMeasuredKmh - it.fastestLimitKmh }?.let {
-                BasicText(
-                    tr(
-                        "Rekord: {fastestMeasuredKmh} km/h bei Tempo {fastestLimitKmh}",
-                        "fastestMeasuredKmh" to it.fastestMeasuredKmh.roundToInt(),
-                        "fastestLimitKmh" to it.fastestLimitKmh,
-                    ),
-                    style = TmType.small,
-                )
-            }
+        for (camera in cameras.sortedWith(compareBy({ it.display }, { -it.totalRevenue }))) {
+            Divider()
+            CameraRow(camera)
+        }
+        cameras.filter { it.totalCount > 0 }.maxByOrNull { it.fastestMeasuredKmh - it.fastestLimitKmh }?.let {
+            BasicText(
+                tr(
+                    "Rekord: {fastestMeasuredKmh} km/h bei Tempo {fastestLimitKmh}",
+                    "fastestMeasuredKmh" to it.fastestMeasuredKmh.roundToInt(),
+                    "fastestLimitKmh" to it.fastestLimitKmh,
+                ),
+                style = TmType.small,
+            )
         }
     }
 }
@@ -190,7 +196,7 @@ private fun CameraRow(camera: CameraRecord) {
 private const val PERCENT = 100
 
 /** Art der Messstelle unter dem Straßennamen; bei einem gewöhnlichen festen Blitzer, wie bekannt er ist. */
-private fun kindLabel(camera: CameraRecord): String? =
+internal fun kindLabel(camera: CameraRecord): String? =
     when {
         camera.policeCheck -> tr("Polizeikontrolle · noch {minutes} min", "minutes" to (camera.minutesLeft ?: 0))
         camera.display -> tr("Anzeigetafel")

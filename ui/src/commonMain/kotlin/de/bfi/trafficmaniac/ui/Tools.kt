@@ -1,5 +1,6 @@
 package de.bfi.trafficmaniac.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,16 +11,18 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -32,7 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -50,7 +55,7 @@ import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
 import de.bfi.trafficmaniac.ui.components.Icon
 import de.bfi.trafficmaniac.ui.components.Icons
-import de.bfi.trafficmaniac.ui.components.MinTouch
+import de.bfi.trafficmaniac.ui.components.TmIcon
 
 /**
  * Gruppen im Werkzeug-Dock, je mit Taste. Die Arten einer Gruppe ([ToolKind]) wählt man in der Ausklappliste über
@@ -61,14 +66,16 @@ enum class Tool(
     /** Taste, die die Gruppe wählt (erneut gedrückt: die nächste Art), und ihre Beschriftung. */
     val key: Key,
     internal val keyLabel: String,
+    /** Icon der Kachel – fest je Gruppe, egal welche Art gewählt ist. */
+    internal val icon: TmIcon,
 ) {
-    LOOK(translatable("Ansehen"), Key.Escape, "Esc"),
-    SPEED_LIMIT(translatable("Tempolimit"), Key.Q, "Q"),
-    SIGNAL(translatable("Ampel"), Key.W, "W"),
-    CAMERA(translatable("Überwachung"), Key.E, "E"),
-    ROUTE(translatable("Verkehrsführung"), Key.A, "A"),
-    ROADWORKS(translatable("Baustelle"), Key.B, "B"),
-    REMOVE(translatable("Abbauen"), Key.X, "X"),
+    LOOK(translatable("Ansehen"), Key.Escape, "Esc", Icons.Eye),
+    SPEED_LIMIT(translatable("Tempo"), Key.Q, "Q", Icons.Gauge),
+    SIGNAL(translatable("Ampel"), Key.W, "W", Icons.TrafficLight),
+    CAMERA(translatable("Kontrolle"), Key.E, "E", Icons.Shield),
+    ROUTE(translatable("Umleitung"), Key.A, "A", Icons.Detour),
+    ROADWORKS(translatable("Sperrung"), Key.S, "S", Icons.Ban),
+    REMOVE(translatable("Abbauen"), Key.X, "X", Icons.Eraser),
     ;
 
     val label: String get() = tr(labelText)
@@ -133,6 +140,12 @@ class HudInput {
 
     /** Ausklappliste einer Gruppe öffnen (z. B. für Screenshots), wie ein Klick auf ihre Kachel. */
     internal var listRequest by mutableStateOf<Tool?>(null)
+
+    /** Enter ohne offenen Tagesabschluss: den Bauplan bauen. */
+    var buildRequest by mutableStateOf(false)
+
+    /** Strg+Z: die zuletzt geplante Maßnahme zurücknehmen. */
+    var undoRequest by mutableStateOf(false)
 }
 
 /** Was das Dock braucht: Auswahl, freigeschaltete Gruppen, freie Anhänger, offene Liste und die Rückmeldungen. */
@@ -151,10 +164,20 @@ internal class ToolDockState(
 )
 
 private val DockShape = RoundedCornerShape(16.dp)
-private val TileShape = RoundedCornerShape(11.dp)
-private val DockShadow = TmColors.Ink.copy(alpha = 0.32f)
+private val TileShape = RoundedCornerShape(12.dp)
+private val PopoverShape = RoundedCornerShape(14.dp)
+private val CardShape = RoundedCornerShape(10.dp)
+private val DockShadow = TmColors.Ink.copy(alpha = 0.38f)
+private val PopoverShadow = TmColors.Ink.copy(alpha = 0.25f)
 
-/** Werkzeug-Dock unten mittig; darüber die Ausklappliste der offenen Gruppe bzw. die Tempolimit-Schilder. */
+/** Abbauen: Icon und Name hellrot, solange es nicht gewählt ist. */
+private val RemoveTint = Color(0xFFFF9AA2)
+
+/**
+ * Bauleiste unten mittig: Ansehen | Tempo · Ampel · Kontrolle · Umleitung · Sperrung | Abbauen, je Kachel Icon und
+ * Name. Darüber das Popover des Werkzeugs mit Pfeil auf seine Kachel: die Tempo-Schilder bzw. die Arten einer Gruppe
+ * als Karten. Per Finger steht die Planungsleiste mit im Block, am Desktop hat der Bauplan einen eigenen Platz.
+ */
 @Composable
 internal fun ToolDock(
     state: ToolDockState,
@@ -162,26 +185,30 @@ internal fun ToolDock(
     modifier: Modifier = Modifier,
 ) {
     val tools = Tool.entries.filter { it in state.available }
-    Column(
-        modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        state.plan?.let { PlanBar(it) }
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        state.plan?.let {
+            PlanBar(it)
+            Spacer(Modifier.height(10.dp))
+        }
         val open = state.openGroup?.takeIf { it in tools }
-        if (open != null) {
-            // Über der eigenen Kachel: Abstand der Kachelmitte zur Dockmitte (per Finger zweispaltig in der Mitte)
-            val shift =
-                if (LocalTouch.current) 0f else (tools.indexOf(open) - (tools.size - 1) / 2f) * (TILE_WIDTH + TILE_GAP)
-            ToolFlyout(open, state.selection, rules, state.idleTrailers, state.onSelect, Modifier.offset(x = shift.dp))
-        } else if (state.selection.tool == Tool.SPEED_LIMIT) {
-            SpeedLimitOptions(state.selection, rules, state.onSelect)
+        val popover = open ?: state.selection.tool.takeIf { it == Tool.SPEED_LIMIT && it in tools }
+        if (popover != null) {
+            ToolPopover(popover, tools, state, rules)
+            Spacer(Modifier.height(POPOVER_GAP.dp))
         }
         Row(
-            Modifier.shadow(12.dp, DockShape, spotColor = DockShadow).background(TmColors.Ink, DockShape).padding(6.dp),
+            Modifier
+                .shadow(
+                    12.dp,
+                    DockShape,
+                    spotColor = DockShadow,
+                ).background(TmColors.Ink, DockShape)
+                .padding(DOCK_PADDING.dp),
             horizontalArrangement = Arrangement.spacedBy(TILE_GAP.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             for (tool in tools) {
+                if (separatorBefore(tool, tools)) DockSeparator()
                 val kind = state.selection.chosen[tool] ?: tool.kinds.first()
                 val look =
                     when {
@@ -189,10 +216,45 @@ internal fun ToolDock(
                         state.openGroup == tool -> TileLook.OPEN
                         else -> TileLook.IDLE
                     }
-                ToolTile(tool, kind, look, kind.price(rules, state.idleTrailers, short = true)) { state.onTile(tool) }
+                ToolTile(tool, kind, look, kind.price(rules, state.idleTrailers)) { state.onTile(tool) }
             }
         }
     }
+}
+
+/** Trennstrich nach „Ansehen“ und vor „Abbauen“. */
+private fun separatorBefore(
+    tool: Tool,
+    tools: List<Tool>,
+): Boolean =
+    tools.firstOrNull() != tool && (tool == Tool.REMOVE || tools.getOrNull(tools.indexOf(tool) - 1) == Tool.LOOK)
+
+@Composable
+private fun DockSeparator() {
+    Box(
+        Modifier
+            .padding(horizontal = SEPARATOR_MARGIN.dp)
+            .width(1.dp)
+            .height(40.dp)
+            .background(TmColors.LineDark),
+    )
+}
+
+/** Mitte der Kachel [tool] gemessen von der Mitte der Leiste (für den Pfeil des Popovers). */
+private fun tileOffset(
+    tool: Tool,
+    tools: List<Tool>,
+): Float {
+    var x = DOCK_PADDING.toFloat()
+    var center = 0f
+    for ((i, t) in tools.withIndex()) {
+        if (i > 0) x += TILE_GAP
+        if (separatorBefore(t, tools)) x += SEPARATOR_WIDTH + TILE_GAP
+        if (t == tool) center = x + TILE_WIDTH / 2f
+        x += TILE_WIDTH
+    }
+    val width = x + DOCK_PADDING
+    return center - width / 2f
 }
 
 private enum class TileLook { IDLE, OPEN, ACTIVE }
@@ -206,18 +268,25 @@ private fun ToolTile(
     onClick: () -> Unit,
 ) {
     val active = look == TileLook.ACTIVE
-    val touch = LocalTouch.current
-    val color = if (active) TmColors.Ink else TmColors.OnDark
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
+    val color =
+        when {
+            active -> TmColors.Ink
+            tool == Tool.REMOVE -> RemoveTint
+            else -> TmColors.OnDark
+        }
     val background =
         when {
             active -> TmColors.Active
-            look == TileLook.OPEN -> TmColors.Ink3
-            hovered -> TmColors.Ink2
+            look == TileLook.OPEN || hovered -> TmColors.Ink3
             else -> Color.Transparent
         }
-    // Alle Kacheln gleich hoch: Icon, Name (einzeilig), Preis – auch wenn es keinen gibt
+    val tooltip =
+        listOfNotNull(
+            if (tool.isGroup) "${tool.label}: ${kind.label}" else tool.label,
+            price.ifEmpty { null },
+        ).joinToString(" · ") + " (${tool.keyLabel})"
     Box(
         Modifier
             .width(TILE_WIDTH.dp)
@@ -226,156 +295,196 @@ private fun ToolTile(
             .background(background)
             .hoverable(interaction)
             .clickable(interaction, LocalIndication.current, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = tool.label + ": " + kind.label },
+            .semantics { contentDescription = tooltip },
     ) {
-        if (!touch) {
-            BasicText(
-                tool.keyLabel,
-                style = TmType.mono(10.sp, color = color.copy(alpha = KEY_ALPHA)),
-                modifier = Modifier.padding(start = 6.dp, top = 3.dp),
-            )
-        }
-        // Gruppe: kleiner Pfeil – ein Klick klappt die Liste auf
+        // Punkt oben rechts: das Werkzeug hat Varianten
         if (tool.isGroup) {
-            Icon(
-                Icons.ChevronUp,
-                null,
-                Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 5.dp),
-                tint = color.copy(alpha = CHEVRON_ALPHA),
-                size = 12.dp,
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 5.dp, end = 7.dp)
+                    .size(5.dp)
+                    .background(color.copy(alpha = DOT_ALPHA), CircleShape),
             )
         }
         Column(
-            Modifier.fillMaxSize().padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp),
+            Modifier.fillMaxSize().padding(horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
         ) {
-            Icon(kind.icon, null, tint = color, size = 22.dp)
+            Icon(tool.icon, null, tint = color, size = 22.dp)
             BasicText(
-                kind.short,
+                tool.label,
                 style = TmType.text(11.sp, FontWeight.SemiBold, color).copy(textAlign = TextAlign.Center),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            BasicText(
-                price.ifEmpty { " " },
-                style = TmType.mono(10.sp, bold = false, color = if (active) TmColors.Ink else TmColors.OnDarkMuted),
-                maxLines = 1,
-            )
         }
-        if (hovered && look != TileLook.OPEN && !touch) ToolTooltip("${tool.label}: ${kind.label} (${tool.keyLabel})")
+        if (hovered && look != TileLook.OPEN && !LocalTouch.current) ToolTooltip(tooltip)
     }
 }
-
-private val FlyoutShape = RoundedCornerShape(14.dp)
-private val RowShape = RoundedCornerShape(10.dp)
 
 /**
- * Ausklappliste einer Gruppe: je Art Ziffer, Icon, Name, eine Zeile Erklärung und Preis; die gewählte blau
- * umrandet. Immer gleich breit – egal wie viele Arten die Gruppe hat.
+ * Popover über der Leiste (680 dp), der Pfeil zeigt auf die Kachel von [tool]: Titel und Bedienhinweis, darunter
+ * die Tempo-Schilder bzw. die Arten der Gruppe als Karten (Icon, Name, Preis, ein Satz Wirkung, Taste).
  */
 @Composable
-private fun ToolFlyout(
-    group: Tool,
-    selection: ToolSelection,
+private fun ToolPopover(
+    tool: Tool,
+    tools: List<Tool>,
+    state: ToolDockState,
     rules: GameRules,
-    idleTrailers: Int,
-    onSelect: (ToolSelection) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val current = selection.chosen[group] ?: group.kinds.first()
     val touch = LocalTouch.current
-    Column(
-        modifier
-            .width(if (touch) TOUCH_FLYOUT_WIDTH.dp else FLYOUT_WIDTH.dp)
-            .shadow(10.dp, FlyoutShape, spotColor = DockShadow)
-            .background(TmColors.Surface, FlyoutShape)
-            .border(1.dp, TmColors.Line, FlyoutShape),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            Modifier
+                .width(POPOVER_WIDTH.dp)
+                .shadow(10.dp, PopoverShape, spotColor = PopoverShadow)
+                .background(TmColors.Surface, PopoverShape)
+                .border(1.dp, TmColors.Line, PopoverShape)
+                .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            BasicText(group.label.uppercase(), style = TmType.eyebrow)
-            if (!touch) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+            ) {
                 BasicText(
-                    tr("{key} wechselt · 1–{count} wählt", "key" to group.keyLabel, "count" to group.kinds.size),
-                    style = TmType.mono(11.sp, bold = false, color = TmColors.Muted),
+                    if (tool ==
+                        Tool.SPEED_LIMIT
+                    ) {
+                        tr("Tempolimit")
+                    } else {
+                        tool.label
+                    },
+                    style = TmType.text(14.sp, FontWeight.Bold),
                 )
+                val hint =
+                    when {
+                        tool == Tool.SPEED_LIMIT -> {
+                            tr("Anfang und Ende anklicken · Esc beendet")
+                        }
+
+                        touch -> {
+                            tr("Art antippen")
+                        }
+
+                        else -> {
+                            tr(
+                                "{key} wechselt · 1–{count} wählt",
+                                "key" to tool.keyLabel,
+                                "count" to minOf(tool.kinds.size, MAX_DIGIT),
+                            )
+                        }
+                    }
+                BasicText(hint, style = TmType.text(11.sp, color = TmColors.Muted))
+            }
+            if (tool == Tool.SPEED_LIMIT) {
+                SpeedLimitOptions(state.selection, rules, state.onSelect)
+            } else {
+                VariantCards(tool, state, rules, COLUMNS)
             }
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(TmColors.LineSoft))
-        val row: @Composable (Int, ToolKind, Modifier) -> Unit = { index, kind, rowModifier ->
-            FlyoutRow(
-                (index + 1).takeIf { !touch },
-                kind,
-                kind == current,
-                kind.price(rules, idleTrailers),
-                rowModifier,
-            ) { onSelect(selection.with(kind)) }
-        }
-        // Per Finger zweispaltig: so passt auch die längste Gruppe über das Dock eines Handys im Querformat
-        val columns = if (touch) 2 else 1
-        Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            group.kinds.withIndex().chunked(columns).forEach { line ->
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    line.forEach { (index, kind) -> row(index, kind, Modifier.weight(1f)) }
-                    repeat(columns - line.size) { Spacer(Modifier.weight(1f)) }
+        PopoverArrow(Modifier.offset(x = tileOffset(tool, tools).dp, y = (-1).dp))
+    }
+}
+
+/** Spitze unter dem Popover: weißes Dreieck, die beiden schrägen Kanten mit dem Rahmen des Popovers. */
+@Composable
+private fun PopoverArrow(modifier: Modifier) {
+    Canvas(modifier.size(ARROW_WIDTH.dp, ARROW_HEIGHT.dp)) {
+        val path =
+            Path().apply {
+                moveTo(0f, 0f)
+                lineTo(size.width / 2, size.height)
+                lineTo(size.width, 0f)
+                close()
+            }
+        drawPath(path, TmColors.Surface)
+        val stroke = 1.dp.toPx()
+        drawLine(TmColors.Line, Offset(0f, 0f), Offset(size.width / 2, size.height), stroke)
+        drawLine(TmColors.Line, Offset(size.width / 2, size.height), Offset(size.width, 0f), stroke)
+    }
+}
+
+/** Die Arten einer Gruppe als Karten im Raster; die gewählte blau umrandet. */
+@Composable
+private fun VariantCards(
+    group: Tool,
+    state: ToolDockState,
+    rules: GameRules,
+    columns: Int,
+) {
+    val selection = state.selection
+    val current = selection.chosen[group] ?: group.kinds.first()
+    val touch = LocalTouch.current
+    Column(verticalArrangement = Arrangement.spacedBy(CARD_GAP.dp)) {
+        group.kinds.withIndex().chunked(columns).forEach { line ->
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(CARD_GAP.dp)) {
+                line.forEach { (index, kind) ->
+                    VariantCard(
+                        kind,
+                        (index + 1).takeIf { !touch && it <= MAX_DIGIT },
+                        kind == current,
+                        kind.price(rules, state.idleTrailers),
+                        Modifier.weight(1f).fillMaxHeight(),
+                    ) { state.onSelect(selection.with(kind)) }
                 }
+                repeat(columns - line.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
 }
 
 @Composable
-private fun FlyoutRow(
-    number: Int?,
+private fun VariantCard(
     kind: ToolKind,
+    number: Int?,
     selected: Boolean,
     price: String,
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
-    Row(
+    val touch = LocalTouch.current
+    Column(
         modifier
-            .fillMaxWidth()
-            .heightIn(min = if (LocalTouch.current) TOUCH_ROW_HEIGHT.dp else ROW_HEIGHT.dp)
-            .clip(RowShape)
-            .background(if (selected) TmColors.PrimaryTint else Color.Transparent)
-            .then(if (selected) Modifier.border(2.dp, TmColors.Primary, RowShape) else Modifier)
+            .clip(CardShape)
+            .background(if (selected) TmColors.PrimaryTint else TmColors.Surface)
+            .border(if (selected) 2.dp else 1.dp, if (selected) TmColors.Primary else TmColors.Line, CardShape)
             .clickable(role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .semantics { contentDescription = kind.label + ": " + kind.note }
+            .padding(horizontal = 10.dp, vertical = if (touch) 6.dp else 8.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        if (number != null) {
-            BasicText(
-                "$number",
-                style = TmType.mono(11.sp, color = TmColors.Muted).copy(textAlign = TextAlign.Center),
-                modifier =
-                    Modifier
-                        .width(22.dp)
-                        .background(TmColors.Ground, RoundedCornerShape(6.dp))
-                        .padding(vertical = 3.dp),
-            )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(kind.icon, null, tint = TmColors.Ink, size = 20.dp)
+            number?.let { BasicText("$it", style = TmType.mono(10.sp, color = TmColors.Muted)) }
         }
-        Icon(kind.icon, null, tint = TmColors.Ink, size = 20.dp)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            BasicText(kind.label, style = TmType.text(14.sp, FontWeight.SemiBold))
-            // Per Finger einzeilig: die Liste muss über das Dock eines Handys passen
+        BasicText(
+            kind.short,
+            style = TmType.text(13.sp, FontWeight.Bold),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        BasicText(price.ifEmpty { tr("kostenlos") }, style = TmType.mono(12.sp), maxLines = 1)
+        if (!touch) {
             BasicText(
                 kind.note,
-                style = TmType.text(12.sp, color = TmColors.Muted),
-                maxLines = if (LocalTouch.current) 1 else Int.MAX_VALUE,
+                style = TmType.text(11.sp, color = TmColors.Muted),
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        BasicText(price, style = TmType.mono(12.sp, bold = false), maxLines = 1)
     }
 }
 
-/** Voller Name über der Kachel, solange die Maus darauf steht. */
+/** Name, Preis und Taste über der Kachel, solange die Maus darauf steht. */
 @Composable
 private fun ToolTooltip(text: String) {
     val offset = with(LocalDensity.current) { IntOffset(0, -TOOLTIP_OFFSET.dp.roundToPx()) }
@@ -400,25 +509,24 @@ private fun SpeedLimitOptions(
     rules: GameRules,
     onSelect: (ToolSelection) -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
-    Row(
-        Modifier
-            .shadow(8.dp, shape, spotColor = DockShadow)
-            .background(TmColors.Surface, shape)
-            .border(1.dp, TmColors.Line, shape)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        BasicText(tr("Tempolimit"), style = TmType.text(12.sp, FontWeight.Bold, TmColors.Muted))
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for (kmh in rules.speedLimitOptions) {
             SpeedSign(if (kmh == WALKING_SPEED) tr("Schritt") else "$kmh", selection.speedLimit == kmh) {
                 onSelect(selection.copy(speedLimit = kmh))
             }
         }
-        Box(Modifier.width(1.dp).height(28.dp).background(TmColors.Track))
-        OptionChip(tr("Original"), selection.speedLimit == null) { onSelect(selection.copy(speedLimit = null)) }
-        OptionChip(tr("nur nachts"), selection.nightOnly) { onSelect(selection.copy(nightOnly = !selection.nightOnly)) }
+        Box(
+            Modifier
+                .padding(horizontal = 6.dp)
+                .width(1.dp)
+                .height(30.dp)
+                .background(TmColors.Track),
+        )
+        PopoverOption(tr("Original"), selection.speedLimit == null) { onSelect(selection.copy(speedLimit = null)) }
+        PopoverOption(
+            tr("nur nachts"),
+            selection.nightOnly,
+        ) { onSelect(selection.copy(nightOnly = !selection.nightOnly)) }
     }
 }
 
@@ -428,60 +536,57 @@ private fun SpeedSign(
     chosen: Boolean,
     onClick: () -> Unit,
 ) {
+    val long = text.length > 2
     Box(
         Modifier
-            .size(MinTouch)
+            .height(SIGN_SIZE.dp)
+            .widthIn(min = SIGN_SIZE.dp)
             .clip(CircleShape)
             .background(TmColors.Surface)
-            .border(if (chosen) 3.dp else 1.dp, if (chosen) TmColors.Danger else TmColors.Line, CircleShape)
-            .clickable(role = Role.RadioButton, onClick = onClick),
+            .border(if (chosen) 4.dp else 2.dp, if (chosen) TmColors.Danger else TmColors.Track, CircleShape)
+            .clickable(role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = if (long) 10.dp else 0.dp),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(
-            text,
-            style =
-                TmType.text(
-                    if (text.length >
-                        2
-                    ) {
-                        9.sp
-                    } else {
-                        14.sp
-                    },
-                    FontWeight.Bold,
-                    if (chosen) TmColors.Ink else TmColors.Muted,
-                ),
-        )
+        BasicText(text, style = TmType.text(if (long) 11.sp else 14.sp, FontWeight.Bold))
     }
 }
 
+/** Schalter im Popover (40 dp): aktiv Ampelgelb. */
 @Composable
-internal fun OptionChip(
+private fun PopoverOption(
     text: String,
     active: Boolean,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(8.dp)
     Box(
         Modifier
-            .heightIn(min = 36.dp)
-            .clip(shape)
+            .height(40.dp)
+            .clip(CardShape)
             .background(if (active) TmColors.Active else TmColors.Surface)
-            .border(1.dp, if (active) TmColors.Active else TmColors.Line, shape)
+            .border(1.dp, if (active) TmColors.Active else TmColors.Line, CardShape)
             .clickable(role = Role.Checkbox, onClick = onClick)
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) { BasicText(text, style = TmType.text(12.sp, FontWeight.SemiBold)) }
 }
 
 internal const val WALKING_SPEED = 7
-private const val TILE_WIDTH = 78
-private const val TILE_HEIGHT = 68
-private const val TILE_GAP = 2
-private const val KEY_ALPHA = 0.6f
-private const val CHEVRON_ALPHA = 0.7f
+private const val TILE_WIDTH = 76
+private const val TILE_HEIGHT = 60
+private const val TILE_GAP = 4
+private const val DOCK_PADDING = 6
+private const val SEPARATOR_MARGIN = 4
+private const val SEPARATOR_WIDTH = 1 + 2 * SEPARATOR_MARGIN
+private const val DOT_ALPHA = 0.55f
 private const val TOOLTIP_OFFSET = 34
-private const val FLYOUT_WIDTH = 340
-private const val TOUCH_FLYOUT_WIDTH = 600
-private const val ROW_HEIGHT = 52
-private const val TOUCH_ROW_HEIGHT = 44
+private const val POPOVER_WIDTH = 680
+private const val POPOVER_GAP = 2
+private const val ARROW_WIDTH = 22
+private const val ARROW_HEIGHT = 10
+private const val CARD_GAP = 8
+
+/** Fünf Spalten: auch die größte Gruppe (Kontrolle) braucht höchstens zwei Reihen. */
+private const val COLUMNS = 5
+private const val MAX_DIGIT = 9
+private const val SIGN_SIZE = 42

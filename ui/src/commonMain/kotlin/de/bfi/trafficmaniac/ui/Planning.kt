@@ -27,6 +27,10 @@ internal class PlannedAction(
     val key: String,
     val marker: PlanMarker,
     val cost: Long,
+    /** Name im Bauplan; ohne: die Beschriftung auf der Karte. */
+    val title: String = marker.label,
+    /** Preis im Bauplan, wenn er nicht [cost] ist (z. B. Tageskosten des Lasers). */
+    val price: String? = null,
 )
 
 /**
@@ -66,6 +70,11 @@ internal class Plan {
                 .minByOrNull { hypot(it.marker.x - x, it.marker.y - y) } ?: return false
         actions = actions - hit
         return true
+    }
+
+    /** Eine Maßnahme aus dem Bauplan streichen. */
+    fun remove(action: PlannedAction) {
+        actions = actions - action
     }
 
     fun undo() {
@@ -219,6 +228,7 @@ private fun Plan.splitClick(
             "program:$node",
             PlanMarker(roads.nodes[node].x, roads.nodes[node].y, "$main/${PERCENT - main}"),
             context.rules.signalProgramCost,
+            title = tr("Grünzeit {split}", "split" to "$main/${PERCENT - main}"),
         ),
     )
 }

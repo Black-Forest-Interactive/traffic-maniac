@@ -56,6 +56,12 @@ object MapStyle {
     val conditionGood = Color(0xFF2DC653)
     val conditionFair = Color(0xFFFFC300)
     val conditionBad = Color(0xFFD00000)
+
+    /** Straßenzustand: darunter rot (Karte: ganz rot) … */
+    const val CONDITION_BAD = 0.4f
+
+    /** … darunter orange, darüber grün – gleiche Schwellen in Karte und Bauamt-Tabelle. */
+    const val CONDITION_FAIR = 0.7f
     val detour = Color(0xFFFF7B00)
     val limitZone = Color(0x40E63946)
     val nightZone = Color(0xB33A3D9E)

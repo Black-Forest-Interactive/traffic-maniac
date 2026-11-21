@@ -42,6 +42,14 @@ internal class WinterService(
 
     /** Mitternacht: Räumfahrzeuge bezahlen. */
     fun dayEnded() {
-        if (enabled && weather.ploughCount > 0) treasury.charge(weather.ploughCount * rules.ploughDailyCost)
+        if (enabled &&
+            weather.ploughCount > 0
+        ) {
+            treasury.charge(
+                weather.ploughCount * rules.ploughDailyCost,
+                BookingCategory.WINTER,
+                tr("Räumfahrzeuge"),
+            )
+        }
     }
 }

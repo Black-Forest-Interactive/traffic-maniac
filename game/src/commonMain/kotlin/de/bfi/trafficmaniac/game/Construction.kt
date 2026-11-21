@@ -43,7 +43,7 @@ internal class Construction(
                 RepairMethod.TURBO -> (base * rules.turboCostFactor).toLong()
                 RepairMethod.PLANNING -> rules.planningCost
             }
-        if (!treasury.pay(cost, method.label)) return
+        if (!treasury.pay(cost, method.label, BookingCategory.REPAIRS)) return
         case.method = method
         when (method) {
             RepairMethod.TENDER -> {

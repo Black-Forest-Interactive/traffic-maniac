@@ -32,6 +32,8 @@ class SimulationSnapshot(
     val signalStates: Array<SignalState>,
     val cameras: List<SpeedCamera>,
     val incidents: List<IncidentMarker>,
+    /** Die zuletzt erledigten Einsätze, der neueste zuerst. */
+    val finishedIncidents: List<FinishedIncident> = emptyList(),
     val chargingStations: List<ChargingStationState>,
     /** Je Fahrzeug: [FLAG_DISABLED], [FLAG_EMERGENCY], [FLAG_ELECTRIC], [FLAG_SERVICE]. */
     val flags: ByteArray,
@@ -55,6 +57,10 @@ class SimulationSnapshot(
      * Stillstand) – für die Staufarben in der Gesamtansicht.
      */
     val segmentFlow: FloatArray = FloatArray(0),
+    /** Verkehrsstärke je Straßenabschnitt in Kfz/Std. (Dichte × Tempo, beide Richtungen zusammen). */
+    val segmentVolume: FloatArray = FloatArray(0),
+    /** Verschleiß der Straßen seit Spielbeginn – fürs Bauamt. */
+    val wear: WearStats = WearStats(),
     /** Linienbusse: Pünktlichkeit je Linienrichtung. */
     val transit: TransitSnapshot = TransitSnapshot(),
     /** Schnee und Räumdienst (leer ohne Wetter). */
@@ -76,6 +82,15 @@ class IncidentMarker(
     val onScene: List<VehicleRole> = emptyList(),
     /** Fortschritt der Arbeit vor Ort (0..1), sobald alle da sind; `null` während der Anfahrt. */
     val workProgress: Float? = null,
+)
+
+/** Ein erledigter Einsatz: Art, Ort, Beginn und Ende (Simulationssekunden). */
+class FinishedIncident(
+    val kind: IncidentKind,
+    val x: Float,
+    val y: Float,
+    val startTime: Double,
+    val endTime: Double,
 )
 
 /** Marker für Karte und Einsatzliste: wer schon vor Ort ist und wer noch unterwegs. */

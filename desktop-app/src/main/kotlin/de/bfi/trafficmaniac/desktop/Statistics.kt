@@ -11,9 +11,10 @@ import java.time.Duration
 import java.util.UUID
 
 /**
- * Anonyme Statistiken (Paket F): Pakete landen im Postausgang `~/.traffic-maniac/outbox/` und werden beim nächsten
- * Start gesendet – nie während des Spiels, nur mit Zustimmung und nur, wenn das Spiel eine Server-Adresse kennt
- * (`-Dtrafficmaniac.statsUrl`, beim Release gesetzt). Ohne Netz bleiben sie liegen und gehen beim nächsten Mal raus.
+ * Anonyme Statistiken (Paket F): Pakete landen im Postausgang `~/.traffic-maniac/outbox/` – ein Stand je Partie – und
+ * werden beim Start, zu Beginn einer Partie und nach jedem Spieltag gesendet, nur mit Zustimmung und nur, wenn das
+ * Spiel eine Server-Adresse kennt (`-Dtrafficmaniac.statsUrl`, beim Release gesetzt). Ohne Netz bleiben sie liegen
+ * und gehen beim nächsten Mal raus.
  */
 class Statistics(
     private val directory: File = File(System.getProperty("user.home"), ".traffic-maniac"),
@@ -43,11 +44,13 @@ class Statistics(
     }
 
     /** Legt [telemetry] in den Postausgang und merkt es sich als zuletzt erzeugtes Paket. */
+    @Synchronized
     fun store(telemetry: GameTelemetry) {
         runCatching {
             outbox.mkdirs()
             val text = TelemetryJson.encodeToString(GameTelemetry.serializer(), telemetry)
-            File(outbox, "${UUID.randomUUID()}.json").writeText(text)
+            // Ein Stand je Partie: der neuere ersetzt den älteren, solange er noch nicht gesendet ist
+            File(outbox, "${telemetry.game}.json").writeText(text)
             File(directory, LAST_FILE).writeText(text)
         }.onFailure { println("Statistik konnte nicht abgelegt werden: ${it.message}") }
     }
@@ -62,6 +65,7 @@ class Statistics(
      * Sendet alle wartenden Pakete; gesendete werden gelöscht. Liefert die Zahl der gesendeten. Wirft nie: Die
      * Statistik darf den Spielstart nicht verhindern, auch wenn z. B. der Laufzeit ein Modul fehlt.
      */
+    @Synchronized
     fun sendPending(): Int =
         runCatching { send() }
             .onFailure { println("Statistik konnte nicht gesendet werden: $it") }

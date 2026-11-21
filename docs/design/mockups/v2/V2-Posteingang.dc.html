@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Traffic Maniac – Posteingang</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#15202B}
+a{color:#2257B8}
+.tm-rail:hover{background:#243444}
+.tm-row:hover{background:#F5F7F9}
+.tm-cat:hover{background:#E3E8ED}
+button:focus-visible,a:focus-visible{outline:3px solid #FFC21A;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; display: grid; grid-template-columns: 80px 1fr; grid-template-rows: 56px 1fr; font-family: Inter, system-ui, sans-serif; color: #15202B; background: #EEF1F4; overflow: hidden">
+
+  <header style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; background: #15202B; color: #EEF1F4">
+    <svg width="18" height="34" viewBox="0 0 18 34" aria-hidden="true"><rect x="1" y="1" width="16" height="32" rx="5" fill="#243444" stroke="#3B4C5D"></rect><circle cx="9" cy="9" r="4" fill="#E5484D"></circle><circle cx="9" cy="17" r="4" fill="#FFC21A"></circle><circle cx="9" cy="25" r="4" fill="#3B4C5D"></circle></svg>
+    <div style="display: flex; flex-direction: column; min-width: 118px"><span style="font-size: 11px; color: #A3B0BD; line-height: 1.2">Dienstag · Tag 2 von 5</span><span style="font: 700 18px 'JetBrains Mono', monospace; line-height: 1.2">07:01</span></div>
+    <div style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #243444; font: 700 13px 'JetBrains Mono', monospace">
+      <span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">⏸</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">1×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">2×</span><span style="min-width: 40px; height: 36px; border-radius: 8px; background: #FFC21A; color: #15202B; display: flex; align-items: center; justify-content: center">4×</span><span style="min-width: 40px; height: 36px; display: flex; align-items: center; justify-content: center">8×</span><span style="min-width: 48px; height: 36px; display: flex; align-items: center; justify-content: center">64×</span>
+    </div>
+    <span style="flex: 1"></span>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <div style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 14px; border-radius: 10px; background: #3A1F28"><div style="display: flex; flex-direction: column"><span style="font-size: 10px; color: #F3B7BD; line-height: 1.2">Kasse</span><b style="font: 700 15px 'JetBrains Mono', monospace; color: #FF9AA2; line-height: 1.2">−5.595 €</b></div><span style="font: 600 11px 'JetBrains Mono', monospace; color: #F3B7BD">heute −8.600</span></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Reputation</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">45<span style="color: #8193A5; font-weight: 500">/100</span></b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="font-size: 10px; color: #A3B0BD; line-height: 1.2">Bürgerzorn</span><b style="font: 700 15px 'JetBrains Mono', monospace; line-height: 1.2">9</b></div>
+      <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 150px; height: 40px; padding: 0 14px; border-radius: 10px; background: #243444"><span style="display: flex; justify-content: space-between; font-size: 10px; color: #A3B0BD; line-height: 1.2">Abwahlindex <b style="font: 700 11px 'JetBrains Mono', monospace; color: #EEF1F4">12/100</b></span><span style="display: block; height: 6px; border-radius: 3px; background: #3B4C5D; overflow: hidden"><span style="display: block; width: 12%; height: 100%; background: #FF8A8F"></span></span></div>
+    </div>
+    <span style="width: 1px; height: 32px; background: #3B4C5D; margin: 0 4px"></span>
+    <button type="button" aria-label="Speichern" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8"></path></svg></button>
+    <button type="button" aria-label="Menü" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #EEF1F4; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+  </header>
+
+  <nav aria-label="Navigation" style="background: #1E2B38; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; overflow: hidden">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="13">
+      <sc-if value="{{r.isHead}}" hint-placeholder-val="{{false}}"><span style="display: block; margin: 8px 0 2px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8193A5; text-align: center">{{r.label}}</span></sc-if>
+      <sc-if value="{{r.isGap}}" hint-placeholder-val="{{false}}"><span style="flex: 1"></span></sc-if>
+      <sc-if value="{{r.isItem}}" hint-placeholder-val="{{true}}">
+        <a href="{{r.href}}" class="tm-rail" style="{{r.style}}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg>
+          <span style="font-size: 11px; font-weight: 600; line-height: 1.1">{{r.label}}</span>
+          <sc-if value="{{r.badge}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 4px; right: 8px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: #C62B3B; color: #FFFFFF; font: 700 10px Inter, sans-serif; display: flex; align-items: center; justify-content: center">{{r.badge}}</span></sc-if>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <main style="min-height: 0; overflow: hidden; padding: 24px 32px; display: grid; grid-template-columns: 240px minmax(0, 1fr) 560px; grid-template-rows: auto minmax(0, 1fr); gap: 16px 20px">
+    <div style="grid-column: 1 / -1; display: flex; align-items: flex-end; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Rathaus</span>
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 32px; line-height: 1.1">Posteingang</h1>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px"><input type="checkbox" checked="checked" style="width: 16px; height: 16px; accent-color: #2257B8">Bei Dringendem Spiel bremsen</label>
+        <a href="V2-Karte.dc.html" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; background: #15202B; color: #FFFFFF; text-decoration: none; font-size: 13px; font-weight: 700">Zur Karte <span style="font: 500 11px 'JetBrains Mono', monospace; opacity: .7">M</span></a>
+      </div>
+    </div>
+
+    <!-- Kategorien -->
+    <div role="tablist" aria-orientation="vertical" aria-label="Kategorien" style="display: flex; flex-direction: column; gap: 2px">
+      <sc-for list="{{cats}}" as="c" hint-placeholder-count="6">
+        <button type="button" role="tab" class="tm-cat" onClick="{{c.pick}}" aria-selected="{{c.sel}}" style="{{c.style}}">
+          <span style="{{c.dot}}"></span>
+          <span style="flex: 1; text-align: left">{{c.label}}</span>
+          <span style="font: 700 12px 'JetBrains Mono', monospace; opacity: .8">{{c.count}}</span>
+        </button>
+      </sc-for>
+      <span style="height: 1px; background: #D5DCE3; margin: 10px 0"></span>
+      <span style="font-size: 12px; color: #586674; line-height: 1.5; padding: 0 12px">Neues erscheint auf der Karte nur als kleiner Hinweis oben rechts. Hier wird alles bearbeitet.</span>
+    </div>
+
+    <!-- Liste -->
+    <section aria-label="Einträge" style="min-height: 0; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; overflow: hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #E3E8ED; font-size: 13px">
+        <b>{{listTitle}}</b>
+        <button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #C3CCD5; border-radius: 8px; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #15202B">Sortieren: dringend zuerst ▾</button>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow-y: auto">
+        <sc-for list="{{items}}" as="it" hint-placeholder-count="10">
+          <button type="button" class="tm-row" onClick="{{it.pick}}" aria-pressed="{{it.sel}}" style="{{it.style}}">
+            <span style="{{it.bar}}"></span>
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; text-align: left">
+              <span style="{{it.kindStyle}}">{{it.kind}}</span>
+              <span style="font-size: 14px; font-weight: 700">{{it.title}}</span>
+              <span style="font-size: 12px; color: #586674; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.sub}}</span>
+            </span>
+            <span style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+              <b style="{{it.valStyle}}">{{it.val}}</b>
+              <span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">{{it.time}}</span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Detail -->
+    <section aria-label="Raser-Beschwerde Bahnhofstraße" style="min-height: 0; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5DCE3; display: flex; flex-direction: column; overflow-y: auto">
+      <div style="position: relative; height: 200px; flex: none; background: #F6EBD0; border-radius: 14px 14px 0 0; overflow: hidden">
+        <svg viewBox="0 0 560 200" width="560" height="200" role="img" aria-label="Kartenausschnitt Bahnhofstraße">
+          <path d="M0 50Q100 20 220 60T560 40V0H0Z" fill="#B9DC8E"></path>
+          <path d="M0 150Q160 120 300 130T560 110" fill="none" stroke="#6FA8DC" stroke-width="12"></path>
+          <path d="M-10 95Q180 80 300 100T570 120" fill="none" stroke="#15202B" stroke-width="18" stroke-linecap="round"></path>
+          <path d="M-10 95Q180 80 300 100T570 120" fill="none" stroke="#E05A3A" stroke-width="11" stroke-linecap="round"></path>
+          <circle cx="280" cy="97" r="34" fill="none" stroke="#2257B8" stroke-width="3" stroke-dasharray="6 5"></circle>
+          <circle cx="280" cy="97" r="7" fill="#2257B8"></circle>
+        </svg>
+        <a href="V2-Karte.dc.html" style="position: absolute; right: 12px; bottom: 12px; height: 34px; padding: 0 12px; border-radius: 8px; background: #15202B; color: #FFFFFF; text-decoration: none; font-size: 12px; font-weight: 700; display: flex; align-items: center">Auf Karte zeigen</a>
+      </div>
+      <div style="padding: 18px 24px 22px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #2257B8">Auftrag · Bürgerverein Nordstadt</span>
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 24px">Raser-Beschwerde · Bahnhofstraße</h2>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 11px; color: #586674">Belohnung</span><b style="font: 700 20px 'JetBrains Mono', monospace; color: #1E7A44">+1.500 €</b></div>
+        </div>
+        <blockquote style="margin: 0; padding: 12px 14px; border-radius: 10px; background: #EEF1F4; font-size: 14px; line-height: 1.5">„Nachts wird auf der Bahnhofstraße gerast. Wir können nicht schlafen, und die Kinder auch nicht.“</blockquote>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+          <div style="padding: 10px; border-radius: 10px; border: 1px solid #E3E8ED; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Frist</span><b style="font: 700 15px 'JetBrains Mono', monospace; color: #A3202E">5 Std.</b></div>
+          <div style="padding: 10px; border-radius: 10px; border: 1px solid #E3E8ED; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Ø gefahren / Limit</span><b style="font: 700 15px 'JetBrains Mono', monospace">47 / 30</b></div>
+          <div style="padding: 10px; border-radius: 10px; border: 1px solid #E3E8ED; display: flex; flex-direction: column"><span style="font-size: 11px; color: #586674">Ablehnen kostet</span><b style="font: 700 15px 'JetBrains Mono', monospace">−2 Ruf</b></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 13px; font-weight: 700">Ziel – eins davon reicht</span>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1px solid #C3CCD5">
+            <span style="flex: 1; display: flex; flex-direction: column; gap: 4px"><b style="font-size: 14px">Polizeikontrolle, 2 Std.</b><span style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #586674"><span style="width: 120px; height: 6px; border-radius: 3px; background: #E3E8ED; display: block"><span style="display: block; width: 0; height: 100%"></span></span>0 von 2 Std.</span></span>
+            <button type="button" style="height: 40px; padding: 0 14px; border: none; border-radius: 10px; background: #2257B8; color: #FFFFFF; font: 700 13px Inter, sans-serif">Bestellen · <span style="font-family: 'JetBrains Mono', monospace">1.200 €</span></button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1px solid #C3CCD5">
+            <span style="flex: 1; display: flex; flex-direction: column; gap: 4px"><b style="font-size: 14px">Laser aufstellen</b><span style="font-size: 12px; color: #586674">bringt zusätzlich Bußgelder (≈ 4.900 €/Tag hier)</span></span>
+            <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #2257B8; border-radius: 10px; background: #FFFFFF; color: #2257B8; font: 700 13px Inter, sans-serif">Platzieren · <span style="font-family: 'JetBrains Mono', monospace">1.500 €/Tag</span></button>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid #E3E8ED">
+          <button type="button" style="height: 40px; padding: 0 12px; border: none; background: transparent; color: #A3202E; font: 600 13px Inter, sans-serif">Ablehnen</button>
+          <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #C3CCD5; border-radius: 10px; background: #FFFFFF; color: #15202B; font: 600 13px Inter, sans-serif">Später · auf Karte merken</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { cat: 'alle', sel: 'a1' };
+  }
+  renderVals() {
+    var self = this;
+    var item = function (label, icon, href, active, badge) {
+      return { isItem: true, isHead: false, isGap: false, label: label, icon: icon, href: href, badge: badge || false,
+        style: 'position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 62px; padding: 0 2px; border-radius: 10px; text-decoration: none; text-align: center; ' + (active ? 'background: #FFC21A; color: #15202B;' : 'background: transparent; color: #EEF1F4;') };
+    };
+    var rail = [
+      item('Karte', 'M9 3 3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15', 'V2-Karte.dc.html'),
+      item('Posteingang', 'M22 12h-6l-2 3h-4l-2-3H2M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z', 'V2-Posteingang.dc.html', true, '31'),
+      { isHead: true, isItem: false, isGap: false, label: 'Rathaus' },
+      item('Kämmerei', 'M4 10h11M4 14h11M18.5 6.5A7 7 0 1 0 18.5 17.5', 'V2-Kaemmerei.dc.html'),
+      item('Ordnung', 'M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z', 'V2-Ordnungsamt.dc.html'),
+      item('Bauamt', 'M2 20h20M5 20V10l7-6 7 6v10M9 20v-6h6v6', 'V2-Bauamt.dc.html', false, '6'),
+      item('Parken', 'M5 3h14v18H5zM9 17V7h4a3 3 0 0 1 0 6H9', '#'),
+      item('ÖPNV', 'M6 17h12M5 4h14v12H5zM5 11h14M8 20v-3M16 20v-3', '#'),
+      item('Presse', 'M4 4h13v16H6a2 2 0 0 1-2-2zM17 8h3v10a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h5', 'V2-Zeitung.dc.html'),
+      item('Bürger', 'M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', '#'),
+      item('Kalender', 'M3 5h18v16H3zM16 3v4M8 3v4M3 11h18', '#'),
+      { isGap: true, isHead: false, isItem: false },
+      item('Erfolge', 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.2 13.9 7 22l5-3 5 3-1.2-8.1', '#'),
+      item('Hilfe', 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01', '#')
+    ];
+    var C = { einsatz: '#C62B3B', auftrag: '#2257B8', schaden: '#E3A008', meldung: '#93A1AE' };
+    var catDefs = [['alle', 'Alle', '31', '#15202B'], ['einsatz', 'Einsätze', '1', C.einsatz], ['auftrag', 'Aufträge', '4', C.auftrag], ['schaden', 'Schäden', '26', C.schaden], ['meldung', 'Meldungen', '14', C.meldung], ['erledigt', 'Erledigt', '9', '#C3CCD5']];
+    var cats = catDefs.map(function (c) {
+      var on = c[0] === self.state.cat;
+      return { label: c[1], count: c[2], sel: on ? 'true' : 'false',
+        dot: 'width: 10px; height: 10px; border-radius: 5px; background: ' + c[3] + ';',
+        style: 'display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border: none; border-radius: 10px; cursor: pointer; font: 600 14px Inter, sans-serif; ' + (on ? 'background: #15202B; color: #FFFFFF;' : 'background: transparent; color: #15202B;'),
+        pick: function () { self.setState({ cat: c[0] }); } };
+    });
+    var all = [
+      ['e1', 'einsatz', 'Einsatz', 'Unfall · Bahnhofstraße', 'Polizei vor Ort · Abschlepper unterwegs · Spur blockiert', 'seit 12 min', '', ''],
+      ['a1', 'auftrag', 'Auftrag · Bürgerverein', 'Raser-Beschwerde · Bahnhofstraße', 'Ziel: 2 Std. Polizeikontrolle oder Laser', 'noch 5 Std.', '+1.500 €', 'g'],
+      ['s1', 'schaden', 'Schaden · ungesichert', 'Schlaglöcher · Hohenzollernstraße', 'Zustand 55 % · Klagerisiko hoch', 'noch 12 Std.', '', ''],
+      ['a2', 'auftrag', 'Auftrag · Anwohner', 'Schlagloch · Hohenzollernstraße', 'Ziel: flicken oder reparieren lassen', 'noch 7 Std.', '+2.000 €', 'g'],
+      ['s2', 'schaden', 'Schaden · ungesichert', 'Schlaglöcher · Bahnhofplatz', 'Zustand 57 %', 'noch 22 Std.', '', ''],
+      ['a3', 'auftrag', 'Auftrag · Bürgerverein', 'Raser-Beschwerde · Untere Wilferdinger Str.', 'Ziel: 2 Std. Polizeikontrolle oder Laser', 'noch 9 Std.', '+1.500 €', 'g'],
+      ['a4', 'auftrag', 'Auftrag · Einzelhandel', 'Lieferzone · Westliche Karl-Friedrich-Str.', 'Ziel: Halteverbot 7–10 Uhr', 'noch 20 Std.', '+800 €', 'g'],
+      ['m1', 'meldung', 'Meldung', 'Kasse unter 0 €', 'Ausgaben schneller als Einnahmen · Kämmerei ansehen', '06:12', '', ''],
+      ['m2', 'meldung', 'Meldung', 'Blitzer-Warn-App kennt Altstädter Brücke', 'Fotos dort −19 %', '05:00', '', ''],
+      ['m3', 'meldung', 'Meldung', 'Wochenmarkt Jahnstraße morgen', 'Mittwoch 7–13 Uhr · Straße teilweise gesperrt', '00:00', '', '']
+    ];
+    var cat = self.state.cat;
+    var items = all.filter(function (x) { return cat === 'alle' || x[1] === cat; }).map(function (x) {
+      var on = x[0] === self.state.sel;
+      return { kind: x[2], title: x[3], sub: x[4], time: x[5], val: x[6], sel: on ? 'true' : 'false',
+        bar: 'flex: none; width: 4px; align-self: stretch; border-radius: 2px; background: ' + C[x[1]] + ';',
+        kindStyle: 'font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: ' + (x[1] === 'meldung' ? '#586674' : (x[1] === 'schaden' ? '#6B4A00' : C[x[1]])) + ';',
+        valStyle: 'font: 700 14px "JetBrains Mono", monospace; color: #1E7A44; min-height: 17px;',
+        style: 'display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 16px; border: none; border-bottom: 1px solid #EEF1F4; cursor: pointer; font-family: Inter, sans-serif; color: #15202B; ' + (on ? 'background: #EAF1FC; box-shadow: inset 3px 0 0 #2257B8;' : 'background: #FFFFFF;'),
+        pick: function () { self.setState({ sel: x[0] }); } };
+    });
+    var titles = { alle: 'Alle offenen Einträge', einsatz: 'Einsätze', auftrag: 'Aufträge', schaden: 'Schäden', meldung: 'Meldungen', erledigt: 'Erledigt' };
+    return { rail: rail, cats: cats, items: items, listTitle: titles[cat] };
+  }
+}
+</script>
+</body>
+</html>

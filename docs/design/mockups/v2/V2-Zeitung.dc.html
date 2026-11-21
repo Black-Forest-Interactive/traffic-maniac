@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Traffic Maniac – Tagesende</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&amp;family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&amp;family=Bricolage+Grotesque:opsz,wght@12..96,800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#15202B}
+button:focus-visible{outline:3px solid #FFC21A;outline-offset:2px}
+</style>
+</helmet>
+<div style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #F6EBD0; font-family: Inter, system-ui, sans-serif; color: #15202B">
+  <!-- abgedunkelter Hintergrund (Spiel) -->
+  <svg viewBox="0 0 1920 1080" width="1920" height="1080" style="position: absolute; inset: 0" aria-hidden="true">
+    <rect width="1920" height="56" fill="#15202B"></rect><rect y="56" width="80" height="1024" fill="#1E2B38"></rect>
+    <path d="M480 300Q900 200 1400 330T1920 300" fill="none" stroke="#F2C14E" stroke-width="10"></path>
+    <path d="M300 700Q900 640 1920 560" fill="none" stroke="#6FA8DC" stroke-width="14"></path>
+    <path d="M900 56Q960 500 1000 1080" fill="none" stroke="#F2C14E" stroke-width="9"></path>
+  </svg>
+  <div style="position: absolute; inset: 0; background: rgba(15,22,30,.72)"></div>
+
+  <!-- Dialog -->
+  <section role="dialog" aria-modal="true" aria-label="Tagesende: Zeitung und Bilanz" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1280px; height: 860px; display: grid; grid-template-columns: 1fr 400px; grid-template-rows: 1fr auto; border-radius: 18px; overflow: hidden; background: #FFFFFF; box-shadow: 0 30px 80px rgba(0,0,0,.45)">
+
+    <!-- Zeitung -->
+    <article style="padding: 36px 44px 28px; background: #F7F3EA; color: #1C1A17; font-family: 'Source Serif 4', Georgia, serif; overflow: hidden; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding-bottom: 12px; border-bottom: 3px double #1C1A17">
+        <span style="font-family: 'Playfair Display', serif; font-weight: 900; font-size: 56px; letter-spacing: -1px; line-height: 1">Goldstadt-Bote</span>
+        <div style="display: flex; justify-content: space-between; width: 100%; font: 600 12px Inter, sans-serif; letter-spacing: .5px; text-transform: uppercase; color: #5B554B">
+          <span>Ausgabe Nr. 2</span><span>Mittwochmorgen · nach Tag 2</span><span>Unabhängig, meistens</span>
+        </div>
+      </div>
+
+      <h2 style="margin: 0; font-family: 'Playfair Display', serif; font-weight: 900; font-size: 46px; line-height: 1.05; letter-spacing: -0.5px">Schilder statt Schaufel: Rathaus kassiert an der Altstädter Brücke</h2>
+      <p style="margin: 0; font-size: 19px; line-height: 1.45; font-style: italic; color: #3A362F">Während die Schlaglöcher wachsen, wächst vor allem eines: die Zahl der Tempo-30-Schilder. Die Stadtkasse ist trotzdem im Minus.</p>
+
+      <div style="display: grid; grid-template-columns: 300px 1fr 1fr; gap: 24px; flex: 1; min-height: 0">
+        <figure style="margin: 0; display: flex; flex-direction: column; gap: 6px">
+          <svg viewBox="0 0 300 220" width="300" height="220" role="img" aria-label="Zeichnung: Blitzer vor einem Wald aus Tempo-30-Schildern" style="background: #E9E2D2">
+            <g stroke="#1C1A17" stroke-width="2.5" fill="#F7F3EA">
+              <line x1="40" y1="200" x2="40" y2="110"></line><circle cx="40" cy="92" r="20"></circle>
+              <line x1="95" y1="200" x2="95" y2="90"></line><circle cx="95" cy="72" r="20"></circle>
+              <line x1="150" y1="200" x2="150" y2="104"></line><circle cx="150" cy="86" r="20"></circle>
+              <line x1="205" y1="200" x2="205" y2="84"></line><circle cx="205" cy="66" r="20"></circle>
+            </g>
+            <g font-family="Playfair Display" font-weight="900" font-size="16" fill="#1C1A17" text-anchor="middle"><text x="40" y="98">30</text><text x="95" y="78">30</text><text x="150" y="92">30</text><text x="205" y="72">30</text></g>
+            <g stroke="#1C1A17" stroke-width="2.5"><line x1="262" y1="200" x2="262" y2="150"></line><rect x="244" y="118" width="36" height="34" fill="#1C1A17"></rect></g>
+            <circle cx="262" cy="135" r="9" fill="#E9E2D2"></circle>
+            <path d="M0 200H300" stroke="#1C1A17" stroke-width="3"></path>
+            <ellipse cx="120" cy="205" rx="26" ry="6" fill="#1C1A17"></ellipse>
+          </svg>
+          <figcaption style="font: 500 12px Inter, sans-serif; color: #5B554B">Neue Aussicht an der Brücke. Zeichnung: Redaktion</figcaption>
+        </figure>
+        <div style="font-size: 15px; line-height: 1.6; column-gap: 24px">
+          <p style="margin: 0 0 10px"><b>Pforzheim.</b> 203 Fotos an einem einzigen Tag: Der Blitzer an der Altstädter Brücke ist der fleißigste Mitarbeiter der Stadt. 14.200 Euro hat er eingespielt – mehr als jede Parkuhr seit Gründung der Goldstadt.</p>
+          <p style="margin: 0">Geholfen hat es der Kasse wenig. Eine neue Ampel am Bahnhofplatz verschlang 30.000 Euro, die Lohnliste im Ordnungsamt wächst. Seit dem frühen Morgen steht die Stadt mit 1.420 Euro in der Kreide.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px">
+          <div style="padding: 14px 16px; border: 2px solid #1C1A17; background: #FFFDF7">
+            <span style="display: block; font: 700 11px Inter, sans-serif; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px">Leserbrief</span>
+            <p style="margin: 0; font-size: 15px; line-height: 1.5; font-style: italic">„Ich fahre seit vierzig Jahren über diese Brücke. Gestern zum ersten Mal mit Foto.“</p>
+            <span style="display: block; margin-top: 6px; font-size: 13px; color: #5B554B">— H. M., Brötzingen</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.4">
+            <span style="font: 700 11px Inter, sans-serif; letter-spacing: 1px; text-transform: uppercase">Kurz gemeldet</span>
+            <span>• Bürgerverein lobt Laser in der Bahnhofstraße</span>
+            <span>• Wochenmarkt Jahnstraße am Mittwoch, 7–13 Uhr</span>
+            <span>• Felgenschaden: dritte Klage gegen die Stadt</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Bilanz -->
+    <aside aria-label="Tagesbilanz" style="padding: 28px 28px 20px; display: flex; flex-direction: column; gap: 16px; border-left: 1px solid #E3E8ED">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #586674">Tag 2 von 5 vorbei</span>
+          <h3 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 24px">Tagesbilanz</h3>
+        </div>
+        <button type="button" aria-label="Schließen (Esc)" title="Schließen (Esc)" style="width: 44px; height: 44px; margin: -8px -8px 0 0; border: none; border-radius: 22px; background: #EEF1F4; color: #15202B; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 12px; background: #EEF1F4">
+        <div style="display: flex; justify-content: space-between; font-size: 14px"><span>Einnahmen</span><b style="font-family: 'JetBrains Mono', monospace; color: #1E5BB8">+48.200 €</b></div>
+        <div style="display: flex; justify-content: space-between; font-size: 14px"><span>Ausgaben</span><b style="font-family: 'JetBrains Mono', monospace; color: #A84F0E">−61.900 €</b></div>
+        <div style="display: flex; justify-content: space-between; font-size: 15px; padding-top: 8px; border-top: 1px solid #C3CCD5"><b>Saldo</b><b style="font-family: 'JetBrains Mono', monospace; color: #A3202E">−13.700 €</b></div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; color: #586674"><span>Kasse jetzt</span><span style="font-family: 'JetBrains Mono', monospace; color: #A3202E; font-weight: 700">−1.420 €</span></div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <sc-for list="{{deltas}}" as="d" hint-placeholder-count="4">
+          <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; font-size: 14px">
+            <span>{{d.label}}</span>
+            <span style="font: 500 13px 'JetBrains Mono', monospace; color: #586674">{{d.from}} → <b style="color: #15202B">{{d.to}}</b></span>
+            <span style="{{d.style}}">{{d.delta}}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid #E3E8ED">
+        <span style="font-size: 13px; font-weight: 700">Ton der Zeitung: <span style="color: #A3202E">kritisch</span></span>
+        <span style="position: relative; display: block; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #E9A2AA 0%, #E3E8ED 50%, #A9C4EE 100%)"><span style="position: absolute; left: 24%; top: -4px; width: 4px; height: 16px; border-radius: 2px; background: #15202B"></span></span>
+        <span style="font-size: 12px; color: #586674; line-height: 1.45">Der Artikel kostet −3 Reputation. Eine PR-Agentur oder ein Spatenstich hätte den Ton verbessert.</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+        <span style="font-weight: 700">Aufträge</span>
+        <span style="color: #3D4B59">2 erfüllt (+3.000 €) · 1 abgelaufen</span>
+      </div>
+    </aside>
+
+    <!-- Aktionen -->
+    <footer style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 14px 24px; border-top: 1px solid #D5DCE3; background: #FFFFFF">
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #586674">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
+        Spiel pausiert · jede Ausgabe bleibt unter <b style="color: #15202B">Presse → Archiv</b> nachlesbar
+      </span>
+      <span style="flex: 1"></span>
+      <button type="button" style="height: 48px; padding: 0 18px; border: 1px solid #C3CCD5; border-radius: 12px; background: #FFFFFF; color: #15202B; font: 600 14px Inter, sans-serif; cursor: pointer">Zur Kämmerei</button>
+      <button type="button" style="height: 48px; padding: 0 18px; border: 1px solid #C3CCD5; border-radius: 12px; background: #FFFFFF; color: #15202B; font: 600 14px Inter, sans-serif; cursor: pointer">Schließen <span style="font: 500 11px 'JetBrains Mono', monospace; color: #586674">Esc</span></button>
+      <button type="button" style="height: 48px; padding: 0 22px; border: none; border-radius: 12px; background: #2257B8; color: #FFFFFF; font: 700 15px Inter, sans-serif; cursor: pointer">Weiter zu Tag 3 <span style="font: 500 11px 'JetBrains Mono', monospace; opacity: .8">↵</span></button>
+    </footer>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var d = function (label, from, to, delta, bad) {
+      return { label: label, from: from, to: to, delta: delta, style: 'min-width: 44px; text-align: center; font: 700 12px "JetBrains Mono", monospace; padding: 3px 6px; border-radius: 6px; ' + (bad ? 'background: #FBE3E5; color: #A3202E;' : 'background: #DDF0E4; color: #14532D;') };
+    };
+    return { deltas: [
+      d('Reputation', '45', '41', '−4', true),
+      d('Bürgerzorn', '9', '14', '+5', true),
+      d('Abwahlindex', '12', '17', '+5', true),
+      d('Pendler pünktlich', '68 %', '71 %', '+3', false)
+    ] };
+  }
+}
+</script>
+</body>
+</html>

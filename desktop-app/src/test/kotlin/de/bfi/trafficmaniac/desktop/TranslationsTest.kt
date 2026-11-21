@@ -40,7 +40,7 @@ class TranslationsTest {
     fun switchingTheLanguageChangesTexts() {
         I18n.use(Language.EN, english)
         assertEquals("Speed limit", tr("Tempolimit"))
-        assertEquals("Achievement unlocked: Stuck!", tr("Achievement freigeschaltet: {title}!", "title" to "Stuck"))
+        assertEquals("Achievement unlocked: Stuck!", tr("Erfolg freigeschaltet: {title}!", "title" to "Stuck"))
         assertEquals("€90,000", formatEuro(90_000))
     }
 
