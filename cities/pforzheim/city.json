@@ -12,7 +12,7 @@
     "simulation": {},
     "rules": {},
     "import": {
-        "extract": "https://download.geofabrik.de/europe/germany/baden-wuerttemberg/karlsruhe-regbez-latest.osm.pbf",
+        "extract": "https://download.geofabrik.de/europe/germany/baden-wuerttemberg/karlsruhe-regbez/karlsruhe-regbez-latest.osm.pbf",
         "bbox": "8.60,48.83,8.80,48.94"
     },
     "translations": {
