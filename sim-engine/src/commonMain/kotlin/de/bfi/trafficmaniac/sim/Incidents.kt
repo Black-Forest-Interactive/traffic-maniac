@@ -4,7 +4,6 @@ import de.bfi.trafficmaniac.city.Facility
 import de.bfi.trafficmaniac.city.FacilityKind
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
-import kotlin.math.hypot
 import kotlin.random.Random
 
 enum class IncidentKind(
@@ -247,7 +246,7 @@ internal class Incidents(
                 else -> FacilityKind.FIRE_STATION
             }
         val candidates = depots[kind] ?: depots[FacilityKind.FIRE_STATION] ?: return null
-        return candidates.minByOrNull { hypot(it.x - incident.x, it.y - incident.y) }
+        return candidates.minByOrNull { distance(it.x - incident.x, it.y - incident.y) }
     }
 
     /** Jeden Tick: Ankunft der Einsatzkräfte prüfen und erledigte Einsätze abschließen. */

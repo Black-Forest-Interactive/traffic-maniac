@@ -6,7 +6,6 @@ import de.bfi.trafficmaniac.city.Zone
 import de.bfi.trafficmaniac.city.ZoneKind
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.i18n.translatable
-import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.random.Random
 
@@ -236,7 +235,7 @@ class Parking internal constructor(
         lotsNear.getOrPut(zone) {
             val z = zonesById[zone] ?: return@getOrPut emptyList()
             lots
-                .map { it to hypot(it.facility.x - z.x, it.facility.y - z.y) }
+                .map { it to distance(it.facility.x - z.x, it.facility.y - z.y) }
                 .filter { it.second <= config.parkingWalkMeters }
                 .sortedBy { it.second }
                 .map { it.first }
@@ -246,7 +245,7 @@ class Parking internal constructor(
         searchNodes.getOrPut(zone) {
             val z = zonesById[zone] ?: return@getOrPut IntArray(0)
             activeNodes
-                .filter { hypot(graph.nodeX[it] - z.x, graph.nodeY[it] - z.y) <= config.parkingSearchMeters }
+                .filter { distance(graph.nodeX[it] - z.x, graph.nodeY[it] - z.y) <= config.parkingSearchMeters }
                 .toIntArray()
         }
 

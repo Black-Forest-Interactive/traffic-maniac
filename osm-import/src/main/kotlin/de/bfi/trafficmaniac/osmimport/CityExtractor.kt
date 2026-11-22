@@ -65,13 +65,14 @@ class CityExtractor(
             }
         }
         val simulated = roadClass != null && roadClass in config.roadClasses
-        if (roadClass != null) addRoad(refs, tags, roadClass, simulated)
+        if (roadClass != null) addRoad(id, refs, tags, roadClass, simulated)
         // Passive Nebenstraßen bleiben Kulisse, bis eine Umleitung sie zuschaltet
         if (!simulated) addScenery(refs, tags)
     }
 
     /** Simulierte Straße oder passive Nebenstraße (für Umleitungen); alles andere wird ignoriert. */
     private fun addRoad(
+        id: Long,
         refs: LongArray,
         tags: Map<String, String>,
         roadClass: RoadClass,
@@ -80,7 +81,7 @@ class CityExtractor(
         val passive = !simulated && roadClass in config.passiveRoadClasses
         if (!simulated && !passive) return
         val attributes = RoadTags.parse(tags, roadClass)
-        roads += RawRoad(if (attributes.reversed) refs.reversedArray() else refs, roadClass, attributes, passive)
+        roads += RawRoad(id, if (attributes.reversed) refs.reversedArray() else refs, roadClass, attributes, passive)
     }
 
     private fun addScenery(
@@ -110,6 +111,7 @@ class CityExtractor(
                 maxX = projection.x(box.maxLon),
                 maxY = projection.y(box.maxLat),
             )
+        includeBusRoutes()
         val (network, osmIds) = buildRoadNetwork()
         val motorwayNodeIds = osmIds.indices.filter { osmIds[it] in motorwayNodes }.toSet()
         val (transitStops, transitLines) = buildTransit(network, busStops, busLines)
@@ -133,6 +135,18 @@ class CityExtractor(
                     green = scenery.getValue(SceneryKind.GREEN),
                 ),
         )
+    }
+
+    /**
+     * Nebenstraßen, über die eine Buslinie fährt, werden befahrbar – sonst fänden Busse in Wohngebieten keinen Weg
+     * und ihre Haltestellen keinen Anschluss. Erst hier möglich: Die Linien (Relationen) kommen in der Datei nach den
+     * Wegen.
+     */
+    private fun includeBusRoutes() {
+        val busWays = busLines.flatMapTo(HashSet()) { it.ways }
+        for ((index, road) in roads.withIndex()) {
+            if (road.passive && road.osmId in busWays) roads[index] = road.copy(passive = false)
+        }
     }
 
     /** Liefert das Netz und zu jedem Netzknoten die ursprüngliche OSM-ID. */
@@ -241,11 +255,14 @@ class CityExtractor(
     }
 
     private class RawRoad(
+        val osmId: Long,
         val refs: LongArray,
         val roadClass: RoadClass,
         val attributes: RoadAttributes,
         val passive: Boolean = false,
-    )
+    ) {
+        fun copy(passive: Boolean) = RawRoad(osmId, refs, roadClass, attributes, passive)
+    }
 
     companion object {
         const val ATTRIBUTION = "© OpenStreetMap-Mitwirkende (ODbL)"

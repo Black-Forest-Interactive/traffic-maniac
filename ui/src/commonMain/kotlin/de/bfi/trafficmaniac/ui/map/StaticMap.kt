@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -131,21 +132,27 @@ private fun DrawScope.drawLabels(
 ) {
     val placed = ArrayList<Rect>()
     val style = TextStyle(color = MapStyle.label, fontSize = LABEL_FONT_SIZE.sp, fontWeight = FontWeight.Bold)
-    // Nebenstraßen erst nah dran beschriften; nur, was im Bild liegt
-    val shown =
-        layers.labels.filter {
-            it.roadClass.ordinal <= RoadClass.SECONDARY.ordinal || camera.scale >= MINOR_LABEL_SCALE
-        }
-    for (label in shown) {
-        val x = camera.worldToScreenX(label.x, size.width)
-        val y = camera.worldToScreenY(label.y, size.height)
-        if (!Rect(0f, 0f, size.width, size.height).contains(Offset(x, y))) continue
-        val text = textMeasurer.measure(label.name, style)
+    // Jeden Namen nur einmal setzen; wo er schon steht, merken – derselbe Name erst wieder mit Abstand
+    val texts = HashMap<String, TextLayoutResult>()
+    val sameName = HashMap<String, ArrayList<Offset>>()
+    val screen = Rect(0f, 0f, size.width, size.height)
+    // Nebenstraßen erst nah dran beschriften; nur, was im Bild liegt (Liste: wichtige und lange Abschnitte zuerst)
+    for (label in layers.labels) {
+        val minorFar = label.roadClass.ordinal > RoadClass.SECONDARY.ordinal && camera.scale < MINOR_LABEL_SCALE
+        val spot =
+            if (minorFar) {
+                null
+            } else {
+                labelSpot(label, camera, screen, sameName) {
+                    texts.getOrPut(label.name) { textMeasurer.measure(label.name, style) }
+                }
+            }
+        if (spot == null || placed.any { it.overlaps(spot.box) }) continue
+        placed += spot.box
+        sameName.getOrPut(label.name) { ArrayList() } += Offset(spot.x, spot.y)
+        val (x, y, text) = spot
         val w = text.size.width.toFloat()
         val h = text.size.height.toFloat()
-        val box = Rect(x - w / 2 - LABEL_GAP, y - w / 2 - LABEL_GAP, x + w / 2 + LABEL_GAP, y + w / 2 + LABEL_GAP)
-        if (placed.any { it.overlaps(box) }) continue
-        placed += box
         // Bildschirm-y zeigt nach unten: Winkel umdrehen und so drehen, dass der Text nie auf dem Kopf steht
         var degrees = (-label.angle * DEGREES_PER_RADIAN).toFloat()
         if (degrees > HALF_TURN / 2) degrees -= HALF_TURN
@@ -163,6 +170,33 @@ private fun DrawScope.drawLabels(
             drawText(text, topLeft = topLeft)
         }
     }
+}
+
+/** Wo ein Namensschild hinkäme – `null`, wenn es außerhalb liegt, den Namen nahebei schon gibt oder zu lang ist. */
+private data class LabelSpot(
+    val x: Float,
+    val y: Float,
+    val text: TextLayoutResult,
+    val box: Rect,
+)
+
+private fun DrawScope.labelSpot(
+    label: StreetLabel,
+    camera: Camera,
+    screen: Rect,
+    sameName: Map<String, List<Offset>>,
+    measure: () -> TextLayoutResult,
+): LabelSpot? {
+    val x = camera.worldToScreenX(label.x, size.width)
+    val y = camera.worldToScreenY(label.y, size.height)
+    val near = sameName[label.name]?.any { (it - Offset(x, y)).getDistance() < SAME_NAME_PIXELS } == true
+    if (!screen.contains(Offset(x, y)) || near) return null
+    val text = measure()
+    val w = text.size.width.toFloat()
+    // Nicht viel länger als das Straßenstück – sonst ragt der Name über Kreuzungen in andere Straßen
+    if (w > label.length * camera.scale * MAX_LABEL_OVERHANG) return null
+    val box = Rect(x - w / 2 - LABEL_GAP, y - w / 2 - LABEL_GAP, x + w / 2 + LABEL_GAP, y + w / 2 + LABEL_GAP)
+    return LabelSpot(x, y, text, box)
 }
 
 private fun DrawScope.outline(
@@ -196,5 +230,11 @@ private const val LABEL_FONT_SIZE = 11f
 private const val LABEL_GAP = 6f
 private const val HALO_PADDING = 4f
 private const val MINOR_LABEL_SCALE = 1.8f
+
+/** Derselbe Straßenname frühestens wieder so viele Pixel weiter. */
+private const val SAME_NAME_PIXELS = 420f
+
+/** Ein Name darf höchstens so viel länger sein als sein Abschnitt auf dem Bildschirm. */
+private const val MAX_LABEL_OVERHANG = 1.3f
 private const val DEGREES_PER_RADIAN = 180.0 / PI
 private const val HALF_TURN = 180f

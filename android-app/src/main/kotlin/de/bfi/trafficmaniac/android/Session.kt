@@ -8,6 +8,7 @@ import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.game.TelemetryContext
 import de.bfi.trafficmaniac.game.TelemetryPerformance
 import de.bfi.trafficmaniac.game.highscore
+import de.bfi.trafficmaniac.game.telemetry
 import de.bfi.trafficmaniac.i18n.I18n
 import de.bfi.trafficmaniac.ui.HudInput
 import de.bfi.trafficmaniac.ui.map.MapDrawTime

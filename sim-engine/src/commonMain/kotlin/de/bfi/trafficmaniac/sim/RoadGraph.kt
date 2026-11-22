@@ -4,7 +4,6 @@ import de.bfi.trafficmaniac.city.RoadClass
 import de.bfi.trafficmaniac.city.RoadNetwork
 import de.bfi.trafficmaniac.city.RoadSegment
 import kotlin.math.atan2
-import kotlin.math.hypot
 
 /** Breite einer Fahrspur in Metern. */
 const val LANE_WIDTH_METERS = 3.5f
@@ -356,7 +355,7 @@ class RoadGraph(
             val result = FloatArray(count)
             for (i in 1 until count) {
                 result[i] =
-                    result[i - 1] + hypot(points[i * 2] - points[i * 2 - 2], points[i * 2 + 1] - points[i * 2 - 1])
+                    result[i - 1] + distance(points[i * 2] - points[i * 2 - 2], points[i * 2 + 1] - points[i * 2 - 1])
             }
             return result
         }

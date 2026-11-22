@@ -47,6 +47,12 @@ data class Assignment(
     val status: AssignmentStatus,
     /** Schadensmeldung, um die es geht (Schlagloch-Beschwerde), sonst -1. */
     val reportId: Int = -1,
+    /**
+     * Fortschritt bei Aufträgen, die in Schritten erfüllt werden: Tempo 30 – Abschnitte mit Tempo 30 von allen;
+     * Raser-Beschwerde – kontrollierte Stunden von den nötigen. [goal] 0 = erledigt sich auf einen Schlag.
+     */
+    val progress: Int = 0,
+    val goal: Int = 0,
 )
 
 /** Wie die Spielwelt für die Aufträge aussieht – einmal je Spielstunde. */
@@ -104,8 +110,30 @@ internal class Assignments(
                 }
             }.filterValues { it.isNotEmpty() }
 
-    fun state(time: Double): List<Assignment> =
-        cases.filter { it.status == AssignmentStatus.OPEN }.map { it.toAssignment(time) }
+    fun state(
+        time: Double,
+        game: GameState? = null,
+    ): List<Assignment> = cases.filter { it.status == AssignmentStatus.OPEN }.map { it.toAssignment(time, game) }
+
+    /** Vor Kurzem erfüllte Aufträge – sie bleiben im Posteingang noch eine Weile als „erledigt“ sichtbar. */
+    fun recentlyDone(time: Double): List<Assignment> =
+        cases
+            .filter { it.status == AssignmentStatus.DONE && time - it.finished < RECENT_SECONDS }
+            .sortedByDescending { it.finished }
+            .map { it.toAssignment(time) }
+
+    /**
+     * Gleich nach einer Spieleraktion: Was damit erfüllt ist, sofort bezahlen – nicht erst zur vollen Stunde. Die
+     * Raser-Beschwerde braucht echte Kontrollstunden und wird weiter stündlich gezählt.
+     */
+    fun playerActed(
+        state: GameState,
+        time: Double,
+    ) {
+        for (case in cases.filter { it.status == AssignmentStatus.OPEN && it.kind != AssignmentKind.SPEEDER }) {
+            if (case.fulfilledBy(state)) complete(case, time)
+        }
+    }
 
     /** Erledigte Aufträge (für Tests und Statistik). */
     val doneCount: Int get() = cases.count { it.status == AssignmentStatus.DONE }
@@ -123,7 +151,7 @@ internal class Assignments(
     fun hourPassed(world: AssignmentWorld) {
         for (case in cases.filter { it.status == AssignmentStatus.OPEN }) {
             when {
-                case.fulfilled(world) -> complete(case)
+                case.fulfilled(world) -> complete(case, world.time)
                 world.time > case.deadline -> miss(case)
             }
         }
@@ -180,10 +208,10 @@ internal class Assignments(
     ): AssignmentCase? {
         val options =
             nearHomes.filter { (street, segments) ->
-                street !in busyStreets && segments.any { limit(world.state, it) > TEMPO_30 }
+                street !in busyStreets && segments.any { world.state.limitAt(city, it) > TEMPO_30 }
             }
         val street = options.keys.randomOrNull(random) ?: return null
-        val start = nearHomes.getValue(street).filter { limit(world.state, it) > TEMPO_30 }.random(random)
+        val start = nearHomes.getValue(street).filter { world.state.limitAt(city, it) > TEMPO_30 }.random(random)
         return case(
             AssignmentKind.TEMPO_30,
             street,
@@ -238,7 +266,7 @@ internal class Assignments(
     ): AssignmentCase? {
         val options =
             streets.filter { (street, segments) ->
-                street !in busyStreets && segments.any { limit(world.state, it) >= SPEEDER_MIN_KMH }
+                street !in busyStreets && segments.any { world.state.limitAt(city, it) >= SPEEDER_MIN_KMH }
             }
         val street = options.keys.randomOrNull(random) ?: return null
         return case(
@@ -272,33 +300,12 @@ internal class Assignments(
         reportId = reportId,
     )
 
-    private fun AssignmentCase.fulfilled(world: AssignmentWorld): Boolean {
-        val cameras = world.state.cameras
-        return when (kind) {
-            AssignmentKind.TEMPO_30 -> {
-                segments.all { limit(world.state, it) <= TEMPO_30 }
-            }
-
-            AssignmentKind.ACCIDENT_SPOT -> {
-                cameras.any { it.segment in segments }
-            }
-
-            AssignmentKind.POTHOLE -> {
-                val report =
-                    world.state.maintenance.reports
-                        .firstOrNull { it.id == reportId }
-                report == null || report.status == DamageStatus.TENDER || report.status == DamageStatus.CONSTRUCTION
-            }
-
-            AssignmentKind.SPEEDER -> {
-                if (cameras.any { (it.policeCheck || it.mobile) && it.segment in segments }) checkedHours++
-                checkedHours >= rules.assignments.speederCheckHours
-            }
-        }
-    }
-
-    private fun complete(case: AssignmentCase) {
+    private fun complete(
+        case: AssignmentCase,
+        time: Double,
+    ) {
         case.status = AssignmentStatus.DONE
+        case.finished = time
         effects.reward(case.reward)
         if (case.kind == AssignmentKind.POTHOLE) effects.reputation(rules.assignments.potholeReputation)
         effects.announce(
@@ -325,11 +332,6 @@ internal class Assignments(
         )
     }
 
-    private fun limit(
-        state: GameState,
-        segment: Int,
-    ): Int = state.speedLimits[segment] ?: city.roads.segments[segment].maxSpeedKmh
-
     private fun nearestStreet(
         x: Float,
         y: Float,
@@ -355,20 +357,78 @@ internal class Assignments(
         var status = AssignmentStatus.OPEN
         var checkedHours = 0
 
-        fun toAssignment(time: Double) =
-            Assignment(
-                id = id,
-                kind = kind,
-                street = street,
-                text = text(),
-                reward = reward,
-                place = place,
-                segments = segments,
-                hoursLeft = (deadline - time) / SECONDS_PER_HOUR,
-                hours = hours,
-                status = status,
-                reportId = reportId,
-            )
+        /** Wann der Auftrag erfüllt wurde (Simulationszeit). */
+        var finished = 0.0
+
+        fun fulfilled(world: AssignmentWorld): Boolean {
+            if (kind != AssignmentKind.SPEEDER) return fulfilledBy(world.state)
+            if (world.state.cameras.any { (it.policeCheck || it.mobile) && it.segment in segments }) checkedHours++
+            return checkedHours >= rules.assignments.speederCheckHours
+        }
+
+        /** Erfüllt durch den jetzigen Stand (alle außer der Raser-Beschwerde, die Stunden zählt). */
+        fun fulfilledBy(state: GameState): Boolean {
+            val cameras = state.cameras
+            return when (kind) {
+                AssignmentKind.TEMPO_30 -> {
+                    segments.all { state.limitAt(city, it) <= TEMPO_30 }
+                }
+
+                AssignmentKind.ACCIDENT_SPOT -> {
+                    cameras.any { it.segment in segments }
+                }
+
+                AssignmentKind.POTHOLE -> {
+                    val report =
+                        state.maintenance.reports
+                            .firstOrNull { it.id == reportId }
+                    report == null || report.status == DamageStatus.TENDER || report.status == DamageStatus.CONSTRUCTION
+                }
+
+                // Zählt Stunden – siehe fulfilled()
+                AssignmentKind.SPEEDER -> {
+                    false
+                }
+            }
+        }
+
+        fun toAssignment(
+            time: Double,
+            game: GameState? = null,
+        ) = Assignment(
+            id = id,
+            kind = kind,
+            street = street,
+            text = text(),
+            reward = reward,
+            place = place,
+            segments = segments,
+            hoursLeft = (deadline - time) / SECONDS_PER_HOUR,
+            hours = hours,
+            status = status,
+            reportId = reportId,
+            progress =
+                when (kind) {
+                    AssignmentKind.TEMPO_30 -> {
+                        game?.let { g -> segments.count { g.limitAt(city, it) <= TEMPO_30 } }
+                            ?: 0
+                    }
+
+                    AssignmentKind.SPEEDER -> {
+                        checkedHours
+                    }
+
+                    else -> {
+                        0
+                    }
+                },
+            goal =
+                when (kind) {
+                    AssignmentKind.TEMPO_30 -> segments.size
+                    AssignmentKind.SPEEDER -> rules.assignments.speederCheckHours
+                    else -> 0
+                },
+        )
 
         private fun text(): String =
             when (kind) {
@@ -413,5 +473,14 @@ internal class Assignments(
         const val SECONDS_PER_HOUR = 3_600.0
         const val DECLINE_PAUSE_SECONDS = 24 * 3_600.0
         const val FORGET_SECONDS = 48 * 3_600.0
+
+        /** So lange steht ein erfüllter Auftrag noch im Posteingang (drei Spielstunden). */
+        const val RECENT_SECONDS = 3 * 3_600.0
     }
 }
+
+/** Tempolimit eines Abschnitts: vom Spieler gesetzt, sonst das aus der Karte. */
+private fun GameState.limitAt(
+    city: CityMap,
+    segment: Int,
+): Int = speedLimits[segment] ?: city.roads.segments[segment].maxSpeedKmh

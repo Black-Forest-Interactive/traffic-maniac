@@ -89,6 +89,26 @@ class AssignmentsTest {
     }
 
     @Test
+    fun aRequestIsDoneRightAwayNotAtTheNextFullHour() {
+        val game = CityGame(street(), config, rules)
+        game.run(minutes = 61)
+        val assignment = game.state().assignments.single()
+        assertEquals(0, assignment.progress)
+        assertEquals(1, assignment.goal)
+
+        game.submit(GameCommand.SetSpeedLimit(segment = 0, kmh = 30))
+        // Ein einziger Schritt – keine volle Stunde dazwischen
+        game.step()
+
+        val state = game.state()
+        assertEquals(rules.assignments.rewardTempo30, state.grantIncome)
+        assertTrue(state.assignments.none { it.id == assignment.id })
+        // Bleibt noch eine Weile als „erledigt“ im Posteingang
+        assertEquals(assignment.id, state.finishedAssignments.single().id)
+        assertEquals(AssignmentStatus.DONE, state.finishedAssignments.single().status)
+    }
+
+    @Test
     fun aMissedRequestCostsReputation() {
         val game = CityGame(street(), config, rules)
         game.run(minutes = 61)

@@ -20,6 +20,8 @@ import kotlin.math.roundToInt
 internal class RenderedMap(
     val image: ImageBitmap,
     val camera: Camera,
+    /** Mit gezeichneten Ampeln gerendert (ohne Verkehrsebene). */
+    val showStaticSignals: Boolean = false,
 ) {
     /** Zeichnet das Bild so verschoben und skaliert, dass es zur aktuellen [camera] passt. */
     fun draw(
@@ -48,8 +50,30 @@ internal class RenderedMap(
         }
     }
 
+    /**
+     * Deckt das Bild den Ausschnitt [camera] ([width] × [height]) noch mit Reserve ab? Dann ist kein neues Rendern
+     * nötig – beim Verschieben reicht der vorgerenderte Rand. Bei anderer Zoomstufe immer neu (sonst unscharf).
+     */
+    fun covers(
+        camera: Camera,
+        width: Float,
+        height: Float,
+    ): Boolean {
+        if (abs(camera.scale / this.camera.scale - 1f) >= SAME_ZOOM) return false
+        // Abstand der Mittelpunkte in Bildpixeln; erlaubt ist der halbe Rand
+        val dx = abs(camera.centerX - this.camera.centerX) * camera.scale
+        val dy = abs(camera.centerY - this.camera.centerY) * camera.scale
+        return dx <= (image.width - width) / 2 * REUSE_SHARE && dy <= (image.height - height) / 2 * REUSE_SHARE
+    }
+
     companion object {
         private const val SAME_ZOOM = 1e-4f
+
+        /** Rand um den sichtbaren Ausschnitt, je Seite als Anteil der Breite bzw. Höhe. */
+        const val MARGIN = 0.25f
+
+        /** Wie viel des Rands beim Verschieben aufgebraucht werden darf, bevor neu gerendert wird. */
+        private const val REUSE_SHARE = 0.5f
 
         fun render(
             layers: MapLayers,
@@ -70,7 +94,7 @@ internal class RenderedMap(
                 drawRect(MapStyle.land)
                 drawStaticMap(layers, camera, showStaticSignals, textMeasurer)
             }
-            return RenderedMap(image, camera)
+            return RenderedMap(image, camera, showStaticSignals)
         }
     }
 }

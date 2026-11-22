@@ -36,6 +36,8 @@ data class Scenario(
     val corsoChanceWeekend: Double? = null,
     /** Mit geführten Schritten, die die Werkzeuge nach und nach freischalten; zählt nicht für die Bestenliste. */
     val tutorial: Boolean = false,
+    /** Zählt für die Bestenliste; `false` z. B. für den Lasttest. */
+    val ranked: Boolean = true,
     /** Kurzes Etikett auf der Szenario-Karte im Menü („Empfohlen“, „Knappe Kasse“ …). */
     val tag: String? = null,
     /** Schnee, Sommerreifen und Räumdienst; `null` = trocken. */
@@ -182,7 +184,31 @@ data class Scenario(
                     initialConditionMin = 0.25,
                     startBudget = 400_000,
                 ),
+                Scenario(
+                    id = LOAD_TEST,
+                    tag = translatable("Lasttest"),
+                    title = translatable("Lasttest: Ganz Pforzheim will gleichzeitig zur Arbeit"),
+                    description =
+                        translatable(
+                            "Dreimal so viel Verkehr wie an einem normalen Montag – bis zu 6.000 Autos gleichzeitig. " +
+                                "Zum Prüfen, was Ihr Rechner schafft. Zählt nicht für die Bestenliste.",
+                        ),
+                    termDays = LOAD_TEST_DAYS,
+                    startHour = LOAD_TEST_START_HOUR,
+                    warmupMinutes = LOAD_TEST_WARMUP_MINUTES,
+                    demandFactor = LOAD_TEST_DEMAND,
+                    startBudget = LOAD_TEST_BUDGET,
+                    ranked = false,
+                ),
             )
+
+        /** Szenario mit dreifacher Nachfrage, um die Leistung zu prüfen (siehe `balancing/scenarios.json`). */
+        const val LOAD_TEST = "lasttest"
+        private const val LOAD_TEST_DAYS = 3
+        private const val LOAD_TEST_START_HOUR = 6.5
+        private const val LOAD_TEST_WARMUP_MINUTES = 30
+        private const val LOAD_TEST_DEMAND = 3.0
+        private const val LOAD_TEST_BUDGET = 1_000_000L
     }
 }
 

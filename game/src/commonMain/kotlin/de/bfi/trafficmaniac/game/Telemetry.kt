@@ -128,3 +128,49 @@ data class TelemetryContext(
     val speeds: Map<String, Int> = emptyMap(),
     val performance: TelemetryPerformance? = null,
 )
+
+/**
+ * Statistikpaket dieser Partie (Paket F); [context] liefert die Plattform. [final] = die Partie ist vorbei (Ende
+ * der Amtszeit, Abwahl oder Abbruch), sonst ein Zwischenstand. Gesendet wird nur mit Zustimmung.
+ */
+fun CityGame.telemetry(
+    context: TelemetryContext,
+    final: Boolean = true,
+): GameTelemetry {
+    val state = state()
+    return GameTelemetry(
+        installation = context.installation,
+        game = gameId,
+        appVersion = context.appVersion,
+        platform = context.platform,
+        deviceClass = context.deviceClass,
+        language = context.language,
+        city = context.city,
+        scenario = context.scenario,
+        difficulty = context.difficulty,
+        end =
+            when {
+                isGameOver -> GameTelemetry.END_RECALLED
+                isTermOver -> GameTelemetry.END_TERM
+                final -> GameTelemetry.END_ABORTED
+                else -> GameTelemetry.END_RUNNING
+            },
+        daysPlayed = simulation.dayReports.size,
+        realMinutes = context.realMinutes,
+        points = state.score.points,
+        earnings = state.score.earnings,
+        income =
+            mapOf(
+                "fines" to treasury.fineIncome,
+                "parking" to treasury.parkingIncome,
+                "tickets" to treasury.ticketIncome,
+                "allowance" to treasury.allowances,
+                "grants" to treasury.grantIncome,
+            ),
+        expenses = treasury.expenses,
+        days = telemetryLog.days.toList(),
+        tools = telemetryLog.tools.toMap(),
+        speeds = context.speeds,
+        performance = context.performance,
+    )
+}

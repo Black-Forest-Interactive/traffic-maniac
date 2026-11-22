@@ -41,13 +41,16 @@ internal fun DrawScope.drawVehicles(
     viewport: Rect,
     seconds: Double,
     sprites: SpriteSource = NoSprites,
+    /** Liniennummern auf den Bussen; `null` = ohne. */
+    busLabels: BusLabels? = null,
 ) {
     if (scale < MapStyle.FLOW_MAX_SCALE) return
     val previous = frame.previous
     val current = frame.current
     val t = frame.interpolation()
     val detailed = scale >= SPRITE_MIN_SCALE
-    val sprite = SpriteBuilder(scale, seconds, sprites)
+    val sprite = SpriteBuilder(scale, seconds, sprites, busLabels)
+    val lines = current.transit.lines
     var j = 0
     for (i in 0 until current.vehicleCount) {
         val id = current.ids[i]
@@ -75,6 +78,7 @@ internal fun DrawScope.drawVehicles(
                 type = VehicleType.entries.getOrElse(current.types[i].toInt()) { VehicleType.CAR },
                 role = VehicleRole.entries.getOrElse(current.roles[i].toInt()) { VehicleRole.PRIVATE },
                 trouble = IncidentKind.entries.getOrNull(current.troubles[i] - 1),
+                line = current.lines.getOrElse(i) { -1 }.let { lines.getOrNull(it)?.ref },
             )
         if (detailed) sprite.draw(this, vehicle) else drawStroke(vehicle, scale, blinkOn(seconds))
     }
@@ -225,6 +229,8 @@ private class VehicleView(
     val type: VehicleType,
     val role: VehicleRole,
     val trouble: IncidentKind?,
+    /** Liniennummer eines Linienbusses, sonst `null`. */
+    val line: String? = null,
 ) {
     fun has(flag: Int) = flags and flag != 0
 
@@ -263,6 +269,7 @@ private class SpriteBuilder(
     private val scale: Float,
     private val seconds: Double,
     private val sprites: SpriteSource = NoSprites,
+    private val busLabels: BusLabels? = null,
 ) {
     private val path = Path()
     private val outline = Stroke(max(OUTLINE_METERS, MIN_OUTLINE_PIXELS / scale), join = StrokeJoin.Round)
@@ -272,10 +279,12 @@ private class SpriteBuilder(
         scope: DrawScope,
         v: VehicleView,
     ) = with(scope) {
-        // Fertige Grafik, wenn es sie gibt – Lichter und Zustände kommen in jedem Fall darüber
+        // Fertige Grafik, wenn es sie gibt – Lichter und Zustände kommen in jedem Fall darüber. Linienbusse nie: Sie
+        // werden selbst gezeichnet, in der Farbe ihrer Linie (kommt aus der Simulation) und mit der Nummer darauf
+        val line = v.line
         val name = vehicleSpriteName(v.type, v.role, v.color, v.has(FLAG_ELECTRIC))
         val angle = atan2(v.dirY, v.dirX)
-        if (drawSprite(sprites, name, v.point(CENTER, 0f), v.length, v.width, scale, angle)) {
+        if (line == null && drawSprite(sprites, name, v.point(CENTER, 0f), v.length, v.width, scale, angle)) {
             drawLights(v)
             drawStatus(v)
             return@with
@@ -285,6 +294,11 @@ private class SpriteBuilder(
         drawDetails(v)
         drawLights(v)
         drawStatus(v)
+        // Liniennummer, sobald der Bus groß genug ist, dass man sie lesen kann
+        if (line != null && v.length * scale >= BusLabels.MIN_BUS_PIXELS) {
+            val center = v.point(CENTER, 0f)
+            busLabels?.draw(this, line, v.color, center.x, center.y, scale)
+        }
     }
 
     /** Karosserie mit abgerundeten Ecken (abgeschrägt), Farbe nach Rolle. */

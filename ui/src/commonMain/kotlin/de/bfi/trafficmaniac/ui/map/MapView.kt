@@ -398,14 +398,19 @@ private fun rememberRenderedMap(
     var rendered by remember(layers) { mutableStateOf<RenderedMap?>(null) }
     LaunchedEffect(layers, camera, width, height, showStaticSignals) {
         if (camera == null || width < 1f || height < 1f) return@LaunchedEffect
+        // Beim Verschieben reicht oft der vorgerenderte Rand – dann gar nicht neu rendern
+        if (rendered?.covers(camera, width, height) == true && rendered?.showStaticSignals == showStaticSignals) {
+            return@LaunchedEffect
+        }
         if (rendered != null) delay(RERENDER_DELAY)
         rendered =
             withContext(Dispatchers.Default) {
+                // Mit Rand rendern: Beim Verschieben ist das Nachbargebiet schon da
                 RenderedMap.render(
                     layers,
                     camera,
-                    width.toInt(),
-                    height.toInt(),
+                    (width * (1 + 2 * RenderedMap.MARGIN)).toInt(),
+                    (height * (1 + 2 * RenderedMap.MARGIN)).toInt(),
                     density,
                     showStaticSignals,
                     labelMeasurer,
@@ -457,6 +462,12 @@ internal class TrafficEffects(
     val flashes = FlashTracker()
     val pops = MoneyPops()
     val puffs = BuildPuffs()
+
+    /** Liniennummern auf den Bussen – mit dem Textmesser der Karte, siehe [busLabels]. */
+    private var labels: BusLabels? = null
+
+    fun busLabels(measurer: TextMeasurer): BusLabels = labels ?: BusLabels(measurer).also { labels = it }
+
     val clouds = AngerClouds()
 
     /** Je Bild: neue Blitze, Einnahmen und Bauten erkennen. */
@@ -544,7 +555,7 @@ private fun DrawScope.drawTraffic(
         if (!extras.transit) drawTransitStops(picker.city.transitStops, camera.scale, viewport)
         drawBusPriority(traffic.game.busPriorityNodes.map { picker.city.roads.nodes[it] }, camera.scale)
     }
-    drawVehicles(traffic, camera.scale, viewport, seconds, effects.sprites)
+    drawVehicles(traffic, camera.scale, viewport, seconds, effects.sprites, effects.busLabels(textMeasurer))
     // In der Ebene „Buslinien“ keine Ampelpunkte – dort gibt es nur einen Punkt-Stil: die Haltestelle
     if (extras.signs && !extras.transit && camera.scale >= MapStyle.SIGNAL_MIN_SCALE) {
         val blink = (traffic.current.time * SIGNAL_BLINKS_PER_SECOND).toInt() % 2 == 0

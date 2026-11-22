@@ -13,12 +13,16 @@ internal class RawStop(
     val name: String?,
 )
 
-/** Buslinie aus einer OSM-Relation: Nummer, Name, Farbe und die Haltestellen-Knoten in Fahrtreihenfolge. */
+/**
+ * Buslinie aus einer OSM-Relation: Nummer, Name, Farbe, die Haltestellen-Knoten in Fahrtreihenfolge und die Wege,
+ * die der Bus fährt (die werden befahrbar, auch wenn es Nebenstraßen sind).
+ */
 internal class RawLine(
     val ref: String,
     val name: String,
     val colour: String?,
     val stops: List<Long>,
+    val ways: List<Long> = emptyList(),
 )
 
 /** Haltestellen-Knoten: Bussteig (`highway=bus_stop`, `public_transport=platform`) oder Halteposition. */
@@ -36,7 +40,9 @@ internal fun rawLineOf(
     val nodes = members.filter { it.type == "node" }
     val platforms = nodes.filter { it.role.startsWith("platform") }
     val stops = platforms.ifEmpty { nodes.filter { it.role.startsWith("stop") } }
-    return RawLine(ref, tags["name"] ?: "Linie $ref", tags["colour"], stops.map { it.ref })
+    // Wege der Strecke (Rolle leer oder "forward"/"backward"); Bussteige als Flächen haben die Rolle "platform"
+    val ways = members.filter { it.type == "way" && !it.role.startsWith("platform") }.map { it.ref }
+    return RawLine(ref, tags["name"] ?: "Linie $ref", tags["colour"], stops.map { it.ref }, ways)
 }
 
 /**

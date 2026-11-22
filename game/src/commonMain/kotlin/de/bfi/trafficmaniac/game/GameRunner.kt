@@ -223,6 +223,8 @@ class GameRunner(
     ): Int {
         var steps = 0
         lock.withLock {
+            // Spieleraktionen in jedem Durchlauf – sonst wirken sie in der Pause erst beim Weiterlaufen
+            game.step(simulate = false)
             if (loop.warmupLeft > 0) {
                 // Vorlauf: ein Zeitscheibchen lang so viele Schritte wie möglich, dann ein Bild zeigen
                 while (loop.warmupLeft > 0 && pendingReport == null && stepStart.elapsedNow() < WARMUP_SLICE) {
@@ -233,6 +235,13 @@ class GameRunner(
                 loop.tickDebt = 0.0
             }
             while (loop.tickDebt >= 1 && pendingReport == null) {
+                // Höchstens ein Zeitscheibchen am Stück, dann ein Bild: Schafft der Rechner das Tempo nicht, wird der
+                // Rückstand verworfen statt nachgeholt – das Spiel läuft dann so schnell es geht, aber gleichmäßig
+                // (sonst rechnet er bis zu MAX_STEPS_PER_LOOP Schritte am Stück und die Autos springen)
+                if (stepStart.elapsedNow() >= STEP_SLICE) {
+                    loop.tickDebt = 0.0
+                    break
+                }
                 game.step()
                 loop.tickDebt--
                 steps++
@@ -346,6 +355,9 @@ class GameRunner(
 
         /** Rechenzeit je Schleifendurchlauf im Vorlauf; danach wird ein Bild gezeigt. */
         private val WARMUP_SLICE = 40.milliseconds
+
+        /** Längste Rechenzeit am Stück im laufenden Spiel; danach wird ein Bild veröffentlicht. */
+        private val STEP_SLICE = 30.milliseconds
 
         /** So alt darf der Spielstand in einem Bild höchstens sein, wenn der Spieler nichts tut. */
         private val STATE_PERIOD = 250.milliseconds

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import de.bfi.trafficmaniac.i18n.tr
 import de.bfi.trafficmaniac.ui.components.LocalPage
@@ -27,12 +28,7 @@ internal fun HudPage(
         modifier
             .fillMaxSize()
             .background(TmColors.Ground)
-            // Klicks und Mausrad nicht an die Karte darunter durchreichen
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) awaitPointerEvent().changes.forEach { it.consume() }
-                }
-            },
+            .blockMapBelow(),
     ) {
         if (panel == SidePanel.INBOX) {
             InboxPage(context.frame, context.picker, inbox)
@@ -65,3 +61,19 @@ internal fun HudPage(
         }
     }
 }
+
+/**
+ * Die Seite verdeckt die Karte: Klicks und Mausrad gehen nicht an die Karte darunter. Dafür genügt, dass die Seite
+ * Zeigerereignisse annimmt – Compose gibt sie dann nicht an tiefere Geschwister weiter. Verbraucht wird nur das
+ * Mausrad. **Nicht** alle Ereignisse verbrauchen: Ein Klick, bei dem sich die Maus zwischen Drücken und Loslassen
+ * bewegt, gilt sonst für die Knöpfe auf der Seite als abgebrochen (man müsste mehrfach klicken).
+ */
+internal fun Modifier.blockMapBelow(): Modifier =
+    pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent()
+                if (event.type == PointerEventType.Scroll) event.changes.forEach { it.consume() }
+            }
+        }
+    }

@@ -2,7 +2,6 @@ package de.bfi.trafficmaniac.sim
 
 import de.bfi.trafficmaniac.city.Facility
 import de.bfi.trafficmaniac.city.FacilityKind
-import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -72,7 +71,7 @@ internal class Charging(
         // Das Navi wählt unter den drei nächsten Ladesäulen die am wenigsten belegte
         val station =
             stations
-                .sortedBy { hypot(it.facility.x - graph.nodeX[origin], it.facility.y - graph.nodeY[origin]) }
+                .sortedBy { distance(it.facility.x - graph.nodeX[origin], it.facility.y - graph.nodeY[origin]) }
                 .take(NEAREST_CANDIDATES)
                 .minBy { it.load }
         val route = if (station.facility.node == origin) null else router.route(origin, station.facility.node)

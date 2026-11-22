@@ -114,6 +114,8 @@ data class GameState(
     val campaignInDays: Int = 0,
     /** Offene Aufträge. */
     val assignments: List<Assignment> = emptyList(),
+    /** Vor Kurzem erfüllte Aufträge (für „erledigt“ im Posteingang). */
+    val finishedAssignments: List<Assignment> = emptyList(),
     /** Zuschüsse und Prämien aus Aufträgen. */
     val grantIncome: Long = 0,
     /** Was die Oberfläche einblenden soll, mit fortlaufender Nummer (die neuesten zuletzt). */

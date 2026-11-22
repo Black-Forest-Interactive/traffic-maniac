@@ -4,7 +4,6 @@ import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.FacilityKind
 import de.bfi.trafficmaniac.city.RoadClass
 import kotlinx.serialization.Serializable
-import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.random.Random
@@ -82,7 +81,7 @@ class Weather internal constructor(
     private val depot: Int =
         city.facilities.firstOrNull { it.kind == FacilityKind.FIRE_STATION }?.node
             ?: (0 until graph.nodeCount).minBy {
-                hypot(graph.nodeX[it] - city.bounds.centerX, graph.nodeY[it] - city.bounds.centerY)
+                distance(graph.nodeX[it] - city.bounds.centerX, graph.nodeY[it] - city.bounds.centerY)
             }
 
     /** Räumfahrzeuge im Einsatz (auf der Straße oder gerade wieder losgeschickt). */
@@ -206,7 +205,7 @@ class Weather internal constructor(
             .filter { !segmentPassive[it] && it !in taken && depth[it] >= MIN_PLOUGH_DEPTH }
             .sortedByDescending { segment ->
                 val node = segmentFrom[segment]
-                val distance = hypot(graph.nodeX[node] - graph.nodeX[from], graph.nodeY[node] - graph.nodeY[from])
+                val distance = distance(graph.nodeX[node] - graph.nodeX[from], graph.nodeY[node] - graph.nodeY[from])
                 depth[segment] * importance(segmentClass[segment]) / (1 + distance / DISTANCE_SCALE)
             }.take(MAX_TARGET_TRIES)
     }

@@ -142,5 +142,24 @@
             "summerTyreShare": 0.5,
             "ploughs": 3
         }
+    },
+    {
+        "id": "lasttest",
+        "title": "Lasttest: Ganz Pforzheim will gleichzeitig zur Arbeit",
+        "description": "Dreimal so viel Verkehr wie an einem normalen Montag – bis zu 6.000 Autos gleichzeitig. Zum Prüfen, was Ihr Rechner schafft. Zählt nicht für die Bestenliste.",
+        "termDays": 3,
+        "startWeekday": "MONDAY",
+        "startHour": 6.5,
+        "warmupMinutes": 30,
+        "demandFactor": 3.0,
+        "startBudget": 1000000,
+        "weeklyAllowance": null,
+        "truckShare": null,
+        "vanShare": null,
+        "electricShare": null,
+        "initialConditionMin": null,
+        "corsoChanceWeekend": null,
+        "tutorial": false,
+        "ranked": false
     }
 ]

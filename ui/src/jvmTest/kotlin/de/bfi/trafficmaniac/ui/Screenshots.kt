@@ -6,6 +6,9 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.unit.Density
 import de.bfi.trafficmaniac.city.CityMap
 import de.bfi.trafficmaniac.city.CityMapCodec
+import de.bfi.trafficmaniac.game.Assignment
+import de.bfi.trafficmaniac.game.AssignmentKind
+import de.bfi.trafficmaniac.game.AssignmentStatus
 import de.bfi.trafficmaniac.game.CityGame
 import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.DamageStatus
@@ -15,6 +18,7 @@ import de.bfi.trafficmaniac.game.GameSettings
 import de.bfi.trafficmaniac.game.Highlight
 import de.bfi.trafficmaniac.game.HighlightKind
 import de.bfi.trafficmaniac.game.Highscores
+import de.bfi.trafficmaniac.game.MapPlace
 import de.bfi.trafficmaniac.game.NewspaperEdition
 import de.bfi.trafficmaniac.game.Scenario
 import de.bfi.trafficmaniac.game.TrafficFrame
@@ -84,6 +88,7 @@ class Screenshots {
         dayReport(out)
         inspectCard(out, frame)
         toastsAndTransit(out, city, frame)
+        inboxJobs(out, city, frame)
     }
 
     /** Spiel mit Karte (Kontrolle-Auswahl offen) und einigen Seiten der Leiste. */
@@ -125,6 +130,77 @@ class Screenshots {
         }
     }
 
+    /** Posteingang mit Aufträgen: zwei offene mit Fortschritt, einer gerade erledigt. */
+    private fun inboxJobs(
+        out: File,
+        city: CityMap,
+        frame: TrafficFrame,
+    ) {
+        val streets =
+            city.roads.segments
+                .filter { !it.passive && it.name != null }
+                .distinctBy { it.name }
+
+        fun job(
+            id: Int,
+            kind: AssignmentKind,
+            index: Int,
+            status: AssignmentStatus = AssignmentStatus.OPEN,
+            progress: Int = 0,
+            goal: Int = 0,
+        ): Assignment {
+            val segment = streets[index]
+            return Assignment(
+                id = id,
+                kind = kind,
+                street = segment.name!!,
+                text = "„Hier passiert ständig etwas.“",
+                reward = 3_000L * id,
+                place = MapPlace(segment.geometry.x(0), segment.geometry.y(0)),
+                segments = setOf(segment.id),
+                hoursLeft = 6.0,
+                hours = 12.0,
+                status = status,
+                progress = progress,
+                goal = goal,
+            )
+        }
+        val game =
+            frame.game.copy(
+                assignments =
+                    listOf(
+                        job(1, AssignmentKind.TEMPO_30, 0, progress = 2, goal = 3),
+                        job(2, AssignmentKind.SPEEDER, 1, progress = 1, goal = 2),
+                    ),
+                finishedAssignments = listOf(job(3, AssignmentKind.ACCIDENT_SPOT, 2, AssignmentStatus.DONE)),
+            )
+        val shown =
+            TrafficFrame(
+                frame.previous,
+                frame.current,
+                TimeSource.Monotonic.markNow(),
+                1.seconds,
+                0.0,
+                1,
+                1,
+                null,
+                game,
+            )
+        val input = HudInput().apply { panelRequest = SidePanel.INBOX }
+        shoot(File(out, "game-inbox-jobs.png"), DAY3_WIDTH, DAY3_HEIGHT) {
+            TrafficManiacApp(
+                city,
+                traffic = MutableStateFlow(shown),
+                input = input,
+                onSpeed = {},
+                onSave = {},
+                onMenu = {},
+                onFastForward = {},
+                onResumeSpeed = {},
+            )
+        }
+    }
+
     /** Einblendungen in allen drei Stufen und die Nahansicht am Marktplatz mit Haltestellen und Bussen. */
     private fun toastsAndTransit(
         out: File,
@@ -158,6 +234,19 @@ class Screenshots {
                         de.bfi.trafficmaniac.ui.map
                             .Camera(stop.x, stop.y, MAP_SHOT_SCALE),
                 )
+            }
+            // Ganz nah an einem Linienbus: Karosserie in Linienfarbe, Nummer auf dem Dach
+            val bus = frame.current.lines.indexOfFirst { it >= 0 }
+            if (bus >= 0) {
+                shoot(File(out, "map-bus.png"), MAP_SHOT_WIDTH, MAP_SHOT_HEIGHT) {
+                    de.bfi.trafficmaniac.ui.map.MapView(
+                        city,
+                        traffic = { frame },
+                        initialCamera =
+                            de.bfi.trafficmaniac.ui.map
+                                .Camera(frame.current.x[bus], frame.current.y[bus], MAP_SHOT_SCALE * 2),
+                    )
+                }
             }
             // Dieselbe Stelle mit der Ebene „Buslinien“: Linien in Linienfarbe, Abschnitte nach Verspätung
             shoot(File(out, "map-transit-lines.png"), MAP_SHOT_WIDTH, MAP_SHOT_HEIGHT) {
