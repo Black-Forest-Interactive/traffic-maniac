@@ -145,7 +145,7 @@ class Simulation(
         incidents.update(time)
         events.update(time)
         charging.update(time)
-        laneChanger.changeLanes(clock.tick)
+        laneChanger.changeLanes(clock.tick, vehicles)
         if (clock.tick % QUEUE_UPDATE_TICKS == 0L) {
             router.updateFromQueues(lanes)
             incidents.sweep(vehicles)
@@ -490,6 +490,7 @@ class Simulation(
             segmentVolume = segmentVolume(vehicles, graph),
             wear = infrastructure.wear(),
             weather = weather.snapshot(),
+            lines = IntArray(count) { vehicles[it].transitTrip?.plan ?: -1 },
             transit = transit.snapshot(vehicles, gameTime.day),
             stats =
                 SimulationStats(

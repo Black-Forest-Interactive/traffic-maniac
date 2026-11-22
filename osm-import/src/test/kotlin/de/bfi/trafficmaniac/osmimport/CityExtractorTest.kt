@@ -96,6 +96,33 @@ class CityExtractorTest {
     }
 
     @Test
+    fun sideStreetsOnABusRouteAreDriven() {
+        val extractor = CityExtractor(ImportConfig(name = "Test", box = box))
+        extractor.node(1, 48.05, 8.01, emptyMap())
+        extractor.node(2, 48.05, 8.02, emptyMap())
+        extractor.node(3, 48.06, 8.02, emptyMap())
+        extractor.node(4, 48.05, 8.03, emptyMap())
+        extractor.node(5, 48.04, 8.02, emptyMap())
+        extractor.way(100, longArrayOf(1, 2, 4), mapOf("highway" to "primary"))
+        // Zwei Wohnstraßen am Knoten 2 – nur über die nördliche fährt der Bus
+        extractor.way(200, longArrayOf(2, 3), mapOf("highway" to "residential", "name" to "Busweg"))
+        extractor.way(201, longArrayOf(2, 5), mapOf("highway" to "residential", "name" to "Stichweg"))
+        // Die Relation kommt in der Datei nach den Wegen
+        extractor.relation(
+            900,
+            listOf(RelationMember("way", 100, ""), RelationMember("way", 200, "")),
+            mapOf("type" to "route", "route" to "bus", "ref" to "1"),
+        )
+        val segments = extractor.build().roads.segments
+
+        assertTrue(
+            segments.single { it.name == "Busweg" }.let { !it.passive },
+            "Nebenstraße der Buslinie wird befahren",
+        )
+        assertTrue(segments.single { it.name == "Stichweg" }.passive, "andere Nebenstraßen bleiben Kulisse")
+    }
+
+    @Test
     fun keepsSideStreetsAsPassiveSegmentsForDetours() {
         val map = extract()
         val side = map.roads.segments.single { it.passive }

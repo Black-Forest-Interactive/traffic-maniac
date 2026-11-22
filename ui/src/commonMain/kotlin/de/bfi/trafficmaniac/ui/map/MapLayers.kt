@@ -29,19 +29,29 @@ class MapLayers(
             .groupBy { it.roadClass }
             .mapValues { (_, segments) -> lines(segments.map { it.geometry }) }
 
-    /** Ein Namensschild je Hauptstraße, am längsten Abschnitt (Mitte und Richtung). */
+    /**
+     * Mögliche Namensschilder: je benanntem Abschnitt eins (Mitte und Richtung), auch auf Nebenstraßen – die
+     * Auswahl trifft das Zeichnen je Ausschnitt ([drawLabels]). Ein Schild je Straße reichte nicht: Nah dran lag es
+     * meist außerhalb des Bildes, und die Straße blieb ohne Namen.
+     */
     val labels: List<StreetLabel> =
         city.roads.segments
-            .filter { !it.passive && it.name != null && it.roadClass.ordinal <= RoadClass.TERTIARY.ordinal }
-            .groupBy { it.name!! }
-            .map { (name, segments) ->
-                val longest = segments.maxBy { straightLength(it.geometry) }
-                val g = longest.geometry
+            .filter { it.name != null && straightLength(it.geometry) >= MIN_LABEL_SEGMENT_METERS }
+            .map { segment ->
+                val g = segment.geometry
                 val mid = g.pointCount / 2
                 val (x0, y0) = g.x(mid - 1) to g.y(mid - 1)
                 val (x1, y1) = g.x(mid) to g.y(mid)
-                StreetLabel(name, (x0 + x1) / 2, (y0 + y1) / 2, atan2(y1 - y0, x1 - x0), longest.roadClass)
-            }.sortedBy { it.roadClass.ordinal }
+                StreetLabel(
+                    segment.name!!,
+                    (x0 + x1) / 2,
+                    (y0 + y1) / 2,
+                    atan2(y1 - y0, x1 - x0),
+                    segment.roadClass,
+                    straightLength(g),
+                )
+            }.sortedWith(compareBy({ it.roadClass.ordinal }, { -it.length }))
+
     val trafficSignals: List<Offset> =
         city.roads.nodes
             .filter { it.trafficSignals }
@@ -73,4 +83,9 @@ class StreetLabel(
     val y: Float,
     val angle: Float,
     val roadClass: RoadClass,
+    /** Länge des Abschnitts in Metern (gerade gemessen): Längere Stücke bekommen ihr Schild zuerst. */
+    val length: Float = 0f,
 )
+
+/** Kürzere Abschnitte bekommen kein eigenes Schild – der Name passte ohnehin nicht darauf. */
+private const val MIN_LABEL_SEGMENT_METERS = 30f

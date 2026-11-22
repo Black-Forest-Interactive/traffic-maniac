@@ -18,7 +18,7 @@ suspend fun GameRunner.highscore(
             .filterNotNull()
             .first { it.game.isTermOver || it.game.isGameOver }
             .game
-    if (end.isGameOver || scenario.tutorial) return null
+    if (end.isGameOver || scenario.tutorial || !scenario.ranked) return null
     return HighscoreEntry(
         scenarioId = scenario.id,
         difficulty = difficulty,

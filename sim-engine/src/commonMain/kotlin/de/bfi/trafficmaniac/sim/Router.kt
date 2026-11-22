@@ -1,7 +1,5 @@
 package de.bfi.trafficmaniac.sim
 
-import kotlin.math.hypot
-
 /**
  * Kürzeste Wege nach Fahrzeit (A*) über die Links. Wenden auf derselben Straße ist nur in Sackgassen erlaubt.
  * Die Fahrzeiten werden während der Simulation aus dem beobachteten Verkehr nachgeführt ("Navi-Effekt").
@@ -155,7 +153,8 @@ class Router(
         cost[link] = newCost
         previous[link] = from
         val end = graph.linkTo[link]
-        val remaining = hypot(graph.nodeX[end] - graph.nodeX[toNode], graph.nodeY[end] - graph.nodeY[toNode]) / maxSpeed
+        val remaining =
+            distance(graph.nodeX[end] - graph.nodeX[toNode], graph.nodeY[end] - graph.nodeY[toNode]) / maxSpeed
         heap.push(link, newCost + remaining)
     }
 

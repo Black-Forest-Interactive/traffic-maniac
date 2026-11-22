@@ -8,11 +8,19 @@ internal class LaneChanger(
     private val graph: RoadGraph,
     private val lanes: LaneQueues,
 ) {
-    fun changeLanes(tick: Long) {
+    /** Straßen, auf denen gerade ein Blaulicht fährt – je Schritt neu gefüllt, ohne neue Speicherbelegung. */
+    private val emergencyLinks = HashSet<Int>()
+
+    fun changeLanes(
+        tick: Long,
+        vehicles: List<Vehicle>,
+    ) {
+        // Rettungsgasse nur dort prüfen, wo ein Einsatzfahrzeug unterwegs ist (sonst je Schritt alle Straßen)
+        collectEmergencyLinks(vehicles)
         for (link in graph.simulatedLinks) {
             if (graph.linkLanes[link] < 2) continue
             val desired = graph.linkSpeedLimit[link].toDouble()
-            makeWayForEmergencies(link)
+            if (link in emergencyLinks) makeWayForEmergencies(link)
             for (queue in lanes[link]) {
                 // Fahrradstraße: Überholverbot – nur wer es ignoriert, wechselt die Spur
                 val bikeStreet = graph.linkBikeStreet[link]
@@ -24,6 +32,13 @@ internal class LaneChanger(
                     }
                 for (vehicle in candidates) tryChangeLane(vehicle, link, desired)
             }
+        }
+    }
+
+    private fun collectEmergencyLinks(vehicles: List<Vehicle>) {
+        emergencyLinks.clear()
+        for (vehicle in vehicles) {
+            if (vehicle.role.isEmergency && vehicle.routeIndex < vehicle.route.size) emergencyLinks += vehicle.link
         }
     }
 

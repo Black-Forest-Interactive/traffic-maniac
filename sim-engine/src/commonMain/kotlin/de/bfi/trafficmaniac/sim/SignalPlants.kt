@@ -1,7 +1,5 @@
 package de.bfi.trafficmaniac.sim
 
-import kotlin.math.hypot
-
 /**
  * Eine Ampelanlage: alle Ampelknoten einer Kreuzung ([signalNodes]), die Kreuzungsknoten selbst ([core]) und die
  * Haltelinien-Ampeln vor der Kreuzung mit den Zufahrten, die sie regeln ([stopLines]).
@@ -107,7 +105,7 @@ internal class SignalPlants(
         }
         for (a in anchors.indices) {
             for (b in a + 1 until anchors.size) {
-                if (distance(anchors[a], anchors[b]) < SignalSystem.CLUSTER_RADIUS) parent[root(a)] = root(b)
+                if (nodeDistance(anchors[a], anchors[b]) < SignalSystem.CLUSTER_RADIUS) parent[root(a)] = root(b)
             }
         }
         return anchors.indices
@@ -125,15 +123,15 @@ internal class SignalPlants(
         if (anchors.size < 2) return anchors.toSet()
         val cx = anchors.sumOf { graph.nodeX[it].toDouble() } / anchors.size
         val cy = anchors.sumOf { graph.nodeY[it].toDouble() } / anchors.size
-        val radius = anchors.maxOf { hypot(graph.nodeX[it] - cx, graph.nodeY[it] - cy) } + JUNCTION_MARGIN
+        val radius = anchors.maxOf { distance(graph.nodeX[it] - cx, graph.nodeY[it] - cy) } + JUNCTION_MARGIN
         return anchors.toSet() +
-            (0 until graph.nodeCount).filter { hypot(graph.nodeX[it] - cx, graph.nodeY[it] - cy) <= radius }
+            (0 until graph.nodeCount).filter { distance(graph.nodeX[it] - cx, graph.nodeY[it] - cy) <= radius }
     }
 
-    private fun distance(
+    private fun nodeDistance(
         a: Int,
         b: Int,
-    ): Float = hypot(graph.nodeX[a] - graph.nodeX[b], graph.nodeY[a] - graph.nodeY[b])
+    ): Float = distance(graph.nodeX[a] - graph.nodeX[b], graph.nodeY[a] - graph.nodeY[b])
 
     private companion object {
         /** So weit vor einer Kreuzung (entlang der Straße) gilt ein Ampelknoten als ihre Haltelinie. */

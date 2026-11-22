@@ -85,6 +85,21 @@ class GameRunnerTest {
         }
 
     @Test
+    fun aPlayerActionWorksWhilePaused() =
+        runBlocking {
+            val game = CityGame(road(), config)
+            val runner = GameRunner(game)
+            runner.setSpeed(0)
+            val job = launch { runner.run() }
+            runner.frames.filterNotNull().first()
+            delay(300)
+            // In der Pause rechnet die Simulation keinen Schritt – die Aktion muss trotzdem sofort wirken
+            game.submit(GameCommand.SetSpeedLimit(segment = 0, kmh = 30))
+            withTimeout(150) { runner.frames.filterNotNull().first { 0 in it.game.speedLimits } }
+            job.cancel()
+        }
+
+    @Test
     fun nightBoostIsCapped() =
         runBlocking {
             val night = config.copy(startSecondOfDay = 23.0 * 3_600)

@@ -65,6 +65,8 @@ class SimulationSnapshot(
     val transit: TransitSnapshot = TransitSnapshot(),
     /** Schnee und Räumdienst (leer ohne Wetter). */
     val weather: WeatherSnapshot = WeatherSnapshot.NONE,
+    /** Je Fahrzeug: Index seiner Buslinie in [TransitSnapshot.lines] von [transit], −1 = kein Linienbus. */
+    val lines: IntArray = IntArray(ids.size) { -1 },
 ) {
     val vehicleCount: Int get() = ids.size
 }

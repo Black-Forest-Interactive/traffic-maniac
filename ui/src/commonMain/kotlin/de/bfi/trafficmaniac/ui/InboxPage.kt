@@ -34,6 +34,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.bfi.trafficmaniac.game.Assignment
+import de.bfi.trafficmaniac.game.AssignmentKind
+import de.bfi.trafficmaniac.game.AssignmentStatus
 import de.bfi.trafficmaniac.game.DamageReport
 import de.bfi.trafficmaniac.game.DamageStatus
 import de.bfi.trafficmaniac.game.GameMessage
@@ -65,9 +67,12 @@ internal sealed class InboxItem(
     /** Wann ein Eintrag wieder als ungelesen gilt – meist mit seinem [key], gebündelte Meldungen bei jeder neuen. */
     open val unreadKey: String get() = key
 
+    /** Auftrag – offen oder gerade erledigt (gleicher Schlüssel: Erledigt macht ihn nicht wieder ungelesen). */
     class Job(
         val assignment: Assignment,
-    ) : InboxItem("a${assignment.id}", InboxCategory.ASSIGNMENTS)
+    ) : InboxItem("a${assignment.id}", InboxCategory.ASSIGNMENTS) {
+        val done: Boolean get() = assignment.status == AssignmentStatus.DONE
+    }
 
     class Emergency(
         val incident: IncidentMarker,
@@ -95,7 +100,8 @@ internal sealed class InboxItem(
 private fun items(frame: TrafficFrame): List<InboxItem> {
     val game = frame.game
     val incidents = frame.current.incidents.mapIndexed { i, incident -> InboxItem.Emergency(incident, i) }
-    val jobs = game.assignments.sortedBy { it.hoursLeft }.map { InboxItem.Job(it) }
+    // Offene nach Frist, darunter die gerade erledigten – so sieht man, was schon durch ist
+    val jobs = (game.assignments.sortedBy { it.hoursLeft } + game.finishedAssignments).map { InboxItem.Job(it) }
     // Dringendste zuerst: ungesichert, dann nach Frist
     val damage =
         game.maintenance.reports
@@ -269,7 +275,9 @@ private fun Categories(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         for (category in InboxCategory.entries) {
-            val count = if (category == InboxCategory.ALL) all.size else all.count { it.category == category }
+            // Erledigte Aufträge stehen nur zur Info da und zählen nicht mit
+            val open = all.filter { !(it is InboxItem.Job && it.done) }
+            val count = if (category == InboxCategory.ALL) open.size else open.count { it.category == category }
             val active = category == current
             Row(
                 Modifier
@@ -306,7 +314,7 @@ private val InboxCategory.label: String
         }
 
 /** Typzeile, Titel, Unterzeile, rechts Betrag bzw. Frist und die Farbe des Streifens. */
-private class RowText(
+internal class RowText(
     val type: String,
     val title: String,
     val detail: String,
@@ -320,14 +328,7 @@ private fun rowText(
 ): RowText =
     when (item) {
         is InboxItem.Job -> {
-            val a = item.assignment
-            RowText(
-                tr("Auftrag · {client}", "client" to a.kind.client),
-                "${a.kind.title} · ${a.street}",
-                tr("noch {hours} Std.", "hours" to a.hoursLeft.coerceAtLeast(0.0).roundToInt()),
-                "+" + formatEuro(a.reward),
-                TmColors.Primary,
-            )
+            jobRow(item)
         }
 
         is InboxItem.Emergency -> {
@@ -505,55 +506,6 @@ private fun DamageSummary(
     TmButton(tr("Zum Bauamt"), actions.onMaintenance, kind = ButtonKind.PRIMARY)
 }
 
-@Composable
-private fun JobDetail(
-    assignment: Assignment,
-    actions: InboxActions,
-) {
-    BasicText(assignment.kind.client, style = TmType.small)
-    // Der Auftragstext bringt seine Anführungszeichen schon mit
-    val quote = assignment.text.trim()
-    val quoted = quote.startsWith("„") || quote.startsWith("\"")
-    BasicText(if (quoted) quote else "„$quote“", style = TmType.text(14.sp).copy(lineHeight = 20.sp))
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column {
-            BasicText(tr("Belohnung"), style = TmType.caption)
-            BasicText("+" + formatEuro(assignment.reward), style = TmType.mono(18.sp, color = TmColors.SuccessText))
-        }
-        Column {
-            BasicText(tr("Frist"), style = TmType.caption)
-            BasicText(
-                tr("noch {hours} Std.", "hours" to assignment.hoursLeft.coerceAtLeast(0.0).roundToInt()),
-                style = TmType.mono(18.sp),
-            )
-        }
-    }
-    val share = (assignment.hoursLeft / assignment.hours).toFloat().coerceIn(0f, 1f)
-    Meter(
-        share,
-        Modifier.fillMaxWidth(),
-        height = 6.dp,
-        color =
-            if (share <
-                URGENT_SHARE
-            ) {
-                TmColors.Danger
-            } else {
-                TmColors.Primary
-            },
-    )
-    assignment.kind.tool()?.let { kind ->
-        BasicText(
-            tr("Ziel: mit „{tool}“ erledigen", "tool" to kind.label),
-            style = TmType.text(13.sp, FontWeight.SemiBold),
-        )
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TmButton(tr("Ablehnen"), { actions.assignments.onDecline(assignment) }, kind = ButtonKind.TEXT)
-        TmButton(tr("Zur Stelle"), { actions.assignments.onGo(assignment) }, kind = ButtonKind.PRIMARY)
-    }
-}
-
 private const val CATEGORY_WIDTH = 240
 private const val URGENT_SHOWN = 3
 private const val DETAIL_WIDTH = 560
@@ -562,4 +514,3 @@ private const val MAX_ROWS = 200
 private const val MAX_TITLE = 50
 private const val SECONDS_PER_MINUTE = 60.0
 private const val PERCENT = 100f
-private const val URGENT_SHARE = 0.25f

@@ -26,7 +26,7 @@ class CityGame(
     val simulation = Simulation(city, config)
     private val commands = Channel<GameCommand>(Channel.UNLIMITED)
     private val messages = ArrayDeque<GameMessage>()
-    private val treasury =
+    internal val treasury =
         Treasury(rules.startBudget) {
             message(it, kind = MessageKind.PROBLEM)
             highlights.add(HighlightKind.WARNING, it)
@@ -207,7 +207,7 @@ class CityGame(
         alerts++
     }
 
-    private val telemetryLog = TelemetryLog()
+    internal val telemetryLog = TelemetryLog()
 
     /** Zufällige Kennung dieser Partie für die Statistik; wird mitgespeichert (Spielstand = ganzer Objektgraph). */
     private var gameIdValue: String? = newGameId()
@@ -216,57 +216,15 @@ class CityGame(
     val gameId: String
         get() = gameIdValue ?: newGameId().also { gameIdValue = it }
 
-    /**
-     * Statistikpaket dieser Partie (Paket F); [context] liefert die Plattform. [final] = die Partie ist vorbei (Ende
-     * der Amtszeit, Abwahl oder Abbruch), sonst ein Zwischenstand. Gesendet wird nur mit Zustimmung.
-     */
-    fun telemetry(
-        context: TelemetryContext,
-        final: Boolean = true,
-    ): GameTelemetry {
-        val state = state()
-        return GameTelemetry(
-            installation = context.installation,
-            game = gameId,
-            appVersion = context.appVersion,
-            platform = context.platform,
-            deviceClass = context.deviceClass,
-            language = context.language,
-            city = context.city,
-            scenario = context.scenario,
-            difficulty = context.difficulty,
-            end =
-                when {
-                    isGameOver -> GameTelemetry.END_RECALLED
-                    isTermOver -> GameTelemetry.END_TERM
-                    final -> GameTelemetry.END_ABORTED
-                    else -> GameTelemetry.END_RUNNING
-                },
-            daysPlayed = simulation.dayReports.size,
-            realMinutes = context.realMinutes,
-            points = state.score.points,
-            earnings = state.score.earnings,
-            income =
-                mapOf(
-                    "fines" to treasury.fineIncome,
-                    "parking" to treasury.parkingIncome,
-                    "tickets" to treasury.ticketIncome,
-                    "allowance" to treasury.allowances,
-                    "grants" to treasury.grantIncome,
-                ),
-            expenses = treasury.expenses,
-            days = telemetryLog.days.toList(),
-            tools = telemetryLog.tools.toMap(),
-            speeds = context.speeds,
-            performance = context.performance,
-        )
-    }
-
     fun submit(command: GameCommand) {
         commands.trySend(command)
     }
 
-    fun step() {
+    /**
+     * Wartende Spieleraktionen ausführen, dann einen Simulationsschritt rechnen. Mit [simulate] = false nur die
+     * Aktionen – so wirken Klicks auch in der Pause und bei offenem Tagesabschluss sofort.
+     */
+    fun step(simulate: Boolean = true) {
         if (isFinished) return
         // Uhr fürs Journal der Kämmerei: Spielzeit ab Mitternacht des ersten Tags (das Spiel beginnt nicht um 0 Uhr)
         treasury.now = simulation.gameTime.let { it.day * SECONDS_PER_DAY + it.secondOfDay }
@@ -276,11 +234,14 @@ class CityGame(
             execute(command)
             executed = true
         }
-        // Was der Spieler baut (erster Blitzer, Schilderwald …), wird sofort gefeiert, nicht erst zur vollen Stunde
+        // Was der Spieler baut (erster Blitzer, Schilderwald …), wird sofort gefeiert und erfüllte Aufträge sofort
+        // bezahlt – nicht erst zur vollen Stunde
         if (executed) {
             revision++
             achievements.check(hourlyFacts(), simulation.gameTime.day)
+            assignments.playerActed(baseState, simulation.time)
         }
+        if (!simulate) return
         val reportsBefore = simulation.dayReports.size
         simulation.step()
         treasury.startup = false
@@ -300,11 +261,16 @@ class CityGame(
     }
 
     fun state(): GameState =
-        baseState.copy(
-            journal = treasury.journal.state(treasury.now, treasury.balance),
-            editions = editions.toList(),
-            citizenHistory = citizenRecorder.state(),
-        )
+        baseState.let { base ->
+            base.copy(
+                journal = treasury.journal.state(treasury.now, treasury.balance),
+                editions = editions.toList(),
+                citizenHistory = citizenRecorder.state(),
+                // Aufträge mit Fortschritt (braucht die Tempolimits aus dem Spielstand) und die gerade erledigten
+                assignments = assignments.state(simulation.time, base),
+                finishedAssignments = assignments.recentlyDone(simulation.time),
+            )
+        }
 
     /** Der Spielstand ohne das Journal der Kämmerei (das hängt [state] an). */
     private val baseState: GameState
@@ -331,7 +297,6 @@ class CityGame(
                 cameras = works.cameraCounters.values.map { it.toRecord() },
                 messages = messages.toList(),
                 highlights = highlights.list(),
-                assignments = assignments.state(simulation.time),
                 warnerShare = simulation.speedControl.warnerShare,
                 marathonActive = habits.marathonActive,
                 campaignInDays = habits.campaignInDays,
